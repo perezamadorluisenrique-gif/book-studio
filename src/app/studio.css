@@ -1,0 +1,365 @@
+/* Book Studio panel, shared by the Obsidian view and the web app. Colors come
+   from Obsidian's theme variables when present; the web app sets the fallbacks. */
+
+.bs-studio {
+  --bs-bg: var(--background-primary, #ffffff);
+  --bs-bg-alt: var(--background-secondary, #f4f3ef);
+  --bs-fg: var(--text-normal, #1d1d1f);
+  --bs-muted: var(--text-muted, #5c5c63);
+  --bs-line: var(--background-modifier-border, #d9d8d3);
+  --bs-accent: var(--interactive-accent, #6a4c93);
+  --bs-on-accent: var(--text-on-accent, #ffffff);
+  --bs-error: var(--text-error, #b3261e);
+  --bs-warn: var(--color-orange, #8a5300);
+  --bs-good: var(--color-green, #1e6b34);
+  --bs-desk: var(--background-secondary-alt, #e7e5df);
+  --bs-radius: var(--radius-s, 6px);
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  color: var(--bs-fg);
+  background: var(--bs-bg);
+  font-size: var(--font-ui-small, 14px);
+}
+
+.bs-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 12px;
+}
+
+.bs-top {
+  border-bottom: 1px solid var(--bs-line);
+}
+
+.bs-spacer {
+  flex: 1;
+}
+
+.bs-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bs-field > span {
+  color: var(--bs-muted);
+}
+
+.bs-field.bs-wide input {
+  min-width: 16em;
+}
+
+.bs-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.bs-book {
+  max-width: 28em;
+}
+
+.bs-plan {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bs-badge {
+  padding: 2px 8px;
+  border: 1px solid var(--bs-line);
+  border-radius: 999px;
+  color: var(--bs-muted);
+  font-size: 0.9em;
+}
+
+.bs-badge.is-pro {
+  border-color: var(--bs-accent);
+  color: var(--bs-accent);
+  font-weight: 600;
+}
+
+.bs-actions {
+  padding-top: 4px;
+}
+
+.bs-studio button.bs-link {
+  padding: 0;
+  height: auto;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text-accent, var(--bs-accent));
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.bs-pro-note {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--bs-muted);
+}
+
+.bs-status {
+  margin: 0;
+  padding: 0 12px 8px;
+  color: var(--bs-muted);
+}
+
+.bs-status.is-busy::before {
+  content: "";
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.5em;
+  border: 2px solid var(--bs-line);
+  border-top-color: var(--bs-accent);
+  border-radius: 50%;
+  vertical-align: -0.1em;
+  animation: bs-spin 0.8s linear infinite;
+}
+
+.bs-status.is-error {
+  color: var(--bs-error);
+}
+
+@keyframes bs-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bs-status.is-busy::before {
+    animation: none;
+  }
+}
+
+.bs-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--bs-line);
+}
+
+.bs-studio button.bs-tab {
+  margin-bottom: -1px;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--bs-radius) var(--bs-radius) 0 0;
+  background: none;
+  box-shadow: none;
+  color: var(--bs-muted);
+  cursor: pointer;
+}
+
+.bs-studio button.bs-tab[aria-selected="true"] {
+  border-bottom-color: var(--bs-accent);
+  color: var(--bs-fg);
+  font-weight: 600;
+}
+
+.bs-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.bs-panel[hidden] {
+  display: none;
+}
+
+.bs-panel-preview {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.bs-preview-tools {
+  border-bottom: 1px solid var(--bs-line);
+}
+
+.bs-pages {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 12px 48px;
+  background: var(--bs-desk);
+}
+
+.bs-pages:focus-visible {
+  outline: 2px solid var(--bs-accent);
+  outline-offset: -2px;
+}
+
+.bs-spread {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.bs-pages.is-facing .bs-spread.is-recto-only {
+  padding-left: var(--bs-page-w);
+}
+
+.bs-page {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bs-page canvas {
+  display: block;
+  width: var(--bs-page-w);
+  height: var(--bs-page-h);
+  background: #fffdf8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.bs-pages.is-facing .bs-page.is-verso canvas {
+  box-shadow: -1px 1px 3px rgba(0, 0, 0, 0.18), -6px 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.bs-pages.is-facing .bs-page.is-recto canvas {
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.18), 6px 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.bs-page figcaption {
+  margin-top: 4px;
+  color: var(--bs-muted);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+.bs-empty {
+  max-width: 40em;
+  margin: 24px auto;
+  padding: 20px 24px;
+  border-radius: var(--bs-radius);
+  background: var(--bs-bg);
+}
+
+.bs-empty pre {
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: var(--bs-radius);
+  background: var(--bs-bg-alt);
+  font-size: 0.9em;
+}
+
+.bs-problems {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.bs-problems li {
+  margin-bottom: 0.7em;
+  line-height: 1.45;
+}
+
+.bs-problems li.is-error > strong,
+.bs-bad {
+  color: var(--bs-error);
+}
+
+.bs-problems li.is-warning > strong {
+  color: var(--bs-warn);
+}
+
+.bs-problems li.is-info > strong,
+.bs-where,
+.bs-fix {
+  color: var(--bs-muted);
+}
+
+.bs-good {
+  color: var(--bs-good);
+}
+
+.bs-verdict {
+  padding: 8px 12px;
+  border-left: 4px solid var(--bs-line);
+  background: var(--bs-bg-alt);
+}
+
+.bs-verdict.is-pass {
+  border-left-color: var(--bs-good);
+}
+
+.bs-verdict.is-fail {
+  border-left-color: var(--bs-error);
+}
+
+.bs-panel-accessibility > label {
+  margin: 0 16px 10px 0;
+}
+
+.bs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bs-table th,
+.bs-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--bs-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+/* License panel (web dialog; the plugin uses its settings tab). */
+.bs-license {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bs-license-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bs-license-row input {
+  flex: 1;
+  min-width: 14em;
+}
+
+.bs-license .bs-error {
+  margin: 0;
+  color: var(--bs-error);
+}
+
+.bs-license ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+/* Obsidian host: dialog paragraphs and license errors in the settings tab. */
+.bs-dialog-text {
+  white-space: pre-line;
+}
+
+.bs-setting-error {
+  color: var(--bs-error);
+}
+
+.bs-setting-error:empty {
+  display: none;
+}
+
+.bs-panel-accessibility .bs-pro-note {
+  margin-bottom: 12px;
+  max-width: 48em;
+}

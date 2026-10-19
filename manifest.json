@@ -1,0 +1,10 @@
+{
+  "id": "book-studio",
+  "name": "Book Studio",
+  "version": "0.1.0",
+  "minAppVersion": "1.7.2",
+  "description": "Turn notes into a print-ready paperback PDF and an EPUB 3, entirely on your device.",
+  "author": "Siulved54",
+  "authorUrl": "https://github.com/perezamadorluisenrique-gif",
+  "isDesktopOnly": false
+}

@@ -1,0 +1,466 @@
+// The Obsidian plugin: a Book Studio view over the vault, commands for the
+// common exports, and a settings tab for the export folder and the Pro key.
+
+import { App, getLinkpath, ItemView, Modal, normalizePath, Notice, Plugin, PluginSettingTab, requestUrl, Setting, TFile, TFolder, type WorkspaceLeaf } from "obsidian";
+import { CHECKOUT_URL, FREE_EDITION, PRO_PREVIEW } from "../config";
+import { append, h, setElementFactory } from "../app/dom";
+import type { BookChoice, Dialog, OutputFile, Store, StudioHost } from "../app/host";
+import { LicenseManager } from "../app/license-manager";
+import { Studio } from "../app/studio";
+import type { VaultSource } from "../engine/book";
+import { FREE_SWITCH_INTERVAL, PRO_FEATURES, type FreeBookState } from "../engine/entitlements";
+import { describeLicense, LicenseError, type HttpPost } from "../engine/license";
+import { fmString, isManifestFrontmatter, manifestTemplate } from "../engine/manifest";
+import type { SourceRef } from "../engine/model";
+import { loadBundledFont } from "./fonts";
+
+const VIEW_TYPE = "book-studio";
+
+interface Settings {
+  exportFolder: string;
+  author: string;
+  /** The studio's own storage: license, free book, per-book choices, view options. */
+  data: Record<string, unknown>;
+}
+
+const DEFAULT_SETTINGS: Settings = { exportFolder: "Book Studio exports", author: "", data: {} };
+
+const http: HttpPost = async (url, body) => {
+  const res = await requestUrl({ url, method: "POST", contentType: "application/json", body: JSON.stringify(body), throw: false });
+  let json: unknown = null;
+  try {
+    json = res.json;
+  } catch {
+    json = null;
+  }
+  return { status: res.status, json };
+};
+
+export default class BookStudioPlugin extends Plugin {
+  override settings: Settings = DEFAULT_SETTINGS;
+  store!: Store;
+  license!: LicenseManager;
+  private saveTimer = 0;
+
+  override async onload(): Promise<void> {
+    setElementFactory((tag) => createEl(tag));
+    await this.loadSettings();
+    this.store = {
+      get: <T>(k: string) => this.settings.data[k] as T | undefined,
+      set: (k, v) => {
+        if (v === undefined) delete this.settings.data[k];
+        else this.settings.data[k] = v;
+        this.requestSave();
+      },
+    };
+    this.license = new LicenseManager({ http, store: this.store, activationLabel: "Obsidian" });
+
+    this.registerView(VIEW_TYPE, (leaf) => new StudioView(leaf, this));
+    this.addRibbonIcon("book-open", "Open Book Studio", () => void this.openStudio());
+
+    this.addCommand({ id: "open", name: "Open studio", icon: "book-open", callback: () => void this.openStudio() });
+    this.addCommand({ id: "export-pdf", name: "Export print PDF", icon: "printer", callback: () => void this.withStudio((s) => s.exportPdf()) });
+    this.addCommand({ id: "export-epub", name: "Export EPUB", icon: "tablet-smartphone", callback: () => void this.withStudio((s) => s.exportEpub()) });
+    if (!FREE_EDITION) this.addCommand({ id: "export-accessibility-report", name: "Export accessibility report", icon: "accessibility", callback: () => void this.withStudio((s) => s.exportReport()) });
+    this.addCommand({
+      id: "create-book",
+      name: "Create book from current folder",
+      icon: "book-plus",
+      checkCallback: (checking) => {
+        const folder = this.app.workspace.getActiveFile()?.parent;
+        if (!folder) return false;
+        if (!checking) void this.createBook(folder);
+        return true;
+      },
+    });
+
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        if (file instanceof TFolder) menu.addItem((item) => item.setTitle("Create book from this folder").setIcon("book-plus").onClick(() => void this.createBook(file)));
+      }),
+    );
+
+    // Live preview: rebuild when a note or image the book uses changes.
+    this.registerEvent(this.app.vault.on("modify", (f) => this.fileChanged(f.path)));
+    this.registerEvent(this.app.vault.on("delete", (f) => this.fileChanged(f.path)));
+    this.registerEvent(this.app.vault.on("rename", (_f, old) => this.fileChanged(old)));
+    // A note gaining or losing book: true changes the list of books.
+    this.registerEvent(
+      this.app.metadataCache.on("changed", (file, _data, cache) => {
+        const manifest = isManifestFrontmatter(cache.frontmatter);
+        for (const s of this.studios()) if (manifest || s.listsBook(file.path)) s.scheduleBuild(800, true);
+      }),
+    );
+
+    this.addSettingTab(new BookStudioSettingTab(this.app, this));
+    if (!FREE_EDITION) this.app.workspace.onLayoutReady(() => void this.license.refreshIfDue());
+  }
+
+  override onunload(): void {
+    if (this.saveTimer) {
+      window.clearTimeout(this.saveTimer);
+      void this.saveData(this.settings);
+    }
+  }
+
+  async loadSettings(): Promise<void> {
+    const saved = ((await this.loadData()) ?? {}) as Partial<Settings>;
+    this.settings = { ...DEFAULT_SETTINGS, ...saved, data: { ...(saved.data ?? {}) } };
+  }
+
+  override async onExternalSettingsChange(): Promise<void> {
+    await this.loadSettings();
+  }
+
+  requestSave(): void {
+    window.clearTimeout(this.saveTimer);
+    this.saveTimer = window.setTimeout(() => {
+      this.saveTimer = 0;
+      void this.saveData(this.settings);
+    }, 400);
+  }
+
+  private studios(): Studio[] {
+    const out: Studio[] = [];
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) {
+      const view = leaf.view;
+      if (view instanceof StudioView && view.studio) out.push(view.studio);
+    }
+    return out;
+  }
+
+  private fileChanged(path: string): void {
+    for (const s of this.studios()) if (s.usesFile(path)) s.scheduleBuild(path === s.bookPath ? 600 : 1000, path === s.bookPath);
+  }
+
+  async openStudio(): Promise<Studio | null> {
+    const { workspace } = this.app;
+    let leaf = workspace.getLeavesOfType(VIEW_TYPE)[0];
+    if (!leaf) {
+      leaf = workspace.getLeaf("tab");
+      await leaf.setViewState({ type: VIEW_TYPE, active: true });
+    }
+    await workspace.revealLeaf(leaf);
+    const view = leaf.view;
+    if (!(view instanceof StudioView)) return null;
+    await view.ready;
+    return view.studio;
+  }
+
+  private async withStudio(fn: (s: Studio) => Promise<void>): Promise<void> {
+    const studio = await this.openStudio();
+    if (studio) await fn(studio);
+  }
+
+  // ── Vault access ──
+
+  vaultSource(): VaultSource {
+    const { vault, metadataCache } = this.app;
+    const file = (path: string) => {
+      const f = vault.getAbstractFileByPath(path);
+      if (!(f instanceof TFile)) throw new Error(`File not found: ${path}`);
+      return f;
+    };
+    return {
+      read: (p) => vault.cachedRead(file(p)),
+      readBinary: async (p) => new Uint8Array(await vault.readBinary(file(p))),
+      resolve: (target, from) => metadataCache.getFirstLinkpathDest(getLinkpath(target), from)?.path ?? null,
+    };
+  }
+
+  listBooks(): BookChoice[] {
+    const books: BookChoice[] = [];
+    for (const f of this.app.vault.getMarkdownFiles()) {
+      const fm = this.app.metadataCache.getFileCache(f)?.frontmatter;
+      if (isManifestFrontmatter(fm)) books.push({ path: f.path, title: fmString(fm ?? {}, "title") ?? f.basename });
+    }
+    return books.sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  async saveOutput(out: OutputFile): Promise<string> {
+    const { vault } = this.app;
+    const folder = normalizePath(this.settings.exportFolder || DEFAULT_SETTINGS.exportFolder);
+    if (!vault.getAbstractFileByPath(folder)) await vault.createFolder(folder);
+    const path = normalizePath(`${folder}/${out.name}`);
+    const existing = vault.getAbstractFileByPath(path);
+    if (typeof out.data === "string") {
+      if (existing instanceof TFile) await vault.modify(existing, out.data);
+      else await vault.create(path, out.data);
+    } else {
+      const buf = out.data.buffer.slice(out.data.byteOffset, out.data.byteOffset + out.data.byteLength) as ArrayBuffer;
+      if (existing instanceof TFile) await vault.modifyBinary(existing, buf);
+      else await vault.createBinary(path, buf);
+    }
+    return `Saved ${path}`;
+  }
+
+  async openSource(src: SourceRef): Promise<void> {
+    const f = this.app.vault.getAbstractFileByPath(src.file);
+    if (!(f instanceof TFile)) return;
+    await this.app.workspace.getLeaf(false).openFile(f, { eState: { line: Math.max(0, src.line - 1) } });
+  }
+
+  openLicenseSettings(): void {
+    // The settings API for opening a specific tab isn't public; fall back to a modal.
+    new LicenseModal(this.app, this).open();
+  }
+
+  async createBook(folder: TFolder): Promise<void> {
+    const notes = folder.children
+      .filter((f): f is TFile => f instanceof TFile && f.extension === "md")
+      .filter((f) => !isManifestFrontmatter(this.app.metadataCache.getFileCache(f)?.frontmatter))
+      .sort((a, b) => a.basename.localeCompare(b.basename, undefined, { numeric: true }));
+    if (!notes.length) {
+      new Notice("This folder has no notes to put in a book.");
+      return;
+    }
+    const title = folder.isRoot() ? this.app.vault.getName() : folder.name;
+    const dir = folder.isRoot() ? "" : `${folder.path}/`;
+    let path = normalizePath(`${dir}${title}.md`);
+    for (let n = 2; this.app.vault.getAbstractFileByPath(path); n++) path = normalizePath(`${dir}${title} (book ${n}).md`);
+    const file = await this.app.vault.create(path, manifestTemplate(title, this.settings.author, notes.map((n) => n.basename)));
+    await this.app.workspace.getLeaf(false).openFile(file);
+    new Notice(`Created ${file.path}. Reorder the links to reorder the chapters.`);
+    const studio = await this.openStudio();
+    studio?.scheduleBuild(300, true);
+  }
+
+  hostFor(): StudioHost {
+    return {
+      kind: "obsidian",
+      source: () => this.vaultSource(),
+      listBooks: async () => this.listBooks(),
+      loadFont: loadBundledFont,
+      save: (out) => this.saveOutput(out),
+      http,
+      store: this.store,
+      ask: (d) => new AskModal(this.app, d).wait(),
+      notify: (m) => void new Notice(m),
+      openUrl: (url) => void window.open(url),
+      openSource: (src) => void this.openSource(src),
+      openLicense: () => this.openLicenseSettings(),
+      activationLabel: "Obsidian",
+      renderEmpty: (box) => {
+        const folder = this.app.workspace.getActiveFile()?.parent;
+        append(
+          box,
+          h("h2", { text: "No book in this vault yet" }),
+          h("p", { text: "Turn a folder of chapter notes into a book: right-click the folder and choose Create book from this folder, or use the button below for the folder of the note you have open." }),
+        );
+        if (folder) append(box, h("button", { cls: "mod-cta", text: `Create a book from “${folder.isRoot() ? this.app.vault.getName() : folder.name}”`, on: { click: () => void this.createBook(folder) } }));
+      },
+    };
+  }
+}
+
+class StudioView extends ItemView {
+  studio: Studio | null = null;
+  ready: Promise<void> = Promise.resolve();
+
+  constructor(
+    leaf: WorkspaceLeaf,
+    private plugin: BookStudioPlugin,
+  ) {
+    super(leaf);
+  }
+
+  getViewType(): string {
+    return VIEW_TYPE;
+  }
+
+  getDisplayText(): string {
+    return "Book Studio";
+  }
+
+  override getIcon(): string {
+    return "book-open";
+  }
+
+  override async onOpen(): Promise<void> {
+    this.contentEl.empty();
+    this.contentEl.addClass("bs-view");
+    this.studio = new Studio(this.plugin.hostFor(), this.contentEl, this.plugin.license);
+    this.ready = this.studio.refresh();
+    await this.ready;
+  }
+
+  override async onClose(): Promise<void> {
+    this.studio?.dispose();
+    this.studio = null;
+  }
+}
+
+class AskModal extends Modal {
+  private result: "ok" | "cancel" | "extra" = "cancel";
+  private done: (r: "ok" | "cancel" | "extra") => void = () => {};
+
+  constructor(
+    app: App,
+    private dialog: Dialog,
+  ) {
+    super(app);
+  }
+
+  wait(): Promise<"ok" | "cancel" | "extra"> {
+    return new Promise((resolve) => {
+      this.done = resolve;
+      this.open();
+    });
+  }
+
+  override onOpen(): void {
+    const d = this.dialog;
+    this.titleEl.setText(d.title);
+    for (const p of d.message.split("\n\n")) this.contentEl.createEl("p", { text: p, cls: "bs-dialog-text" });
+    const row = new Setting(this.contentEl);
+    row.addButton((b) => b.setButtonText(d.cancel ?? "Cancel").onClick(() => this.finish("cancel")));
+    if (d.extra) row.addButton((b) => b.setButtonText(d.extra!).onClick(() => this.finish("extra")));
+    row.addButton((b) => b.setButtonText(d.ok).setCta().onClick(() => this.finish("ok")));
+  }
+
+  private finish(r: "ok" | "cancel" | "extra"): void {
+    this.result = r;
+    this.close();
+  }
+
+  override onClose(): void {
+    this.contentEl.empty();
+    this.done(this.result);
+  }
+}
+
+/** License controls, shared by the settings tab and the modal the studio opens. */
+function licenseSettings(containerEl: HTMLElement, plugin: BookStudioPlugin, redraw: () => void): void {
+  const license = plugin.license;
+  const state = license.state;
+  new Setting(containerEl).setName("Book Studio Pro").setHeading();
+  new Setting(containerEl).setName("Status").setDesc(license.previewPro ? "Pro preview is on. Exports include every Pro feature in this prototype build." : describeLicense(state));
+
+  if (!license.configured) {
+    new Setting(containerEl).setName("License key").setDesc("Licensing isn't configured in this build, so keys can't be activated here.");
+  } else if (state) {
+    new Setting(containerEl)
+      .setName("Remove license key")
+      .setDesc("Frees this device's activation so you can use the key elsewhere.")
+      .addButton((b) =>
+        b.setButtonText("Remove").onClick(async () => {
+          b.setDisabled(true);
+          const note = await license.remove();
+          if (note) new Notice(note);
+          redraw();
+        }),
+      );
+  } else {
+    let key = "";
+    const error = createDiv({ cls: "bs-setting-error" });
+    const setting = new Setting(containerEl)
+      .setName("License key")
+      .setDesc("Paste the key from your purchase email.")
+      .addText((t) => t.setPlaceholder("License key").onChange((v) => (key = v)))
+      .addButton((b) =>
+        b
+          .setButtonText("Activate")
+          .setCta()
+          .onClick(async () => {
+            b.setDisabled(true);
+            error.setText("");
+            try {
+              await license.activate(key);
+              new Notice("Book Studio Pro is active.");
+              redraw();
+            } catch (e) {
+              b.setDisabled(false);
+              error.setText(e instanceof LicenseError ? e.message : "Activation failed.");
+            }
+          }),
+      );
+    setting.descEl.appendChild(error);
+  }
+
+  new Setting(containerEl)
+    .setName("Get Book Studio Pro")
+    .setDesc(Object.values(PRO_FEATURES).join(" · "))
+    .addButton((b) => b.setButtonText("Buy").onClick(() => window.open(CHECKOUT_URL)));
+
+  if (PRO_PREVIEW) {
+    new Setting(containerEl)
+      .setName("Preview every feature without a key")
+      .setDesc("Prototype builds only.")
+      .addToggle((t) =>
+        t.setValue(license.previewPro).onChange((v) => {
+          license.previewPro = v;
+          redraw();
+        }),
+      );
+  }
+
+  const free = plugin.store.get<FreeBookState>("freeBook");
+  if (license.plan() === "free" && free?.path) {
+    const when = new Date((free.since ?? 0) + FREE_SWITCH_INTERVAL);
+    new Setting(containerEl).setName("Free plan book").setDesc(`${free.path}. You can make another book your free book after ${when.toLocaleDateString(undefined, { dateStyle: "medium" })}.`);
+  }
+
+  containerEl.createEl("p", { cls: "setting-item-description", text: "Checking a key sends it to Polar, the store that sells Book Studio Pro, when you activate it and every few days after. Nothing else leaves your device: your notes and books never do." });
+}
+
+class LicenseModal extends Modal {
+  constructor(
+    app: App,
+    private plugin: BookStudioPlugin,
+  ) {
+    super(app);
+  }
+
+  override onOpen(): void {
+    this.draw();
+  }
+
+  private draw(): void {
+    this.contentEl.empty();
+    licenseSettings(this.contentEl, this.plugin, () => this.draw());
+  }
+
+  override onClose(): void {
+    this.contentEl.empty();
+  }
+}
+
+class BookStudioSettingTab extends PluginSettingTab {
+  constructor(
+    app: App,
+    private plugin: BookStudioPlugin,
+  ) {
+    super(app, plugin);
+  }
+
+  override display(): void {
+    this.render();
+  }
+
+  private render(): void {
+    const { containerEl } = this;
+    containerEl.empty();
+    new Setting(containerEl)
+      .setName("Export folder")
+      .setDesc("Exported books and reports are saved in this vault folder.")
+      .addText((t) =>
+        t
+          .setPlaceholder(DEFAULT_SETTINGS.exportFolder)
+          .setValue(this.plugin.settings.exportFolder)
+          .onChange((v) => {
+            this.plugin.settings.exportFolder = v.trim() || DEFAULT_SETTINGS.exportFolder;
+            this.plugin.requestSave();
+          }),
+      );
+    new Setting(containerEl)
+      .setName("Author")
+      .setDesc("Filled in when you create a book from a folder.")
+      .addText((t) =>
+        t.setValue(this.plugin.settings.author).onChange((v) => {
+          this.plugin.settings.author = v.trim();
+          this.plugin.requestSave();
+        }),
+      );
+    if (!FREE_EDITION) licenseSettings(containerEl, this.plugin, () => this.render());
+  }
+}

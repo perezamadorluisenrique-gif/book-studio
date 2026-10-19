@@ -1,0 +1,41 @@
+{
+  "name": "book-studio",
+  "version": "0.1.0",
+  "description": "Turn notes into a print-ready paperback PDF and an EPUB 3, entirely on your device.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && node esbuild.config.mjs production plugin",
+    "build:all": "node esbuild.config.mjs production",
+    "build:web": "node esbuild.config.mjs production web",
+    "dev": "node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "sample": "esbuild tools/render-sample.ts --bundle --platform=node --format=esm --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\" --outfile=out/render-sample.mjs --log-level=warning && node out/render-sample.mjs",
+    "version": "node version-bump.mjs && git add manifest.json versions.json CHANGELOG.md"
+  },
+  "author": "Siulved54",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "eslint-plugin-obsidianmd": "^0.4.2",
+    "obsidian": "^1.14.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
+    "hyphen": "^1.14.1",
+    "jszip": "^3.10.2",
+    "marked": "^18.1.1",
+    "pdf-lib": "1.17.1",
+    "yaml": "^2.9.1"
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}
