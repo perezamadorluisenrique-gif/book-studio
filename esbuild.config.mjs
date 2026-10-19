@@ -26,8 +26,24 @@ const noNodeStream = {
   },
 };
 
+// JSZip pulls in two scheduling polyfills for old browsers ("setimmediate" and
+// "lie", which wraps "immediate"). They create script elements and call
+// new Function at runtime, which Obsidian's review flags. Every engine we run
+// on has Promise, so "lie" becomes the native one, and "setimmediate" becomes
+// a timer-based setImmediate for the platforms (mobile) that lack it.
+const noLegacyPolyfills = {
+  name: "no-legacy-polyfills",
+  setup(build) {
+    build.onResolve({ filter: /^(lie|setimmediate)$/ }, (args) => ({ path: args.path, namespace: "polyfill" }));
+    build.onLoad({ filter: /^lie$/, namespace: "polyfill" }, () => ({ contents: "module.exports = Promise;" }));
+    build.onLoad({ filter: /^setimmediate$/, namespace: "polyfill" }, () => ({
+      contents: "if (!globalThis.setImmediate) globalThis.setImmediate = (fn, ...args) => setTimeout(fn, 0, ...args);",
+    }));
+  },
+};
+
 const common = {
-  plugins: [noNodeStream],
+  plugins: [noNodeStream, noLegacyPolyfills],
   alias: { jszip: "jszip/lib/index.js" },
   bundle: true,
   target: "es2020",
