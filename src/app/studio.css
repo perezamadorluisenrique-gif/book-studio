@@ -149,6 +149,11 @@
   border-bottom: 1px solid var(--bs-line);
 }
 
+/* Obsidian styles buttons as inline-flex, which would override [hidden]. */
+.bs-studio button[hidden] {
+  display: none;
+}
+
 .bs-studio button.bs-tab {
   margin-bottom: -1px;
   border: 1px solid transparent;
