@@ -90,6 +90,7 @@ export class Studio {
     this.pdfButton.addEventListener("click", () => void this.exportPdf());
     this.epubButton.addEventListener("click", () => void this.exportEpub());
     this.reportButton.addEventListener("click", () => void this.exportReport());
+    this.reportButton.hidden = FREE_EDITION;
 
     this.root = h(
       "div",
