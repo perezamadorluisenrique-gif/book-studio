@@ -1,6 +1,6 @@
 {
   "name": "book-studio",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Turn notes into a print-ready paperback PDF and an EPUB 3, entirely on your device.",
   "private": true,
   "type": "module",
