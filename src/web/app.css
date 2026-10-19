@@ -1,0 +1,204 @@
+/* The web app's page; the studio panel itself is styled by studio.css. */
+
+:root {
+  color-scheme: light dark;
+  --app-bg: #f7f6f2;
+  --app-fg: #1d1d1f;
+  --app-muted: #5c5c63;
+  --app-line: #d9d8d3;
+  --app-accent: #6a4c93;
+  --app-surface: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-bg: #18181b;
+    --app-fg: #ececf0;
+    --app-muted: #a5a5ad;
+    --app-line: #3a3a40;
+    --app-accent: #b79be0;
+    --app-surface: #222226;
+  }
+
+  .bs-studio {
+    --bs-bg: #222226;
+    --bs-bg-alt: #2b2b30;
+    --bs-fg: #ececf0;
+    --bs-muted: #a5a5ad;
+    --bs-line: #3a3a40;
+    --bs-accent: #b79be0;
+    --bs-on-accent: #18181b;
+    --bs-error: #ff8a80;
+    --bs-warn: #ffc56b;
+    --bs-good: #7ad694;
+    --bs-desk: #141416;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--app-bg);
+  color: var(--app-fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+button,
+select,
+input[type="text"] {
+  font: inherit;
+  color: inherit;
+}
+
+button,
+select {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--app-line);
+  border-radius: 6px;
+  background: var(--app-surface);
+  cursor: pointer;
+}
+
+select {
+  padding-right: 6px;
+}
+
+input[type="text"] {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--app-line);
+  border-radius: 6px;
+  background: var(--app-surface);
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--app-accent);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+button.mod-cta {
+  border-color: var(--app-accent);
+  background: var(--app-accent);
+  color: var(--app-surface);
+  font-weight: 600;
+}
+
+:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--app-line);
+  background: var(--app-surface);
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.app-tagline {
+  flex: 1;
+  min-width: 16em;
+  margin: 0;
+  color: var(--app-muted);
+}
+
+.app-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+}
+
+.app-main .bs-studio {
+  height: 100%;
+}
+
+.app-toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(28em, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.app-toast {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--app-fg);
+  color: var(--app-bg);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.app-dialog {
+  width: min(34em, calc(100vw - 32px));
+  padding: 20px 24px;
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  background: var(--app-surface);
+  color: var(--app-fg);
+}
+
+.app-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.app-dialog h2 {
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+}
+
+.app-dialog p {
+  margin: 0 0 10px;
+  white-space: pre-line;
+}
+
+.app-dialog-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.app-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
+  .app-tagline {
+    display: none;
+  }
+}

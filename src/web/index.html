@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Book Studio</title>
+    <meta name="description" content="Turn a folder of Markdown notes into a print-ready paperback PDF and an accessible EPUB 3. Everything runs in your browser." />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="studio.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <h1 class="app-title">Book Studio</h1>
+      <p class="app-tagline">Markdown notes in, a paperback PDF and an accessible EPUB out. Nothing leaves your browser.</p>
+      <nav class="app-actions" aria-label="Book source">
+        <button type="button" id="open-folder">Open a folder</button>
+        <button type="button" id="reopen-folder" hidden>Reopen</button>
+        <button type="button" id="open-sample">Sample book</button>
+        <input type="file" id="folder-input" webkitdirectory multiple hidden />
+      </nav>
+    </header>
+    <main id="studio" class="app-main"></main>
+    <div id="toasts" class="app-toasts" role="status" aria-live="polite"></div>
+    <dialog id="dialog" class="app-dialog" aria-labelledby="dialog-title">
+      <form method="dialog">
+        <h2 id="dialog-title"></h2>
+        <div id="dialog-body"></div>
+        <div class="app-dialog-buttons" id="dialog-buttons"></div>
+      </form>
+    </dialog>
+    <noscript>Book Studio needs JavaScript to typeset your book in the browser.</noscript>
+  </body>
+</html>
