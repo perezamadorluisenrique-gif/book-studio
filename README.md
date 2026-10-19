@@ -1,6 +1,6 @@
 # Book Studio
 
-Turn a folder of Markdown notes into a **print-ready paperback PDF** for Amazon KDP and an **accessible EPUB 3** for every ebook store. Everything happens on your device: your manuscript is never uploaded anywhere.
+Turn a folder of Markdown notes into a **print-ready paperback PDF** for Amazon KDP and an **EPUB 3** for every ebook store. Everything happens on your device: your manuscript is never uploaded anywhere.
 
 No Pandoc, no LaTeX, nothing else to install, and it works on Obsidian mobile too.
 
@@ -108,7 +108,7 @@ The studio's toolbar can override the theme and trim for a single export without
 ## Privacy
 
 - **Your notes, images and exports never leave your device.** Parsing, typesetting and PDF and EPUB generation all run locally.
-- **Book Studio makes no network requests.** There is no account, no telemetry, no analytics and no ads.
+- **The plugin makes no network requests.** The web app loads only its own files (the sample book and fonts) from the site it is served from. There is no account, no telemetry, no analytics and no ads.
 - The plugin keeps its settings in its `data.json` in your vault. The web app keeps them in your browser's local storage.
 
 ## Installing
