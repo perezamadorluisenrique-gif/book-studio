@@ -35,7 +35,8 @@ function expectPrintable(layout: Layout): void {
   }
 }
 
-describe("print layout", () => {
+// The first layout loads the fonts, which takes over 5 s on a busy machine.
+describe("print layout", { timeout: 30_000 }, () => {
   it("lays out the sample within KDP's rules", async () => {
     const layout = await layoutOz();
     expect([layout.widthPt, layout.heightPt]).toEqual([432, 648]);
