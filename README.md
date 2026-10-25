@@ -4,6 +4,8 @@ Turn a folder of Markdown notes into a **print-ready paperback PDF** for Amazon 
 
 No Pandoc, no LaTeX, nothing else to install, and it works on Obsidian mobile too.
 
+![Book Studio in Obsidian: book settings, export buttons and a facing-pages preview](https://raw.githubusercontent.com/perezamadorluisenrique-gif/book-studio/main/docs/screenshot.png)
+
 **[Try it in your browser →](https://perezamadorluisenrique-gif.github.io/book-studio/)** The web app opens with a sample book, *The Wonderful Wizard of Oz*, already typeset.
 
 Book Studio comes in two forms that share one engine and one interface:
