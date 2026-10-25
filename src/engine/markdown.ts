@@ -27,13 +27,22 @@ export interface ParseContext {
   readNote: (path: string) => Promise<string>;
   warnings: BookWarning[];
   depth?: number;
+  /** Footnote definitions of the note being parsed; embedded notes add theirs here. */
+  noteDefs?: Map<string, NoteDef>;
+}
+
+/** A footnote definition, still as Markdown; `file` is set when it comes from an embedded note. */
+export interface NoteDef {
+  text: string;
+  line: number;
+  file?: string;
 }
 
 export interface ParsedNote {
   frontmatter: Record<string, unknown>;
   blocks: Block[];
   /** Footnote definitions by id, still as Markdown. */
-  noteDefs: Map<string, { text: string; line: number }>;
+  noteDefs: Map<string, NoteDef>;
 }
 
 export function splitFrontmatter(text: string): { frontmatter: Record<string, unknown>; body: string } {
@@ -64,7 +73,7 @@ function outsideCode(line: string, fn: (s: string) => string): string {
 let inlineNoteCounter = 0;
 
 /** Rewrite Obsidian-only syntax into plain Markdown plus private-use placeholders. */
-export function preprocess(body: string, noteDefs: Map<string, { text: string; line: number }>): string {
+export function preprocess(body: string, noteDefs: Map<string, NoteDef>): string {
   const lines = body.split("\n");
   const out: string[] = [];
   let fence: string | null = null;
@@ -414,12 +423,32 @@ async function convertBlock(t: Token, ctx: ParseContext, src: SourceRef, blocks:
   }
 }
 
+let embedCounter = 0;
+
+function renameNoteRefs(blocks: Block[], rename: (id: string) => string): void {
+  const fix = (inlines: Inline[]) => inlines.map((i) => (i.kind === "noteRef" ? { ...i, noteId: rename(i.noteId) } : i));
+  for (const b of blocks) {
+    if (b.kind === "paragraph" || b.kind === "heading") b.inlines = fix(b.inlines);
+    else if (b.kind === "blockquote") renameNoteRefs(b.blocks, rename);
+    else if (b.kind === "list") b.items.forEach((it) => renameNoteRefs(it, rename));
+    else if (b.kind === "table") {
+      b.header = b.header.map(fix);
+      b.rows = b.rows.map((r) => r.map(fix));
+    }
+  }
+}
+
 async function transclude(target: string, ctx: ParseContext, src: SourceRef, blocks: Block[]): Promise<void> {
   const depth = ctx.depth ?? 0;
   const [note, heading] = target.split("#");
   const path = ctx.resolve(note, ctx.file);
   if (!path) {
     ctx.warnings.push({ message: `Embedded note not found: ${target}`, src });
+    return;
+  }
+  // ![[Report.pdf]], audio, video, canvases and bases have no text to print.
+  if (!/\.md$/i.test(path)) {
+    ctx.warnings.push({ message: `Only notes and PNG or JPEG images can be embedded in a book; ${target} was left out.`, src });
     return;
   }
   if (depth >= 4) {
@@ -429,6 +458,12 @@ async function transclude(target: string, ctx: ParseContext, src: SourceRef, blo
   const text = await ctx.readNote(path);
   const parsed = await parseMarkdown(text, { ...ctx, file: path, depth: depth + 1 });
   let inner = parsed.blocks;
+  // The embedded note's footnotes come along, renamed so its [^1] can't take the host note's.
+  if (ctx.noteDefs && parsed.noteDefs.size) {
+    const prefix = `embed${++embedCounter}-`;
+    for (const [id, def] of parsed.noteDefs) ctx.noteDefs.set(prefix + id, { ...def, file: def.file ?? path });
+    renameNoteRefs(inner, (id) => (parsed.noteDefs.has(id) ? prefix + id : id));
+  }
   if (heading) {
     const start = inner.findIndex((b) => b.kind === "heading" && plain(b.inlines).trim().toLowerCase() === heading.trim().toLowerCase());
     if (start < 0) {
@@ -459,10 +494,10 @@ function smartenBlocks(blocks: Block[], lang: string): void {
 
 export async function parseMarkdown(text: string, ctx: ParseContext): Promise<ParsedNote> {
   const { frontmatter, body } = splitFrontmatter(text);
-  const noteDefs = new Map<string, { text: string; line: number }>();
+  const noteDefs = new Map<string, NoteDef>();
   const md = preprocess(body, noteDefs);
   const tokens = new Lexer({ gfm: true, breaks: false }).lex(md);
-  const blocks = await convertBlocks(tokens, ctx, 1);
+  const blocks = await convertBlocks(tokens, { ...ctx, noteDefs }, 1);
   if (ctx.smart) smartenBlocks(blocks, ctx.lang);
   return { frontmatter, blocks, noteDefs };
 }

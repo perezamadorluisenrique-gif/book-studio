@@ -150,7 +150,7 @@ export class Studio {
   usesFile(path: string): boolean {
     const b = this.built?.book;
     if (!b) return false;
-    return path === b.manifestPath || b.chapters.some((c) => c.file === path) || b.images.has(path) || (b.meta.cover?.path === path);
+    return path === b.manifestPath || b.chapters.some((c) => c.file === path) || b.embeds.has(path) || b.images.has(path) || b.meta.cover?.path === path;
   }
 
   get bookPath(): string | null {
@@ -166,11 +166,15 @@ export class Studio {
   scheduleBuild(delay = 800, relist = false): void {
     window.clearTimeout(this.timer);
     this.relistPending ||= relist;
-    this.timer = window.setTimeout(() => {
-      const again = this.relistPending;
-      this.relistPending = false;
-      void (again ? this.refresh() : this.build());
-    }, delay);
+    this.timer = window.setTimeout(() => void this.runScheduled(), delay);
+  }
+
+  private runScheduled(): Promise<void> {
+    window.clearTimeout(this.timer);
+    this.timer = 0;
+    const again = this.relistPending;
+    this.relistPending = false;
+    return again ? this.refresh() : this.build();
   }
 
   // ── Building ──
@@ -232,7 +236,10 @@ export class Studio {
   }
 
   private async ensureBuilt(): Promise<Built | null> {
-    if (this.building) await this.building;
+    // An edit made just before exporting is still waiting for its rebuild: run it now.
+    if (this.timer) await this.runScheduled();
+    // A build asked for mid-build runs right after it, so wait for the last one.
+    while (this.building) await this.building;
     if (!this.built && this.current) await this.build();
     return this.built;
   }

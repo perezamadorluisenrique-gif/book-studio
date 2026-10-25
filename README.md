@@ -143,7 +143,7 @@ npm test               # Vitest: parsing, layout, EPUB, audit
 npm run sample         # render the sample book to out/ from the command line
 ```
 
-`npm run sample` runs the same pipeline from Node, which helps when checking output:
+`npm run sample` runs the same pipeline from Node, which helps when checking output. Its script, `tools/render-sample.ts`, is a development tool that reads and writes files with `node:fs` and `node:path`; it is not part of the plugin, which never touches the file system outside Obsidian's vault API:
 
 ```sh
 npm run sample -- path/to/folder

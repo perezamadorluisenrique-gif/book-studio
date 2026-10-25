@@ -4,6 +4,15 @@ The release workflow uses the section named after the version being released
 as the release description, so every version needs one. `npm version <x.y.z>`
 renames the `Unreleased` heading below to that version.
 
+## 0.1.3
+
+- `![[Report.pdf]]` and other embeds that aren't notes or images are left out with a warning, instead of printing the file's raw bytes as text.
+- Footnotes in an embedded note now reach the book, numbered apart from the host note's.
+- Editing an embedded note refreshes the preview.
+- Exporting right after an edit includes that edit.
+- The settings appear in Obsidian's settings search (Obsidian 1.13 and later).
+- The PDF and EPUB name the real Book Studio version as their producer.
+
 ## 0.1.2
 
 - Remove the runtime script injection and dynamic code from the bundle: JSZip's setimmediate and lie polyfills are replaced by native Promise and a timer-based setImmediate.

@@ -1,7 +1,7 @@
 // The Obsidian plugin: a Book Studio view over the vault, commands for the
 // common exports, and a settings tab for the export folder and the Pro key.
 
-import { App, getLinkpath, ItemView, Modal, normalizePath, Notice, Plugin, PluginSettingTab, requestUrl, Setting, TFile, TFolder, type WorkspaceLeaf } from "obsidian";
+import { App, getLinkpath, ItemView, Modal, normalizePath, Notice, Plugin, PluginSettingTab, requestUrl, Setting, TFile, TFolder, type SettingDefinitionItem, type WorkspaceLeaf } from "obsidian";
 import { CHECKOUT_URL, FREE_EDITION, PRO_PREVIEW } from "../config";
 import { append, h, setElementFactory } from "../app/dom";
 import type { BookChoice, Dialog, OutputFile, Store, StudioHost } from "../app/host";
@@ -425,6 +425,11 @@ class LicenseModal extends Modal {
   }
 }
 
+const TEXT = {
+  exportFolder: { name: "Export folder", desc: "Exported books and reports are saved in this vault folder." },
+  author: { name: "Author", desc: "Filled in when you create a book from a folder." },
+};
+
 class BookStudioSettingTab extends PluginSettingTab {
   constructor(
     app: App,
@@ -433,6 +438,32 @@ class BookStudioSettingTab extends PluginSettingTab {
     super(app, plugin);
   }
 
+  /**
+   * Obsidian 1.13 and later render these itself and index them for the settings
+   * search; older versions call `display()`. The Pro build's license controls
+   * aren't declarative, so it keeps `display()` everywhere.
+   */
+  override getSettingDefinitions(): SettingDefinitionItem[] {
+    if (!FREE_EDITION) return [];
+    return [
+      { name: TEXT.exportFolder.name, desc: TEXT.exportFolder.desc, control: { type: "text", key: "exportFolder", placeholder: DEFAULT_SETTINGS.exportFolder, defaultValue: DEFAULT_SETTINGS.exportFolder } },
+      { name: TEXT.author.name, desc: TEXT.author.desc, control: { type: "text", key: "author", defaultValue: "" } },
+    ];
+  }
+
+  override getControlValue(key: string): unknown {
+    return key === "exportFolder" ? this.plugin.settings.exportFolder : key === "author" ? this.plugin.settings.author : undefined;
+  }
+
+  override setControlValue(key: string, value: unknown): void {
+    const v = typeof value === "string" ? value.trim() : "";
+    if (key === "exportFolder") this.plugin.settings.exportFolder = v || DEFAULT_SETTINGS.exportFolder;
+    else if (key === "author") this.plugin.settings.author = v;
+    else return;
+    this.plugin.requestSave();
+  }
+
+  /** The pre-1.13 rendering, and the Pro build's on every version. */
   override display(): void {
     this.render();
   }
@@ -441,26 +472,13 @@ class BookStudioSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     new Setting(containerEl)
-      .setName("Export folder")
-      .setDesc("Exported books and reports are saved in this vault folder.")
-      .addText((t) =>
-        t
-          .setPlaceholder(DEFAULT_SETTINGS.exportFolder)
-          .setValue(this.plugin.settings.exportFolder)
-          .onChange((v) => {
-            this.plugin.settings.exportFolder = v.trim() || DEFAULT_SETTINGS.exportFolder;
-            this.plugin.requestSave();
-          }),
-      );
+      .setName(TEXT.exportFolder.name)
+      .setDesc(TEXT.exportFolder.desc)
+      .addText((t) => t.setPlaceholder(DEFAULT_SETTINGS.exportFolder).setValue(this.plugin.settings.exportFolder).onChange((v) => this.setControlValue("exportFolder", v)));
     new Setting(containerEl)
-      .setName("Author")
-      .setDesc("Filled in when you create a book from a folder.")
-      .addText((t) =>
-        t.setValue(this.plugin.settings.author).onChange((v) => {
-          this.plugin.settings.author = v.trim();
-          this.plugin.requestSave();
-        }),
-      );
+      .setName(TEXT.author.name)
+      .setDesc(TEXT.author.desc)
+      .addText((t) => t.setValue(this.plugin.settings.author).onChange((v) => this.setControlValue("author", v)));
     if (!FREE_EDITION) licenseSettings(containerEl, this.plugin, () => this.render());
   }
 }

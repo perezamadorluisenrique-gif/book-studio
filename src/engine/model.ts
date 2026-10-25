@@ -128,6 +128,8 @@ export interface Book {
   settings: BookSettings;
   /** Where the book came from, for messages and audit locations. */
   manifestPath: string;
+  /** Notes embedded with ![[…]], so editing one rebuilds the preview. */
+  embeds: Set<string>;
   warnings: BookWarning[];
 }
 
