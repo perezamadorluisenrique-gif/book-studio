@@ -4,7 +4,7 @@
 import type { Block, Book, BookMeta, BookSettings, BookWarning, Chapter, ImageAsset, ImageRef, Inline, Note, SectionType } from "./model";
 import { inlineText } from "./model";
 import { fmGet, fmList, fmString, isManifestFrontmatter, parseManifest, type Manifest, type ManifestEntry } from "./manifest";
-import { parseMarkdown, parseNoteText, splitFrontmatter, type ParseContext } from "./markdown";
+import { parseMarkdown, parseNoteText, splitFrontmatter, type NoteDef, type ParseContext } from "./markdown";
 import { imageInfo } from "./images";
 import { smartenText } from "./typography";
 import { stripPartPrefix } from "./i18n";
@@ -114,13 +114,17 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
   }
 
   let blockCounter = 0;
+  const embeds = new Set<string>();
   const ctxFor = (file: string): ParseContext => ({
     file,
     lang: language,
     smart: settings.smartTypography,
     nextId: () => `b${++blockCounter}`,
     resolve: (t, from) => source.resolve(t, from),
-    readNote: (p) => source.read(p),
+    readNote: (p) => {
+      embeds.add(p);
+      return source.read(p);
+    },
     warnings,
   });
 
@@ -244,10 +248,10 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
     }
   }
 
-  return { meta, chapters, images, settings, manifestPath, warnings };
+  return { meta, chapters, images, settings, manifestPath, embeds, warnings };
 }
 
-async function attachNotes(chapter: Chapter, defs: Map<string, { text: string; line: number }>, ctx: ParseContext): Promise<void> {
+async function attachNotes(chapter: Chapter, defs: Map<string, NoteDef>, ctx: ParseContext): Promise<void> {
   const order: string[] = [];
   walkInlines(chapter.blocks, (inlines) => {
     for (const i of inlines) if (i.kind === "noteRef" && !order.includes(i.noteId)) order.push(i.noteId);
@@ -264,7 +268,9 @@ async function attachNotes(chapter: Chapter, defs: Map<string, { text: string; l
     const number = notes.length + 1;
     const id = `${chapter.id}-n${number}`;
     renamed.set(raw, id);
-    notes.push({ id, number, blocks: await parseNoteText(def.text, ctx, def.line), src: { file: ctx.file, line: def.line } });
+    // A note from an embedded note resolves its links and images from that note.
+    const file = def.file ?? ctx.file;
+    notes.push({ id, number, blocks: await parseNoteText(def.text, { ...ctx, file }, def.line), src: { file, line: def.line } });
   }
   walkInlines(chapter.blocks, (inlines) =>
     inlines.flatMap<Inline>((i) => {

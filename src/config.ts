@@ -17,4 +17,5 @@ export const POLAR_ORGANIZATION_ID: string = typeof __POLAR_ORG_ID__ === "string
 export const CHECKOUT_URL: string = typeof __CHECKOUT_URL__ === "string" && __CHECKOUT_URL__ ? __CHECKOUT_URL__ : "https://polar.sh";
 
 export const PRODUCT_NAME = "Book Studio";
-export const VERSION = "0.1.0";
+/** The release version, from manifest.json, for the PDF producer and EPUB generator fields. */
+export const VERSION: string = typeof __VERSION__ === "string" ? __VERSION__ : "dev";

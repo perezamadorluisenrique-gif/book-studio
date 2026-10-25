@@ -1,6 +1,6 @@
 import esbuild from "esbuild";
 import { builtinModules } from "node:module";
-import { cpSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
 const production = process.argv[2] === "production";
@@ -56,6 +56,7 @@ const common = {
     __PRO_PREVIEW__: JSON.stringify(proPreview),
     __POLAR_ORG_ID__: JSON.stringify(polarOrg),
     __CHECKOUT_URL__: JSON.stringify(checkoutUrl),
+    __VERSION__: JSON.stringify(JSON.parse(readFileSync("manifest.json", "utf8")).version),
   },
   loader: { ".ttf": "binary" },
 };
