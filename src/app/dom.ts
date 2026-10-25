@@ -43,7 +43,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, props: Props | 
 export function append(parent: Node, ...children: Child[]): void {
   for (const c of children) {
     if (c === null || c === undefined || c === false) continue;
-    parent.appendChild(typeof c === "string" || typeof c === "number" ? document.createTextNode(String(c)) : c);
+    parent.appendChild(typeof c === "string" || typeof c === "number" ? (parent.ownerDocument ?? (parent as Document)).createTextNode(String(c)) : c);
   }
 }
 

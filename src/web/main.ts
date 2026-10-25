@@ -15,6 +15,9 @@ import { fmString, isManifestFrontmatter } from "../engine/manifest";
 import { splitFrontmatter } from "../engine/markdown";
 import { createResolver } from "../engine/resolve";
 
+// The web app has a single window, so it uses the page's document (Obsidian's activeDocument doesn't exist here).
+const doc: Document = window.document;
+
 // ── Folders ──
 
 interface Folder {
@@ -72,7 +75,7 @@ function folderFromFiles(list: FileList): Folder {
 }
 
 async function sampleFolder(): Promise<Folder> {
-  const base = new URL("sample/oz/", document.baseURI);
+  const base = new URL("sample/oz/", doc.baseURI);
   const res = await fetch(new URL("files.json", base));
   if (!res.ok) throw new Error("The sample book couldn't be loaded.");
   const paths = (await res.json()) as string[];
@@ -178,9 +181,10 @@ function localStore(): Store {
 
 // ── UI pieces ──
 
-setElementFactory((tag) => document.createElement(tag));
+// Namespaced creation gives the same HTML elements; Obsidian's createEl helper isn't on the web.
+setElementFactory((tag) => doc.createElementNS("http://www.w3.org/1999/xhtml", tag) as HTMLElementTagNameMap[typeof tag]);
 
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const $ = <T extends HTMLElement>(id: string) => doc.getElementById(id) as T;
 const dialog = $<HTMLDialogElement>("dialog");
 
 function showDialog(title: string, body: Node[], buttons: { label: string; value: string; primary?: boolean }[]): Promise<string> {
@@ -207,7 +211,7 @@ function download(file: OutputFile): void {
   const blob = new Blob([file.data as BlobPart], { type: file.mime });
   const url = URL.createObjectURL(blob);
   const a = h("a", { attr: { href: url, download: file.name } });
-  document.body.appendChild(a);
+  doc.body.appendChild(a);
   a.click();
   a.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -234,7 +238,7 @@ const host: StudioHost = {
   source: () => (folder ? vaultFor(folder) : null),
   listBooks: () => (folder ? findBooks(folder) : Promise.resolve([])),
   loadFont: async (f: FontFile) => {
-    const res = await fetch(new URL(`fonts/${f}.ttf`, document.baseURI));
+    const res = await fetch(new URL(`fonts/${f}.ttf`, doc.baseURI));
     if (!res.ok) throw new Error(`Couldn't load the font ${f}.`);
     return new Uint8Array(await res.arrayBuffer());
   },
@@ -276,7 +280,7 @@ const studio = new Studio(host, $("studio"), license);
 
 async function open(next: Folder): Promise<void> {
   folder = next;
-  document.title = next.sample ? "Book Studio" : `${next.name} · Book Studio`;
+  doc.title = next.sample ? "Book Studio" : `${next.name} · Book Studio`;
   await studio.refresh();
 }
 
