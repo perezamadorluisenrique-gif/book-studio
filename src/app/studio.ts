@@ -602,7 +602,8 @@ export class Studio {
         width = w;
         height = ht;
         window.clearTimeout(this.timerResize);
-        this.timerResize = window.setTimeout(() => this.renderPreview(), 150);
+        // The book can be gone by then (its note deleted or renamed away).
+        this.timerResize = window.setTimeout(() => this.built && this.renderPreview(), 150);
       });
       this.resize.observe(this.pagesEl);
     }
