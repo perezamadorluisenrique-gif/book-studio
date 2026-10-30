@@ -111,6 +111,28 @@ export interface BookMeta {
   seriesNumber?: number;
   cover?: ImageRef;
   accessibilitySummary?: string;
+  /** The `editions:` block of the manifest, as written: edition id → its settings. */
+  editions: Record<string, Record<string, unknown>>;
+  /** Index terms from the manifest, one per entry; see index-terms.ts for the syntax. */
+  indexTerms: string[];
+  /** What the full paperback cover needs beyond the front image. */
+  coverDesign: CoverDesign;
+}
+
+export interface CoverDesign {
+  /** Paragraphs for the back cover, from `back-blurb` or a note it links to. */
+  blurb: string[];
+  /** Short line above the blurb (`tagline`). */
+  tagline?: string;
+  /** Author bio paragraphs for the back cover. */
+  bio: string[];
+  photo?: ImageRef;
+  /** Hex colour of the cover paper, e.g. "#1f2a44". */
+  background?: string;
+  /** Hex colour of the cover text; chosen for contrast with the background when absent. */
+  ink?: string;
+  /** Text for the spine when it should not be the title. */
+  spineTitle?: string;
 }
 
 export interface ImageAsset {
@@ -119,6 +141,8 @@ export interface ImageAsset {
   mime: "image/png" | "image/jpeg";
   width: number;
   height: number;
+  /** A PNG with an alpha channel; printers flatten transparency, which can change how it looks. */
+  alpha?: boolean;
 }
 
 export interface Book {
@@ -141,9 +165,17 @@ export interface BookWarning {
 export type ChapterStart = "recto" | "any";
 export type RunningHeads = "author-title" | "title-chapter" | "none";
 
+export type Paper = "white" | "cream" | "color";
+
+/** Where notes go in print: all together at the end of the book, or at the foot of the page that calls them (Pro). */
+export type NotePlacement = "end" | "page";
+
 export interface BookSettings {
   theme: string;
   trim: string;
+  /** Interior paper, which sets the spine width. */
+  paper: Paper;
+  footnotes: NotePlacement;
   bleed: boolean;
   chapterStart: ChapterStart;
   runningHeads: RunningHeads;
@@ -159,6 +191,8 @@ export interface BookSettings {
 export const DEFAULT_SETTINGS: BookSettings = {
   theme: "classic",
   trim: "6x9",
+  paper: "white",
+  footnotes: "end",
   bleed: false,
   chapterStart: "recto",
   runningHeads: "author-title",
@@ -180,6 +214,9 @@ export function inlineText(inlines: Inline[]): string {
 
 /** Id of the endnotes section, shared by the print layout and the EPUB. */
 export const NOTES_ID = "notes";
+
+/** Id of the back-of-book index section. */
+export const INDEX_ID = "index";
 
 export function notesHeadingId(chapterId: string): string {
   return `${chapterId}-notes`;

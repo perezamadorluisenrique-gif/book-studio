@@ -27,6 +27,8 @@ export interface SetLine {
   offset: number;
   overfull: boolean;
   hyphenated: boolean;
+  /** Footnotes called from this line, in order. */
+  notes: string[];
 }
 
 export interface DropCap {
@@ -66,6 +68,7 @@ interface BoxData {
   dy: number;
   offset: number;
   strike?: boolean;
+  noteId?: string;
 }
 
 interface PenaltyData {
@@ -79,6 +82,7 @@ interface WordPiece {
   style: InlineStyle;
   offset: number;
   note?: boolean;
+  noteId?: string;
 }
 
 type Atom = { kind: "word"; pieces: WordPiece[] } | { kind: "space" } | { kind: "break" };
@@ -307,7 +311,7 @@ export class ParagraphSetter {
         items.push({
           type: "box",
           width: this.styler.partWidth(p),
-          data: { text: p.text, face: p.face, size: p.size, tracking: p.tracking, dy, offset: piece.note ? piece.offset : partOff, strike: piece.style.strike },
+          data: { text: p.text, face: p.face, size: p.size, tracking: p.tracking, dy, offset: piece.note ? piece.offset : partOff, strike: piece.style.strike, noteId: piece.note ? piece.noteId : undefined },
         });
         partOff += p.text.length;
       }
@@ -325,6 +329,7 @@ export class ParagraphSetter {
       type El = { kind: "text"; d: BoxData; text: string } | { kind: "gap"; w: number } | { kind: "glue"; w: number; stretch: number; shrink: number };
       const els: El[] = [];
       let offset: number | undefined;
+      const notes: string[] = [];
       const pushText = (d: BoxData) => {
         const last = els[els.length - 1];
         if (last?.kind === "text" && last.d.face === d.face && last.d.size === d.size && last.d.tracking === d.tracking && last.d.dy === d.dy && !!last.d.strike === !!d.strike) {
@@ -338,6 +343,7 @@ export class ParagraphSetter {
         if (it.type === "box") {
           const d = it.data as BoxData;
           if (offset === undefined) offset = d.offset;
+          if (d.noteId) notes.push(d.noteId);
           if (d.text) pushText(d);
           else els.push({ kind: "gap", w: it.width });
         } else if (it.type === "glue") {
@@ -353,6 +359,7 @@ export class ParagraphSetter {
         hyphenated = true;
       } else if (end.type === "box") {
         const d = end.data as BoxData;
+        if (d.noteId) notes.push(d.noteId);
         if (d.text) pushText(d);
       }
       let natural = 0;
@@ -395,7 +402,7 @@ export class ParagraphSetter {
           x += e.w + (r >= 0 ? r * e.stretch : r * e.shrink);
         }
       });
-      out.push({ pieces, offset: offset ?? 0, overfull: finalWidth > target + 0.5, hyphenated });
+      out.push({ pieces, offset: offset ?? 0, overfull: finalWidth > target + 0.5, hyphenated, notes });
       start = br.position + 1;
     });
     return out;
@@ -436,7 +443,7 @@ function tokenize(inlines: Inline[], noteNumber?: (id: string) => number | undef
       const n = noteNumber?.(inl.noteId);
       if (n !== undefined) {
         word ??= [];
-        word.push({ text: String(n), style: { sup: true }, offset, note: true });
+        word.push({ text: String(n), style: { sup: true }, offset, note: true, noteId: inl.noteId });
       }
     }
   }

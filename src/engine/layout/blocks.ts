@@ -2,10 +2,11 @@
 // quotes, lists, code, images, tables, chapter openers and endnotes.
 
 import { chapterLabel } from "../i18n";
+import { formatPages, type IndexEntry } from "../index-terms";
 import type { Block, Chapter, ImageAsset, Inline, Note, SourceRef } from "../model";
 import type { Theme, TextStyle } from "../themes";
 import type { Align, ParagraphSetter, SetParagraph } from "./inline";
-import { NO_BREAK, type VBox, type VItem } from "./paginate";
+import { NO_BREAK, offsetDraw, type VBox, type VItem } from "./paginate";
 import { fromTextStyle, type RunStyle, type Styler } from "./style";
 import type { Draw, LayoutWarning, TextDraw } from "./types";
 
@@ -106,7 +107,7 @@ export class FlowBuilder {
       if (set.lines[k].overfull) {
         this.env.warn({ severity: "warning", message: "A line is too long for the measure and sticks into the margin.", src: opts.src });
       }
-      boxes.push({ type: "box", height: h, draws, breakAfter, start: { blockId: opts.blockId, offset: set.lines[k].offset }, src: opts.src });
+      boxes.push({ type: "box", height: h, draws, breakAfter, start: { blockId: opts.blockId, offset: set.lines[k].offset }, src: opts.src, notes: set.lines[k].notes.length ? set.lines[k].notes : undefined });
     }
     return boxes;
   }
@@ -185,6 +186,59 @@ export class FlowBuilder {
     const items: VItem[] = [];
     items.push(...this.heading([{ kind: "text", text: heading, style: {} }], 3, headingId, chapter.src, { left: 0, width: this.env.width, base: this.base, nested: false }));
     for (const note of chapter.notes) items.push(...this.note(note));
+    return items;
+  }
+
+  /**
+   * A footnote set for the foot of a page: its height and draws relative to its
+   * top-left. A note longer than `maxLines` is cut there and reported.
+   */
+  footnote(note: Note, maxLines: number): { height: number; draws: Draw[]; cut: boolean } {
+    const items = this.note(note);
+    const draws: Draw[] = [];
+    let y = 0;
+    let lines = 0;
+    let cut = false;
+    for (const it of items) {
+      if (it.type === "newpage") continue;
+      if (it.type === "box") {
+        if (lines >= maxLines) {
+          cut = true;
+          continue;
+        }
+        lines++;
+        for (const d of it.draws) draws.push(offsetDraw(d, 0, y));
+      }
+      y += it.height;
+    }
+    return { height: y, draws, cut };
+  }
+
+  /**
+   * The index as lines in one column: an entry, its pages, and its sub-entries
+   * indented below, with wrapped lines hanging under the first.
+   */
+  indexItems(entries: IndexEntry[], width: number, seeWord: string): VItem[] {
+    const items: VItem[] = [];
+    const size = this.env.bodySize * 0.9;
+    const base: RunStyle = { ...this.base, size };
+    const hang = size * 1.2;
+    const line = (text: string, indent: number, blockId: string) => {
+      const set = this.env.setter.set([{ kind: "text", text, style: {} }], base, { width: width - indent - hang, align: "left", hyphenate: false });
+      const boxes = this.lineBoxes(set, { left: indent + hang, blockId });
+      // The first line hangs out to the indent; the rest sit one hang further in.
+      if (boxes[0]) boxes[0].draws = boxes[0].draws.map((d) => (d.kind === "text" ? { ...d, x: d.x - hang } : d));
+      boxes.forEach((b, i) => (b.breakAfter = i === boxes.length - 1 ? 0 : NO_BREAK));
+      items.push(...boxes);
+    };
+    entries.forEach((e, n) => {
+      const pages = formatPages(e.pages);
+      const text = e.see && !pages ? `${e.main}, ${seeWord} ${e.see}` : pages ? `${e.main}, ${pages}` : e.main;
+      line(text, 0, `index-${n}`);
+      // An entry keeps its first line with its sub-entries.
+      if (e.subs.length) (items[items.length - 1] as VBox).breakAfter = NO_BREAK;
+      for (const s of e.subs) line(`${s.sub}, ${formatPages(s.pages)}`, hang, `index-${n}`);
+    });
     return items;
   }
 
@@ -390,7 +444,8 @@ export class FlowBuilder {
       });
       const height = lines * L + L * 0.5;
       if (isHead) draws.push({ kind: "rule", x1: frame.left, y1: height - L * 0.1, x2: frame.left + frame.width, y2: height - L * 0.1, width: 0.6 });
-      return { type: "box", height, draws, breakAfter: isHead ? NO_BREAK : 0, start: { blockId: b.id, offset: 0 }, src: b.src };
+      const notes = sets.flatMap((st) => st.lines.flatMap((l) => l.notes));
+      return { type: "box", height, draws, breakAfter: isHead ? NO_BREAK : 0, start: { blockId: b.id, offset: 0 }, src: b.src, notes: notes.length ? notes : undefined };
     };
     const items: VItem[] = [{ type: "space", height: L * 0.5 }];
     const top: VBox = { type: "box", height: L * 0.25, draws: [{ kind: "rule", x1: frame.left, y1: L * 0.125, x2: frame.left + frame.width, y2: L * 0.125, width: 0.8 }], breakAfter: NO_BREAK };

@@ -4,13 +4,11 @@
 
 import { append, clear, h, setElementFactory } from "../app/dom";
 import type { BookChoice, Dialog, OutputFile, Store, StudioHost } from "../app/host";
-import { FREE_EDITION } from "../config";
 import { renderLicensePanel } from "../app/license-panel";
 import { LicenseManager } from "../app/license-manager";
 import { Studio } from "../app/studio";
 import type { VaultSource } from "../engine/book";
 import type { FontFile } from "../engine/fonts";
-import type { HttpPost } from "../engine/license";
 import { fmString, isManifestFrontmatter } from "../engine/manifest";
 import { splitFrontmatter } from "../engine/markdown";
 import { createResolver } from "../engine/resolve";
@@ -217,17 +215,6 @@ function download(file: OutputFile): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-const http: HttpPost = async (url, body) => {
-  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body) });
-  let json: unknown = null;
-  try {
-    json = await res.json();
-  } catch {
-    json = null;
-  }
-  return { status: res.status, json };
-};
-
 // ── App ──
 
 let folder: Folder | null = null;
@@ -246,7 +233,6 @@ const host: StudioHost = {
     download(file);
     return `Downloaded ${file.name}`;
   },
-  http,
   store,
   ask: async (d: Dialog) => {
     const buttons = [{ label: d.cancel ?? "Cancel", value: "cancel" }];
@@ -262,9 +248,7 @@ const host: StudioHost = {
     renderLicensePanel(box, license, host);
     void showDialog("Book Studio Pro", [box], [{ label: "Done", value: "ok", primary: true }]);
   },
-  activationLabel: "Web app",
   bookKey: (path) => `${folder?.name ?? ""}/${path}`,
-  isSample: () => !!folder?.sample,
   renderEmpty: (box) => {
     append(
       box,
@@ -333,7 +317,6 @@ $("reopen-folder").addEventListener("click", () => {
 
 void (async () => {
   updateReopen(await idbGet<DirHandle>("folder"));
-  if (!FREE_EDITION) void license.refreshIfDue();
   // First thing a visitor sees: the sample book, typeset.
   await openSample();
 })();

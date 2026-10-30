@@ -28,6 +28,8 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "@noble/ed25519": "3.1.0",
+    "@noble/hashes": "2.0.1",
     "@pdf-lib/fontkit": "^1.1.1",
     "hyphen": "^1.14.1",
     "jszip": "^3.10.2",

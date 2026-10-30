@@ -7,13 +7,13 @@ import { DEFAULT_ACRONYMS } from "eslint-plugin-obsidianmd/dist/lib/rules/ui/acr
 import { DEFAULT_BRANDS } from "eslint-plugin-obsidianmd/dist/lib/rules/ui/brands.js";
 
 export default defineConfig([
-  { ignores: ["node_modules/", "dist/", "main.js", "out/", "fonts/", "sample/", ".github/", "version-bump.mjs"] },
+  { ignores: ["node_modules/", "dist/", "main.js", "out/", "fonts/", "sample/", ".github/", "version-bump.mjs", "src/web/activate/"] },
   ...obsidianmd.configs.recommended,
   {
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ["eslint.config.mjs", "esbuild.config.mjs"],
+          allowDefaultProject: ["eslint.config.mjs", "esbuild.config.mjs", "tools/*.mjs"],
         },
       },
     },
@@ -21,7 +21,7 @@ export default defineConfig([
       "obsidianmd/ui/sentence-case": [
         "warn",
         {
-          brands: [...DEFAULT_BRANDS, "Book Studio", "Book Studio Pro", "Polar"],
+          brands: [...DEFAULT_BRANDS, "Book Studio", "Book Studio Pro"],
           acronyms: [...DEFAULT_ACRONYMS, "EPUB", "KDP", "WCAG"],
         },
       ],
@@ -30,8 +30,8 @@ export default defineConfig([
     },
   },
   {
-    files: ["*.mjs", "tools/**"],
-    languageOptions: { globals: { process: "readonly", console: "readonly" } },
+    files: ["*.mjs", "tools/**", "tests/**", "issuer/**"],
+    languageOptions: { globals: { process: "readonly", console: "readonly", Buffer: "readonly" } },
   },
   {
     // Build-time constants replaced by esbuild's define (see src/types.d.ts).
@@ -39,7 +39,7 @@ export default defineConfig([
     rules: { "no-undef": "off" },
   },
   {
-    files: ["src/web/**", "tests/**", "tools/**", "*.mjs"],
+    files: ["src/web/**", "tests/**", "tools/**", "issuer/**", "*.mjs"],
     rules: {
       "obsidianmd/prefer-create-el": "off",
       "obsidianmd/prefer-active-doc": "off",

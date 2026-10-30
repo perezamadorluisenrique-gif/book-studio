@@ -16,7 +16,13 @@ export interface TextDraw {
   size: number;
   /** Extra space after every glyph, in points. */
   tracking?: number;
+  /** Fill colour as red, green, blue from 0 to 1; black when absent. */
+  color?: Rgb;
+  /** Rotation in degrees, counter-clockwise, about (x, y); -90 reads top to bottom, as on a spine. */
+  angle?: number;
 }
+
+export type Rgb = [number, number, number];
 
 export interface ImageDraw {
   kind: "image";
@@ -27,6 +33,8 @@ export interface ImageDraw {
   h: number;
   path: string;
   alt: string;
+  /** Show only this part of the image (same coordinates as x, y, w, h). */
+  clip?: { x: number; y: number; w: number; h: number };
 }
 
 export interface RuleDraw {
@@ -38,7 +46,22 @@ export interface RuleDraw {
   width: number;
 }
 
-export type Draw = TextDraw | ImageDraw | RuleDraw;
+/** A filled and/or outlined rectangle; covers and guides use them, body pages do not. */
+export interface RectDraw {
+  kind: "rect";
+  x: number;
+  /** Top edge. */
+  y: number;
+  w: number;
+  h: number;
+  fill?: Rgb;
+  stroke?: Rgb;
+  strokeWidth?: number;
+  /** Dash pattern in points, for guides. */
+  dash?: number[];
+}
+
+export type Draw = TextDraw | ImageDraw | RuleDraw | RectDraw;
 
 export type PageRole =
   | "blank"
@@ -51,7 +74,8 @@ export type PageRole =
   | "toc"
   | "part"
   | "opener"
-  | "body";
+  | "body"
+  | "cover";
 
 /** A position in the book's text: a block and a character offset into its plain text. */
 export interface TextPos {

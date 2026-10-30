@@ -5,14 +5,19 @@ import { join, relative, sep } from "node:path";
 
 const production = process.argv[2] === "production";
 const only = process.argv[3]; // "plugin" | "web" | undefined (both)
-// Pro builds let people try Pro features without a license key unless
-// BOOK_STUDIO_PRO_PREVIEW=0; Pro release builds also set the Polar settings.
-// Builds are the free edition, which leaves Pro and licensing out entirely,
-// unless BOOK_STUDIO_EDITION=pro.
-const freeEdition = process.env.BOOK_STUDIO_EDITION !== "pro";
-const proPreview = !freeEdition && process.env.BOOK_STUDIO_PRO_PREVIEW !== "0";
-const polarOrg = process.env.BOOK_STUDIO_POLAR_ORG_ID ?? "";
+// The default build is the full one: free features plus Pro, unlocked by a
+// license key that is checked on the device. BOOK_STUDIO_EDITION=community
+// leaves Pro and licensing out entirely. Developer settings, none of them set
+// for a release:
+//   BOOK_STUDIO_PRO_PREVIEW=1       lets people try Pro without a key
+//   BOOK_STUDIO_EXTRA_PUBLIC_KEYS   "kid:hex,..." extra license keys, for tests
+//   BOOK_STUDIO_CHECKOUT_URL        where "Get Pro" links to
+//   BOOK_STUDIO_ACTIVATE_URL        the page that turns a receipt into a key
+const freeEdition = process.env.BOOK_STUDIO_EDITION === "community";
+const proPreview = !freeEdition && process.env.BOOK_STUDIO_PRO_PREVIEW === "1";
+const extraKeys = process.env.BOOK_STUDIO_EXTRA_PUBLIC_KEYS ?? "";
 const checkoutUrl = process.env.BOOK_STUDIO_CHECKOUT_URL ?? "";
+const activateUrl = process.env.BOOK_STUDIO_ACTIVATE_URL ?? "";
 
 // JSZip's prebuilt browser file asks the page's require() for Node's
 // "stream", which Obsidian reports as an error. Bundling JSZip from its source
@@ -54,8 +59,9 @@ const common = {
   define: {
     __FREE_EDITION__: JSON.stringify(freeEdition),
     __PRO_PREVIEW__: JSON.stringify(proPreview),
-    __POLAR_ORG_ID__: JSON.stringify(polarOrg),
+    __EXTRA_PUBLIC_KEYS__: JSON.stringify(extraKeys),
     __CHECKOUT_URL__: JSON.stringify(checkoutUrl),
+    __ACTIVATE_URL__: JSON.stringify(activateUrl),
     __VERSION__: JSON.stringify(JSON.parse(readFileSync("manifest.json", "utf8")).version),
   },
   loader: { ".ttf": "binary" },
@@ -86,11 +92,25 @@ function listFiles(dir, root = dir, out = []) {
   return out;
 }
 
+// The page that hands a buyer their key. BOOK_STUDIO_ISSUER_URL is the issuer Worker's
+// address; without it the page says Pro is not on sale and its CSP allows no connections.
+function copyActivationPage() {
+  const dir = "dist/web/activate";
+  mkdirSync(dir, { recursive: true });
+  const issuer = (process.env.BOOK_STUDIO_ISSUER_URL ?? "").replace(/\/+$/, "");
+  let origin = "'none'";
+  if (issuer) origin = new URL(issuer).origin;
+  const html = readFileSync("src/web/activate/index.html", "utf8").replaceAll("__ISSUER_URL__", issuer).replaceAll("__ISSUER_ORIGIN__", origin);
+  writeFileSync(join(dir, "index.html"), html);
+  for (const f of ["activate.js", "activate.css"]) cpSync(join("src/web/activate", f), join(dir, f));
+}
+
 function copyWebStatic() {
   mkdirSync("dist/web", { recursive: true });
   cpSync("src/web/index.html", "dist/web/index.html");
   cpSync("src/web/app.css", "dist/web/app.css");
   cpSync("src/app/studio.css", "dist/web/studio.css");
+  copyActivationPage();
   cpSync("sample", "dist/web/sample", { recursive: true });
   // The browser can't list a folder over HTTP, so the sample ships its file list.
   for (const book of readdirSync("sample")) {

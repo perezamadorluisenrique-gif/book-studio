@@ -13,7 +13,7 @@ Book Studio comes in two forms that share one engine and one interface:
 - **An Obsidian plugin.** It works on the vault you write in, rebuilds the preview as you type and saves exports to a vault folder.
 - **A web app.** Open a folder of Markdown files, such as your vault, in the browser. Nothing is uploaded.
 
-Book Studio is free. This first version prints 6" × 9" paperbacks in the Classic and Modern themes and exports EPUB 3; more trims and themes are on the way.
+Book Studio is free: unlimited books, the Classic and Modern themes, the 6" × 9", 5" × 8" and 5.5" × 8.5" trims, and EPUB 3. **Book Studio Pro** (a one-time license key) adds the other themes and trims, large print, a KDP preflight, a full wraparound cover, footnotes at the page foot, a back-of-book index, one-click editions and a KDP details sheet. See [Book Studio Pro](#book-studio-pro).
 
 ## Features
 
@@ -97,7 +97,13 @@ Chapter notes are ordinary Markdown:
 | `dedication`, `epigraph`, `epigraph-source` | Their own pages in the front matter |
 | `cover` | Cover image for the EPUB |
 | `theme` | `classic` or `modern` |
-| `trim` | `6x9` |
+| `trim` | `6x9`, `5x8` or `5.5x8.5` free; more trims with Pro |
+| `paper` | `white`, `cream` or `color`: sets the spine width |
+| `footnotes` | `end` (default) or `page` for notes at the foot of the page (Pro) |
+| `index-terms` | A list of words and phrases for the back-of-book index (Pro) |
+| `editions` | A block of editions, each with its own settings, ISBN and `format: print` or `epub` (Pro) |
+| `back-blurb`, `author-bio`, `author-photo`, `tagline` | Back cover text, author photo and the cover's tagline (Pro) |
+| `cover-background`, `cover-ink`, `spine-title` | Cover colours and the spine text (Pro) |
 | `bleed` | `true` when images run off the page edge |
 | `chapter-start` | `recto` (right-hand pages, the default) or `any` |
 | `running-heads` | `author-title`, `title-chapter` or `none` |
@@ -106,6 +112,22 @@ Chapter notes are ordinary Markdown:
 | `scene-break` | Glyph to use for scene breaks, such as `❦` |
 
 The studio's toolbar can override the theme and trim for a single export without editing the note.
+
+## Book Studio Pro
+
+Pro is unlocked by a license key you paste into the plugin's settings (or the web app's license panel). The key is a signed token that is checked **on your device**: no account, no server call, no telemetry and no self-update. Without a key everything above keeps working, and the print PDF of a Pro design is exported with a SAMPLE watermark so you can see the result first.
+
+Pro adds:
+
+- All themes (Elegant, Nonfiction, Large Print, Thriller, Romance, Fantasy) and more trims.
+- **KDP preflight** that checks page count, margins, images, blank runs, ISBN, metadata, spine and the PDF itself, with an HTML report. It reduces rejections; KDP's own review makes the final decision.
+- **Full cover**: front, spine and back with barcode space, the right spine width for the page count and paper, and a PDF at the size KDP expects.
+- **Footnotes at the page foot** and a **back-of-book index** built from `index-terms`.
+- **Editions**: describe a paperback, a large-print edition and an ebook in the manifest and export them together, each with its own ISBN, cover and report.
+- **KDP details sheet**: title, description, keywords and categories ready to paste.
+- The accessible pack and box sets.
+
+Licenses are Ed25519 signed tokens; `tools/license.mjs` (`keygen`, `sign`, `verify`) is how they are made and checked. The public key is in `src/engine/license-keys.ts`.
 
 ## Privacy
 
