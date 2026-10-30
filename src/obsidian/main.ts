@@ -1,15 +1,15 @@
 // The Obsidian plugin: a Book Studio view over the vault, commands for the
 // common exports, and a settings tab for the export folder and the Pro key.
 
-import { App, getLinkpath, ItemView, Modal, normalizePath, Notice, Plugin, PluginSettingTab, requestUrl, Setting, TFile, TFolder, type SettingDefinitionItem, type WorkspaceLeaf } from "obsidian";
-import { CHECKOUT_URL, FREE_EDITION, PRO_PREVIEW } from "../config";
+import { App, getLinkpath, ItemView, Modal, normalizePath, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, type SettingDefinitionItem, type WorkspaceLeaf } from "obsidian";
+import { ACTIVATE_URL, CHECKOUT_URL, FREE_EDITION, PRO_PREVIEW } from "../config";
 import { append, h, setElementFactory } from "../app/dom";
 import type { BookChoice, Dialog, OutputFile, Store, StudioHost } from "../app/host";
-import { LicenseManager } from "../app/license-manager";
+import { LicenseError, LicenseManager } from "../app/license-manager";
+import { pickLicenseFile } from "../app/license-panel";
 import { Studio } from "../app/studio";
 import type { VaultSource } from "../engine/book";
-import { FREE_SWITCH_INTERVAL, PRO_FEATURES, type FreeBookState } from "../engine/entitlements";
-import { describeLicense, LicenseError, type HttpPost } from "../engine/license";
+import { PRO_FEATURES } from "../engine/entitlements";
 import { fmString, isManifestFrontmatter, manifestTemplate } from "../engine/manifest";
 import type { SourceRef } from "../engine/model";
 import { loadBundledFont } from "./fonts";
@@ -24,17 +24,6 @@ interface Settings {
 }
 
 const DEFAULT_SETTINGS: Settings = { exportFolder: "Book Studio exports", author: "", data: {} };
-
-const http: HttpPost = async (url, body) => {
-  const res = await requestUrl({ url, method: "POST", contentType: "application/json", body: JSON.stringify(body), throw: false });
-  let json: unknown = null;
-  try {
-    json = res.json;
-  } catch {
-    json = null;
-  }
-  return { status: res.status, json };
-};
 
 export default class BookStudioPlugin extends Plugin {
   override settings: Settings = DEFAULT_SETTINGS;
@@ -53,7 +42,7 @@ export default class BookStudioPlugin extends Plugin {
         this.requestSave();
       },
     };
-    this.license = new LicenseManager({ http, store: this.store, activationLabel: "Obsidian" });
+    this.license = new LicenseManager({ store: this.store });
 
     this.registerView(VIEW_TYPE, (leaf) => new StudioView(leaf, this));
     this.addRibbonIcon("book-open", "Open Book Studio", () => void this.openStudio());
@@ -93,7 +82,6 @@ export default class BookStudioPlugin extends Plugin {
     );
 
     this.addSettingTab(new BookStudioSettingTab(this.app, this));
-    if (!FREE_EDITION) this.app.workspace.onLayoutReady(() => void this.license.refreshIfDue());
   }
 
   override onunload(): void {
@@ -232,14 +220,12 @@ export default class BookStudioPlugin extends Plugin {
       listBooks: async () => this.listBooks(),
       loadFont: loadBundledFont,
       save: (out) => this.saveOutput(out),
-      http,
       store: this.store,
       ask: (d) => new AskModal(this.app, d).wait(),
       notify: (m) => void new Notice(m),
       openUrl: (url) => void window.open(url),
       openSource: (src) => void this.openSource(src),
       openLicense: () => this.openLicenseSettings(),
-      activationLabel: "Obsidian",
       renderEmpty: (box) => {
         const folder = this.app.workspace.getActiveFile()?.parent;
         append(
@@ -332,60 +318,49 @@ class AskModal extends Modal {
 /** License controls, shared by the settings tab and the modal the studio opens. */
 function licenseSettings(containerEl: HTMLElement, plugin: BookStudioPlugin, redraw: () => void): void {
   const license = plugin.license;
-  const state = license.state;
   new Setting(containerEl).setName("Book Studio Pro").setHeading();
-  new Setting(containerEl).setName("Status").setDesc(license.previewPro ? "Pro preview is on. Exports include every Pro feature in this prototype build." : describeLicense(state));
+  new Setting(containerEl).setName("Status").setDesc(license.previewPro ? "Pro preview is on. Exports include every Pro feature in this developer build." : license.describe());
 
-  if (!license.configured) {
-    new Setting(containerEl).setName("License key").setDesc("Licensing isn't configured in this build, so keys can't be activated here.");
-  } else if (state) {
+  if (license.key) {
     new Setting(containerEl)
       .setName("Remove license key")
-      .setDesc("Frees this device's activation so you can use the key elsewhere.")
+      .setDesc("Book Studio goes back to the free plan on this device. You can paste the key again any time.")
       .addButton((b) =>
-        b.setButtonText("Remove").onClick(async () => {
-          b.setDisabled(true);
-          const note = await license.remove();
-          if (note) new Notice(note);
+        b.setButtonText("Remove").onClick(() => {
+          license.remove();
           redraw();
         }),
       );
   } else {
     let key = "";
     const error = createDiv({ cls: "bs-setting-error" });
+    const activate = (text: string) => {
+      error.setText("");
+      try {
+        license.activate(text);
+        new Notice("Book Studio Pro is active.");
+        redraw();
+      } catch (e) {
+        error.setText(e instanceof LicenseError ? e.message : "Activation failed.");
+      }
+    };
     const setting = new Setting(containerEl)
       .setName("License key")
-      .setDesc("Paste the key from your purchase email.")
-      .addText((t) => t.setPlaceholder("License key").onChange((v) => (key = v)))
-      .addButton((b) =>
-        b
-          .setButtonText("Activate")
-          .setCta()
-          .onClick(async () => {
-            b.setDisabled(true);
-            error.setText("");
-            try {
-              await license.activate(key);
-              new Notice("Book Studio Pro is active.");
-              redraw();
-            } catch (e) {
-              b.setDisabled(false);
-              error.setText(e instanceof LicenseError ? e.message : "Activation failed.");
-            }
-          }),
-      );
+      .setDesc("Paste your key, or import the .bslicense file. It is checked on this device, without the internet.")
+      .addText((t) => t.setPlaceholder("Paste your key").onChange((v) => (key = v)))
+      .addButton((b) => b.setButtonText("Activate").setCta().onClick(() => activate(key)))
+      .addButton((b) => b.setButtonText("Import file…").onClick(() => pickLicenseFile(activate)));
     setting.descEl.appendChild(error);
   }
 
-  new Setting(containerEl)
-    .setName("Get Book Studio Pro")
-    .setDesc(Object.values(PRO_FEATURES).join(" · "))
-    .addButton((b) => b.setButtonText("Buy").onClick(() => window.open(CHECKOUT_URL)));
+  const buy = new Setting(containerEl).setName("Get Book Studio Pro").setDesc(CHECKOUT_URL ? Object.values(PRO_FEATURES).join(" · ") : `Book Studio Pro isn't on sale yet. It will add: ${Object.values(PRO_FEATURES).join(" · ")}`);
+  if (CHECKOUT_URL) buy.addButton((b) => b.setButtonText("Buy").onClick(() => window.open(CHECKOUT_URL)));
+  if (CHECKOUT_URL && ACTIVATE_URL) buy.addButton((b) => b.setButtonText("I have bought it: get my key").onClick(() => window.open(ACTIVATE_URL)));
 
   if (PRO_PREVIEW) {
     new Setting(containerEl)
       .setName("Preview every feature without a key")
-      .setDesc("Prototype builds only.")
+      .setDesc("Developer builds only.")
       .addToggle((t) =>
         t.setValue(license.previewPro).onChange((v) => {
           license.previewPro = v;
@@ -394,13 +369,7 @@ function licenseSettings(containerEl: HTMLElement, plugin: BookStudioPlugin, red
       );
   }
 
-  const free = plugin.store.get<FreeBookState>("freeBook");
-  if (license.plan() === "free" && free?.path) {
-    const when = new Date((free.since ?? 0) + FREE_SWITCH_INTERVAL);
-    new Setting(containerEl).setName("Free plan book").setDesc(`${free.path}. You can make another book your free book after ${when.toLocaleDateString(undefined, { dateStyle: "medium" })}.`);
-  }
-
-  containerEl.createEl("p", { cls: "setting-item-description", text: "Checking a key sends it to Polar, the store that sells Book Studio Pro, when you activate it and every few days after. Nothing else leaves your device: your notes and books never do." });
+  containerEl.createEl("p", { cls: "setting-item-description", text: "A key never expires. Book Studio makes no network requests: your notes and books never leave your device." });
 }
 
 class LicenseModal extends Modal {

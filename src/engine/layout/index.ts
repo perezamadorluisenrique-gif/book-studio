@@ -6,7 +6,7 @@ import { hyphenatorFor } from "../hyphenate";
 import { chapterLabel, partHeading, roman, strings } from "../i18n";
 import { NOTES_ID, notesHeadingId, type Book, type Chapter, type Matter } from "../model";
 import { themeById } from "../themes";
-import { FREE_TRIM, KDP_MAX_PAGES, KDP_MIN_PAGES, BLEED, kdpMinInside, kdpMinOutside, trimById } from "../trims";
+import { DEFAULT_TRIM, KDP_MAX_PAGES, KDP_MIN_PAGES, BLEED, kdpMinInside, kdpMinOutside, trimById } from "../trims";
 import { FlowBuilder, type FlowEnv } from "./blocks";
 import { alsoByPage, copyrightPage, dedicationPage, epigraphPage, halfTitlePage, partPage, titlePage, tocPages, type DisplayPage, type TocLine } from "./front";
 import { ParagraphSetter } from "./inline";
@@ -30,7 +30,7 @@ const PT = 72;
 export function layoutBook(book: Book, fonts: FontSet): Layout {
   const settings = book.settings;
   const theme = themeById(settings.theme);
-  const trim = trimById(settings.trim) ?? trimById(FREE_TRIM)!;
+  const trim = trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!;
   const minOut = kdpMinOutside(settings.bleed);
   let inside = Math.max(theme.margins.inside, kdpMinInside(1));
   let result = compose(book, fonts, inside);
@@ -69,7 +69,7 @@ export function layoutBook(book: Book, fonts: FontSet): Layout {
 function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutPage[]; toc: TocEntry[]; warnings: LayoutWarning[]; bodyStart: number } {
   const { settings, meta } = book;
   const theme = themeById(settings.theme);
-  const trim = trimById(settings.trim) ?? trimById(FREE_TRIM)!;
+  const trim = trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!;
   const lang = meta.language;
   const minOut = kdpMinOutside(settings.bleed);
   const outside = Math.max(theme.margins.outside, minOut) * PT;

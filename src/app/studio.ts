@@ -3,7 +3,7 @@
 // and the web app both mount it; everything host-specific goes through StudioHost.
 
 import { FREE_EDITION, PRO_PREVIEW } from "../config";
-import { checkFreeBook, chooseFreeBook, FREE_SWITCH_INTERVAL, hasFeature, PRO_FEATURES, themeAllowed, trimAllowed, type ExportBlocker, type FreeBookState, type Plan } from "../engine/entitlements";
+import { hasFeature, PRO_FEATURES, themeAllowed, trimAllowed, type ExportBlocker, type Plan } from "../engine/entitlements";
 import { FontSet } from "../engine/fonts";
 import type { BookSettings, SourceRef } from "../engine/model";
 import { THEMES } from "../engine/themes";
@@ -291,51 +291,6 @@ export class Studio {
     return false;
   }
 
-  private titleOf(path: string): string {
-    return this.books.find((b) => b.path === path || this.host.bookKey?.(b.path) === path)?.title ?? path.replace(/^.*\//, "").replace(/\.md$/i, "");
-  }
-
-  /** The free plan's one-book rule. Resolves true to go ahead. */
-  private async freeBookOk(): Promise<boolean> {
-    const path = this.current;
-    if (!path) return false;
-    if (FREE_EDITION || this.host.isSample?.()) return true;
-    const key = this.host.bookKey?.(path) ?? path;
-    const state = this.host.store.get<FreeBookState>("freeBook") ?? { path: null };
-    const check = checkFreeBook(this.plan(), state, key);
-    const title = this.titleOf(path);
-    if (check.ok) {
-      if (this.plan() === "free" && state.path !== key) {
-        this.host.store.set("freeBook", chooseFreeBook(state, key));
-        this.host.notify(`“${title}” is now your free book. The free plan covers one book at a time.`);
-      }
-      return true;
-    }
-    const current = this.titleOf(check.current);
-    const days = Math.round(FREE_SWITCH_INTERVAL / 86_400_000);
-    if (check.canSwitch) {
-      const answer = await this.host.ask({
-        title: "Switch your free book?",
-        message: `The free plan covers one book at a time. Your free book is “${current}”. Make it “${title}” instead? You can switch again in ${days} days.`,
-        ok: "Switch",
-        cancel: "Cancel",
-        extra: "Get Pro",
-      });
-      if (answer === "extra") this.host.openLicense();
-      if (answer !== "ok") return false;
-      this.host.store.set("freeBook", chooseFreeBook(state, key));
-      return true;
-    }
-    const answer = await this.host.ask({
-      title: "The free plan covers one book",
-      message: `Your free book is “${current}”. You can switch to another book on ${new Date(check.switchAt).toLocaleDateString(undefined, { dateStyle: "medium" })}, or get Pro for any number of books.`,
-      ok: "Get Pro",
-      cancel: "Close",
-    });
-    if (answer === "ok") this.host.openLicense();
-    return false;
-  }
-
   private choices(): EpubChoices {
     return { claim: this.host.store.get<boolean>("claim") ?? true, certifiedBy: this.host.store.get<string>("certifiedBy") };
   }
@@ -345,7 +300,7 @@ export class Studio {
   async exportPdf(): Promise<void> {
     const built = await this.ensureBuilt();
     if (!built) return this.host.notify("Open a book first.");
-    if (!(await this.gate(pdfBlockers(this.plan(), built))) || !(await this.freeBookOk())) return;
+    if (!(await this.gate(pdfBlockers(this.plan(), built)))) return;
     await this.write("Writing the print PDF…", async () => {
       const out = await exportPdf(built, await this.loadFonts());
       return { ...out, mime: "application/pdf" };
@@ -355,7 +310,7 @@ export class Studio {
   async exportEpub(): Promise<void> {
     const built = await this.ensureBuilt();
     if (!built) return this.host.notify("Open a book first.");
-    if (!(await this.gate(ebookBlockers(this.plan(), built))) || !(await this.freeBookOk())) return;
+    if (!(await this.gate(ebookBlockers(this.plan(), built)))) return;
     const plan = this.plan();
     await this.write("Writing the EPUB…", async () => {
       const out = await exportEpub(built, await this.loadFonts(), plan, this.choices());
