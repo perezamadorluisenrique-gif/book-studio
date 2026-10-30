@@ -92,11 +92,25 @@ function listFiles(dir, root = dir, out = []) {
   return out;
 }
 
+// The page that hands a buyer their key. BOOK_STUDIO_ISSUER_URL is the issuer Worker's
+// address; without it the page says Pro is not on sale and its CSP allows no connections.
+function copyActivationPage() {
+  const dir = "dist/web/activate";
+  mkdirSync(dir, { recursive: true });
+  const issuer = (process.env.BOOK_STUDIO_ISSUER_URL ?? "").replace(/\/+$/, "");
+  let origin = "'none'";
+  if (issuer) origin = new URL(issuer).origin;
+  const html = readFileSync("src/web/activate/index.html", "utf8").replaceAll("__ISSUER_URL__", issuer).replaceAll("__ISSUER_ORIGIN__", origin);
+  writeFileSync(join(dir, "index.html"), html);
+  for (const f of ["activate.js", "activate.css"]) cpSync(join("src/web/activate", f), join(dir, f));
+}
+
 function copyWebStatic() {
   mkdirSync("dist/web", { recursive: true });
   cpSync("src/web/index.html", "dist/web/index.html");
   cpSync("src/web/app.css", "dist/web/app.css");
   cpSync("src/app/studio.css", "dist/web/studio.css");
+  copyActivationPage();
   cpSync("sample", "dist/web/sample", { recursive: true });
   // The browser can't list a folder over HTTP, so the sample ships its file list.
   for (const book of readdirSync("sample")) {

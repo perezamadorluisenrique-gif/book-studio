@@ -16,5 +16,5 @@
     "noEmit": true,
     "baseUrl": "."
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "tools/**/*.ts", "src/types.d.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts", "tools/**/*.ts", "issuer/**/*.ts", "src/types.d.ts"]
 }

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="no-referrer">
+<meta name="issuer" content="__ISSUER_URL__">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src __ISSUER_ORIGIN__; base-uri 'none'; form-action 'none'">
+<title>Get your Book Studio Pro key</title>
+<link rel="stylesheet" href="activate.css">
+</head>
+<body>
+<main>
+  <h1>Get your Book Studio Pro key</h1>
+  <p class="lede">Your key is made from your purchase, shown here once it is ready, and checked on your own device from then on. Book Studio never phones home.</p>
+
+  <p id="status" role="status" aria-live="polite">Looking up your purchase…</p>
+
+  <form id="lookup" hidden>
+    <label for="checkout">Checkout ID</label>
+    <p id="checkout-help" class="hint">It is in the link you were sent back to after paying (<code>checkout_id=…</code>), and in Polar's receipt email.</p>
+    <input id="checkout" name="checkout" type="text" inputmode="text" autocomplete="off" spellcheck="false" aria-describedby="checkout-help" placeholder="00000000-0000-0000-0000-000000000000">
+    <button type="submit">Get my key</button>
+  </form>
+
+  <section id="result" hidden aria-labelledby="result-title">
+    <h2 id="result-title" tabindex="-1">Your key</h2>
+    <label for="token">License key</label>
+    <textarea id="token" readonly rows="6" spellcheck="false"></textarea>
+    <div class="row">
+      <button id="copy" type="button">Copy key</button>
+      <button id="download" type="button">Download .bslicense file</button>
+    </div>
+    <h3>Use it</h3>
+    <ol>
+      <li><strong>Obsidian:</strong> Settings → Book Studio → License key → paste it and press Activate, or Import file.</li>
+      <li><strong>Web app:</strong> open the license panel and paste it, or import the file.</li>
+    </ol>
+    <p class="hint">The key never expires and works offline. Keep the key itself, or your checkout ID from the receipt: asking again with the same ID gives the same key. If you need help, reply to your Polar receipt.</p>
+  </section>
+</main>
+<script src="activate.js"></script>
+</body>
+</html>

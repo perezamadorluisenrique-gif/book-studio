@@ -7,7 +7,7 @@ import { DEFAULT_ACRONYMS } from "eslint-plugin-obsidianmd/dist/lib/rules/ui/acr
 import { DEFAULT_BRANDS } from "eslint-plugin-obsidianmd/dist/lib/rules/ui/brands.js";
 
 export default defineConfig([
-  { ignores: ["node_modules/", "dist/", "main.js", "out/", "fonts/", "sample/", ".github/", "version-bump.mjs"] },
+  { ignores: ["node_modules/", "dist/", "main.js", "out/", "fonts/", "sample/", ".github/", "version-bump.mjs", "src/web/activate/"] },
   ...obsidianmd.configs.recommended,
   {
     languageOptions: {
@@ -30,7 +30,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["*.mjs", "tools/**", "tests/**"],
+    files: ["*.mjs", "tools/**", "tests/**", "issuer/**"],
     languageOptions: { globals: { process: "readonly", console: "readonly", Buffer: "readonly" } },
   },
   {
@@ -39,7 +39,7 @@ export default defineConfig([
     rules: { "no-undef": "off" },
   },
   {
-    files: ["src/web/**", "tests/**", "tools/**", "*.mjs"],
+    files: ["src/web/**", "tests/**", "tools/**", "issuer/**", "*.mjs"],
     rules: {
       "obsidianmd/prefer-create-el": "off",
       "obsidianmd/prefer-active-doc": "off",

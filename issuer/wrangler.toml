@@ -1,0 +1,12 @@
+# Deploy with `npx wrangler deploy` from this folder (see README.md).
+name = "book-studio-issuer"
+main = "worker.ts"
+compatibility_date = "2026-10-01"
+
+[vars]
+KEY_ID = "2026a"
+ALLOWED_ORIGIN = "https://perezamadorluisenrique-gif.github.io"
+POLAR_PRODUCT_ID = "REPLACE-WITH-THE-POLAR-PRODUCT-ID"
+# Secrets, set once with `npx wrangler secret put <NAME>`; never write them here:
+#   LICENSE_PRIVATE_KEY   the PEM that `node tools/license.mjs keygen` wrote
+#   POLAR_ACCESS_TOKEN    a Polar organization access token that can read checkouts
