@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { PDFDocument } from "pdf-lib";
 import { beforeAll, describe, expect, it } from "vitest";
-import { buildBook, exportPdf, SAMPLE_WATERMARK, type Built } from "../src/app/pipeline";
+import { buildBook, buildBookEdition, exportEdition, exportPdf, planEditions, SAMPLE_WATERMARK, type Built } from "../src/app/pipeline";
 import { checkIsbn } from "../src/engine/cover/isbn";
 import type { FontSet } from "../src/engine/fonts";
 import { buildKdpSheet, KDP_LIMITS } from "../src/engine/kdp-sheet";
@@ -120,5 +120,55 @@ describe("preflight report", () => {
     expect(html).toContain("Checked and fine");
     expect(html).toContain("KDP's own review makes the final decision");
     expect(html).toContain("2026-11-01");
+  });
+});
+
+describe("editions", { timeout: 60_000 }, () => {
+  const longText = text.repeat(3);
+  const manifest = (editions: string) => memVault({
+    "Book.md": `---\nbook: true\ntitle: Many\nauthor: Ada Writer\nisbn: 978-0-306-40615-7\n${editions}---\n## Chapters\n1. [[One]]\n2. [[Two]]\n3. [[Three]]\n`,
+    "One.md": `# One\n\n${longText}\n`,
+    "Two.md": `# Two\n\n${longText}\n`,
+    "Three.md": `# Three\n\n${longText}\n`,
+  });
+  const editions = `editions:\n  paperback:\n    trim: 5x8\n    isbn: 978-0-306-40615-7\n  large-print:\n    theme: large-print\n    trim: 7x10\n    isbn: 978-1-23456-789-7\n    edition: Large Print Edition\n  ebook:\n    format: epub\n    isbn: 978-1-4028-9462-6\n`;
+
+  it("builds each edition from the book's own settings plus its changes", async () => {
+    const source = manifest(editions);
+    const base = await buildBook(source, "Book.md", fonts);
+    const plan = planEditions(base.book);
+    expect(plan.problems).toEqual([]);
+    expect(plan.editions.map((e) => [e.id, e.format, e.settings.theme, e.settings.trim])).toEqual([
+      ["paperback", "print", "classic", "5x8"],
+      ["large-print", "print", "large-print", "7x10"],
+      ["ebook", "epub", "classic", "6x9"],
+    ]);
+    const files = await exportEdition(source, "Book.md", fonts, plan.editions[1], "pro", { claim: true });
+    expect(files.map((f) => f.name.replace(/-\d+p\.pdf$/, "-Np.pdf"))).toEqual(["large-print-many-paperback-7x10.pdf", "large-print-many-cover-7x10-Np.pdf", "large-print-many-kdp-preflight.html"]);
+    // The edition's own ISBN is the one on the barcode and the check passes with it.
+    expect(String(files[2].data)).toContain("Many");
+    const pdf = await PDFDocument.load(files[0].data);
+    expect(pdf.getPage(0).getWidth()).toBeCloseTo(7 * 72, 3);
+    const epub = await exportEdition(source, "Book.md", fonts, plan.editions[2], "pro", { claim: true });
+    expect(epub.map((f) => f.name)).toEqual(["ebook-many.epub"]);
+  });
+
+  it("gives each print edition its own spine", async () => {
+    const source = manifest(editions);
+    const base = await buildBook(source, "Book.md", fonts);
+    const plan = planEditions(base.book);
+    const a = await buildBookEdition(source, "Book.md", fonts, plan.editions[0]);
+    const b = await buildBookEdition(source, "Book.md", fonts, plan.editions[1]);
+    expect(a.layout.pages.length).not.toBe(b.layout.pages.length);
+  });
+
+  it("names a repeated or missing ISBN", async () => {
+    const dup = `editions:\n  a:\n    isbn: 978-0-306-40615-7\n  b:\n    isbn: 9780306406157\n  c:\n    trim: 5x8\n`;
+    const plan = planEditions((await buildBook(manifest(dup), "Book.md", fonts)).book);
+    expect(plan.problems).toEqual(["The a and b editions use the same ISBN; each edition needs its own.", "The c edition has no ISBN of its own; KDP needs a different ISBN for each edition."]);
+  });
+
+  it("has none when the manifest lists none", async () => {
+    expect(planEditions((await buildBook(manifest(""), "Book.md", fonts)).book).editions).toEqual([]);
   });
 });

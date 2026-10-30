@@ -4,13 +4,14 @@
 import type { FontSet } from "../fonts";
 import { hyphenatorFor } from "../hyphenate";
 import { chapterLabel, partHeading, roman, strings } from "../i18n";
-import { NOTES_ID, notesHeadingId, type Book, type Chapter, type Matter } from "../model";
+import { buildIndex, parseIndexSpecs } from "../index-terms";
+import { INDEX_ID, NOTES_ID, notesHeadingId, type Book, type Chapter, type Matter, type Note } from "../model";
 import { themeById } from "../themes";
 import { DEFAULT_TRIM, KDP_MAX_PAGES, KDP_MIN_PAGES, BLEED, kdpMinInside, kdpMinOutside, trimById } from "../trims";
 import { FlowBuilder, type FlowEnv } from "./blocks";
 import { alsoByPage, copyrightPage, dedicationPage, epigraphPage, halfTitlePage, partPage, titlePage, tocPages, type DisplayPage, type TocLine } from "./front";
 import { ParagraphSetter } from "./inline";
-import { offsetDraw, paginate, type FlowPage } from "./paginate";
+import { offsetDraw, paginate, type FlowPage, type FootnoteSource } from "./paginate";
 import { fromTextStyle, Styler } from "./style";
 import type { Draw, Layout, LayoutPage, LayoutWarning, PageRole, TextPos, TocEntry } from "./types";
 
@@ -104,6 +105,23 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
     warn: (w) => warnings.push(w),
   };
   const fb = new FlowBuilder(env);
+  const atFoot = settings.footnotes === "page";
+  const noteById = new Map<string, Note>();
+  for (const ch of book.chapters) for (const n of ch.notes) noteById.set(n.id, n);
+  const footCache = new Map<string, { height: number; draws: Draw[] }>();
+  const footOf = (id: string) => {
+    let hit = footCache.get(id);
+    if (!hit) {
+      const note = noteById.get(id);
+      // A note can't take more than half the text block, or the line that calls it would have no room.
+      const set = note ? fb.footnote(note, Math.max(2, Math.floor(capacity / 2 / leading))) : { height: 0, draws: [], cut: false };
+      if (note && set.cut) warnings.push({ severity: "warning", message: `Footnote ${note.number} is longer than half a page, so it was cut short at the foot of the page. Shorten it, or set notes at the end of the book.`, src: note.src });
+      hit = { height: set.height, draws: set.draws };
+      footCache.set(id, hit);
+    }
+    return hit;
+  };
+  const foot: FootnoteSource | undefined = atFoot ? { separator: leading, ruleWidth: width * 0.3, height: (id) => footOf(id).height, draws: (id) => footOf(id).draws } : undefined;
   const startRecto = settings.chapterStart === "recto";
 
   const display = (p: DisplayPage, matter: Matter): RawPage => ({ role: p.role, matter, draws: p.draws, start: p.start, showFolio: false });
@@ -118,7 +136,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
       return { role: i === 0 ? "opener" : "body", matter, chapterId: ch.id, draws: p.draws, start: p.start, showFolio: i === 0 ? theme.folio.onOpeners : true };
     });
 
-  const layChapter = (ch: Chapter): FlowPage[] => paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: ch.matter === "body" || ch.type === "prologue" })], capacity);
+  const layChapter = (ch: Chapter): FlowPage[] => paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: ch.matter === "body" || ch.type === "prologue" })], capacity, foot);
 
   // ── Body and back matter (numbered from 1 on a recto) ─────────
   const body: RawPage[] = [];
@@ -142,7 +160,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
   }
   for (const ch of backChapters) placeChapter(ch, body, "back");
 
-  const withNotes = book.chapters.filter((c) => c.notes.length);
+  const withNotes = atFoot ? [] : book.chapters.filter((c) => c.notes.length);
   let notesChapter: Chapter | undefined;
   if (withNotes.length) {
     const title = strings(lang).notes;
@@ -157,9 +175,46 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
     body.push(...chapterPages(notesChapter, "back", paginate(items, capacity)));
   }
 
+  // ── Back-of-book index, found on the pages above ──────────────
+  let indexChapter: Chapter | undefined;
+  const specs = parseIndexSpecs(meta.indexTerms);
+  if (specs.length) {
+    const found = buildIndex(
+      specs,
+      body.map((p, i) => ({ folio: String(i + 1), text: pageText(p.draws, fonts) })),
+      lang,
+    );
+    for (const term of found.missing) warnings.push({ severity: "warning", message: `The index term “${term}” doesn't appear in the book, so it isn't in the index.`, src: { file: book.manifestPath, line: 1 } });
+    if (found.entries.length) {
+      const title = strings(lang).index;
+      indexChapter = { id: INDEX_ID, matter: "back", type: "other", title: [{ kind: "text", text: title, style: {} }], titleText: title, blocks: [], notes: [] };
+      const opener = fb.opener(indexChapter);
+      const openerH = opener.reduce((a, it) => a + (it.type === "box" || it.type === "space" ? it.height : 0), 0);
+      const gap = bodySize * 1.6;
+      const colW = (width - gap) / 2;
+      // Two columns: the flow runs through left, right, left, right…, shorter on the first page under the heading.
+      const flow = paginate(fb.indexItems(found.entries, colW, strings(lang).see), (k) => (k < 2 ? capacity - openerH : capacity));
+      const first = paginate(opener, capacity)[0];
+      const raw2: RawPage[] = [];
+      for (let k = 0; k < flow.length; k += 2) {
+        const page = Math.floor(k / 2);
+        const left = flow[k];
+        const right = flow[k + 1];
+        const dy = page === 0 ? openerH : 0;
+        const draws: Draw[] = page === 0 ? [...first.draws] : [];
+        for (const d of left.draws) draws.push(offsetDraw(d, 0, dy));
+        if (right) for (const d of right.draws) draws.push(offsetDraw(d, colW + gap, dy));
+        raw2.push({ role: page === 0 ? "opener" : "body", matter: "back", chapterId: INDEX_ID, draws, start: left.start, showFolio: page === 0 ? theme.folio.onOpeners : true });
+      }
+      if (startRecto) ensureRecto(body, "back");
+      firstPage.set(INDEX_ID, body.length);
+      body.push(...raw2);
+    }
+  }
+
   // ── Front matter (roman folios) ───────────────────────────────
   const frontChapters = book.chapters.filter((c) => c.matter === "front");
-  const tocChapters: Chapter[] = [...frontChapters, ...bodyChapters, ...backChapters, ...(notesChapter ? [notesChapter] : [])];
+  const tocChapters: Chapter[] = [...frontChapters, ...bodyChapters, ...backChapters, ...(notesChapter ? [notesChapter] : []), ...(indexChapter ? [indexChapter] : [])];
   const buildFront = (tocLines: TocLine[] | null) => {
     const front: RawPage[] = [];
     const frontFirst = new Map<string, number>();
@@ -221,6 +276,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
 
   const chapterById = new Map(book.chapters.map((c) => [c.id, c]));
   if (notesChapter) chapterById.set(NOTES_ID, notesChapter);
+  if (indexChapter) chapterById.set(INDEX_ID, indexChapter);
   const rh = fromTextStyle(theme.runningHead, theme.body.oldstyle);
   const folioStyle = fromTextStyle(theme.folio.style, theme.body.oldstyle);
   const headerY = Math.max(top - leading * 1.15, minOut * PT + rh.size * 0.75);
@@ -258,6 +314,28 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
 
   checkGlyphs(pages, fonts, warnings);
   return { pages, toc, warnings, bodyStart: front.length };
+}
+
+/** The text of a page's draws as lines, closest to how it reads, for finding index terms. */
+function pageText(draws: Draw[], fonts: FontSet): string {
+  const texts = draws.filter((d): d is Extract<Draw, { kind: "text" }> => d.kind === "text").sort((a, b) => a.y - b.y || a.x - b.x);
+  const lines: string[] = [];
+  let line = "";
+  let y = NaN;
+  let end = 0;
+  for (const d of texts) {
+    if (Math.abs(d.y - y) > d.size * 0.35 || Number.isNaN(y)) {
+      if (line) lines.push(line);
+      line = d.text;
+      y = d.y;
+    } else {
+      // Words are separate runs with a gap between them; a style change inside a word has none.
+      line += d.x - end > 0.5 ? ` ${d.text}` : d.text;
+    }
+    end = d.x + fonts.width(d.face, d.text, d.size, d.tracking ?? 0);
+  }
+  if (line) lines.push(line);
+  return lines.join(" ");
 }
 
 function checkGlyphs(pages: LayoutPage[], fonts: FontSet, warnings: LayoutWarning[]): void {

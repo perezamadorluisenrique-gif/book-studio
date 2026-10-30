@@ -5,6 +5,9 @@ import { PRODUCT_NAME, VERSION } from "../config";
 import { auditBook, type AuditResult } from "../engine/a11y";
 import { accessibilityReport } from "../engine/a11y-report";
 import { loadBook, type VaultSource } from "../engine/book";
+import { planEditions, type Edition } from "../engine/editions";
+import { runPreflight } from "../engine/preflight";
+import { preflightReport } from "../engine/preflight-report";
 import { epubBlockers, hasFeature, printBlockers, type ExportBlocker, type Plan } from "../engine/entitlements";
 import { bookSlug, writeEpub } from "../engine/epub";
 import type { FontSet } from "../engine/fonts";
@@ -36,7 +39,7 @@ export { spineWidth } from "../engine/cover/geometry";
 export const isBoxSet = (book: Book) => book.chapters.some((c) => c.volume);
 
 export function pdfBlockers(plan: Plan, built: Built): ExportBlocker[] {
-  return printBlockers(plan, built.book.settings, { boxSet: isBoxSet(built.book) });
+  return printBlockers(plan, built.book.settings, { boxSet: isBoxSet(built.book), index: built.book.meta.indexTerms.length > 0 });
 }
 
 export function ebookBlockers(plan: Plan, built: Built): ExportBlocker[] {
@@ -91,3 +94,41 @@ export function exportReport(built: Built, plan: Plan, choices: EpubChoices): { 
   const data = accessibilityReport(built.book, built.audit, { claimed, certifiedBy: claimed ? certifiedBy : undefined, pageList, generator: GENERATOR });
   return { name: `${bookSlug(built.book)}-accessibility-report.html`, data };
 }
+
+export interface EditionFile {
+  name: string;
+  mime: string;
+  data: Uint8Array | string;
+}
+
+/**
+ * Everything one edition produces, named with the edition's id: the print PDF
+ * with its cover and preflight report, or the EPUB. Editions are built one after
+ * another, never in parallel, so a phone isn't asked to hold several books at once.
+ */
+export async function exportEdition(source: VaultSource, manifestPath: string, fonts: FontSet, edition: Edition, plan: Plan, choices: EpubChoices): Promise<EditionFile[]> {
+  const built = await buildBookEdition(source, manifestPath, fonts, edition);
+  const prefix = `${edition.id}-`;
+  const out: EditionFile[] = [];
+  if (edition.format === "epub") {
+    const epub = await exportEpub(built, fonts, plan, choices);
+    out.push({ name: prefix + epub.name, mime: "application/epub+zip", data: epub.data });
+    return out;
+  }
+  const pdf = await exportPdf(built, fonts);
+  out.push({ name: prefix + pdf.name, mime: "application/pdf", data: pdf.data });
+  const cover = await exportCover(built, fonts);
+  out.push({ name: prefix + cover.name, mime: "application/pdf", data: cover.data });
+  const report = await runPreflight({ book: built.book, layout: built.layout, fonts, pdf: pdf.data });
+  out.push({ name: `${prefix}${bookSlug(built.book)}-kdp-preflight.html`, mime: "text/html", data: preflightReport(built.book, report, { generator: GENERATOR }) });
+  return out;
+}
+
+export async function buildBookEdition(source: VaultSource, manifestPath: string, fonts: FontSet, edition: Edition): Promise<Built> {
+  const t0 = performance.now();
+  const book = await loadBook(source, manifestPath, edition.settings, { boxSets: true, meta: { isbnPrint: edition.format === "print" ? edition.isbn : undefined, isbnEbook: edition.format === "epub" ? edition.isbn : undefined, edition: edition.edition } });
+  const layout = layoutBook(book, fonts);
+  return { book, layout, audit: auditBook(book, { pageList: true }), ms: Math.round(performance.now() - t0) };
+}
+
+export { planEditions };

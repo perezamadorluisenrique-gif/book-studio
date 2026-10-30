@@ -66,7 +66,16 @@ function walkInlines(blocks: Block[], fn: (inlines: Inline[]) => Inline[]): void
   }
 }
 
+function editionsOf(v: unknown): Record<string, Record<string, unknown>> {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const [id, body] of Object.entries(v as Record<string, unknown>)) if (body && typeof body === "object" && !Array.isArray(body)) out[id] = body as Record<string, unknown>;
+  return out;
+}
+
 export interface LoadOptions {
+  /** Metadata an edition changes: its own ISBN and edition line. */
+  meta?: Partial<Pick<BookMeta, "isbnPrint" | "isbnEbook" | "edition">>;
   /** Read notes that are book manifests themselves as box-set volumes (Pro). */
   boxSets?: boolean;
 }
@@ -102,6 +111,8 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
     series: fmString(fm, "series"),
     seriesNumber: Number(fmString(fm, "series-number", "series-index")) || undefined,
     accessibilitySummary: fmString(fm, "accessibility-summary"),
+    editions: editionsOf(fmGet(fm, "editions")),
+    indexTerms: fmList(fm, "index-terms", "index").map((t) => t.trim()).filter(Boolean),
     coverDesign: { blurb: [], bio: [] },
   };
   if (!authors.length) warnings.push({ message: "No author in the manifest frontmatter (author: Your Name).", src: { file: manifestPath, line: 1 } });
@@ -265,7 +276,7 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
     }
   }
 
-  return { meta, chapters, images, settings, manifestPath, embeds, warnings };
+  return { meta: { ...meta, ...stripUndefined(opts.meta ?? {}) }, chapters, images, settings, manifestPath, embeds, warnings };
 }
 
 async function attachNotes(chapter: Chapter, defs: Map<string, NoteDef>, ctx: ParseContext): Promise<void> {

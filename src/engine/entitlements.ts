@@ -25,8 +25,8 @@ export const PRO_FEATURES: Record<ProFeature, string> = {
   largePrint: "Large-print edition",
   preflight: "KDP preflight: checks the finished PDF against KDP's rules before you upload it",
   cover: "Full paperback cover: back, spine and front on one sheet, with spine width, bleed and barcode area",
-  footnotes: "Real footnotes at the foot of the page, and a back-of-book index",
-  index: "Back-of-book index with page numbers in print and links in the EPUB",
+  footnotes: "Real footnotes at the foot of the page",
+  index: "Back-of-book index with page numbers, set in two columns",
   editions: "Several editions of one book (paperback, large print, …) exported in one go",
   kdpSheet: "A KDP metadata sheet ready to paste: title, series, keywords, description",
   boxSets: "Box sets that combine several books",
@@ -56,12 +56,14 @@ export interface ExportBlocker {
  * preview Pro themes and trims, and export a watermarked sample of them; only
  * the clean export needs Pro.
  */
-export function printBlockers(plan: Plan, settings: Pick<BookSettings, "theme" | "trim">, opts: { boxSet?: boolean } = {}): ExportBlocker[] {
+export function printBlockers(plan: Plan, settings: Pick<BookSettings, "theme" | "trim"> & Partial<Pick<BookSettings, "footnotes">>, opts: { boxSet?: boolean; index?: boolean } = {}): ExportBlocker[] {
   if (plan === "pro") return [];
   const out: ExportBlocker[] = [];
   if (settings.theme === "large-print") out.push({ feature: "largePrint", message: "The Large Print theme is part of Book Studio Pro." });
   else if (!themeAllowed(plan, settings.theme)) out.push({ feature: "theme", message: `The ${settings.theme} theme is part of Book Studio Pro. Free includes Classic and Modern.` });
   if (!trimAllowed(plan, settings.trim)) out.push({ feature: "trim", message: `The ${settings.trim} trim is part of Book Studio Pro. Free prints at 6" × 9", 5" × 8" and 5.5" × 8.5".` });
+  if (settings.footnotes === "page") out.push({ feature: "footnotes", message: "Footnotes at the foot of the page are part of Book Studio Pro. Free sets notes together at the end of the book." });
+  if (opts.index) out.push({ feature: "index", message: "The back-of-book index is part of Book Studio Pro. Remove index-terms from the book note to export without it." });
   if (opts.boxSet) out.push({ feature: "boxSets", message: "Box sets are part of Book Studio Pro." });
   return out;
 }

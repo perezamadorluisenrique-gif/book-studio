@@ -15,6 +15,18 @@ export interface VBox {
   breakAfter: number;
   start?: TextPos;
   src?: SourceRef;
+  /** Footnotes this box calls, which must land on the same page. */
+  notes?: string[];
+}
+
+/** Where footnotes come from when they are set at the foot of the page. */
+export interface FootnoteSource {
+  /** Height of the rule and gap above the notes on a page. */
+  separator: number;
+  /** Width of the short rule. */
+  ruleWidth: number;
+  height(id: string): number;
+  draws(id: string): Draw[];
 }
 
 export interface VSpace {
@@ -36,15 +48,20 @@ export interface FlowPage {
   overflow: boolean;
 }
 
-export function paginate(items: VItem[], capacity: number): FlowPage[] {
+/** `capacity` can depend on the page, for a flow that starts below a heading. */
+export function paginate(items: VItem[], capacityOf: number | ((page: number) => number), foot?: FootnoteSource): FlowPage[] {
   const pages: FlowPage[] = [];
   const n = items.length;
   let i = 0;
   const eps = 0.01;
   while (i < n) {
+    const capacity = typeof capacityOf === "number" ? capacityOf : capacityOf(pages.length);
     while (i < n && items[i].type !== "box") i++;
     if (i >= n) break;
     let h = 0;
+    // Notes called by the boxes taken so far, and the height they need at the foot.
+    const called = new Set<string>();
+    let footH = 0;
     let lastGood = -1;
     let lastFit = -1;
     let j = i;
@@ -55,7 +72,14 @@ export function paginate(items: VItem[], capacity: number): FlowPage[] {
         forced = true;
         break;
       }
-      if (h + it.height > capacity + eps) break;
+      let more = 0;
+      if (foot && it.type === "box" && it.notes) {
+        const fresh = [...new Set(it.notes)].filter((id) => !called.has(id));
+        more = fresh.reduce((a, id) => a + foot.height(id), 0) + (fresh.length && !called.size ? foot.separator : 0);
+        if (h + it.height + footH + more > capacity + eps) break;
+        for (const id of fresh) called.add(id);
+        footH += more;
+      } else if (h + it.height + footH > capacity + eps) break;
       h += it.height;
       if (it.type === "box") {
         lastFit = j;
@@ -84,6 +108,19 @@ export function paginate(items: VItem[], capacity: number): FlowPage[] {
       y += it.height;
     }
     page.used = y;
+    if (foot) {
+      const ids = [...new Set(items.slice(i, end + 1).flatMap((it) => (it.type === "box" && it.notes ? it.notes : [])))];
+      if (ids.length) {
+        const total = foot.separator + ids.reduce((a, id) => a + foot.height(id), 0);
+        let fy = capacity - total;
+        page.draws.push({ kind: "rule", x1: 0, y1: fy + foot.separator * 0.5, x2: foot.ruleWidth, y2: fy + foot.separator * 0.5, width: 0.5 });
+        fy += foot.separator;
+        for (const id of ids) {
+          for (const d of foot.draws(id)) page.draws.push(offsetDraw(d, 0, fy));
+          fy += foot.height(id);
+        }
+      }
+    }
     pages.push(page);
     i = end + 1;
   }

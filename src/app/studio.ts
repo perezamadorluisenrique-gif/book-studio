@@ -13,7 +13,7 @@ import { append, clear, h, nextFrame, select } from "./dom";
 import type { BookChoice, StudioHost } from "./host";
 import type { LicenseManager } from "./license-manager";
 import { KdpPanel } from "./kdp-panel";
-import { buildBook, ebookBlockers, exportEpub, exportPdf, exportReport, pdfBlockers, spineWidth, type Built, type EpubChoices } from "./pipeline";
+import { buildBook, ebookBlockers, exportEdition, exportEpub, exportPdf, exportReport, pdfBlockers, planEditions, spineWidth, type Built, type EpubChoices } from "./pipeline";
 
 type Tab = "preview" | "problems" | "kdp" | "accessibility";
 type Zoom = "page" | "fit" | "0.5" | "0.75" | "1" | "1.5" | "2";
@@ -72,6 +72,7 @@ export class Studio {
   private pdfButton = h("button", { cls: "mod-cta bs-primary", text: "Export print PDF" });
   private epubButton = h("button", { text: "Export EPUB" });
   private reportButton = h("button", { text: "Accessibility report" });
+  private editionsButton = h("button", { text: "Export all editions" });
 
   constructor(
     private host: StudioHost,
@@ -93,6 +94,8 @@ export class Studio {
     this.epubButton.addEventListener("click", () => void this.exportEpub());
     this.reportButton.addEventListener("click", () => void this.exportReport());
     this.reportButton.hidden = FREE_EDITION;
+    this.editionsButton.hidden = true;
+    this.editionsButton.addEventListener("click", () => void this.exportEditions());
 
     this.root = h(
       "div",
@@ -106,7 +109,7 @@ export class Studio {
         this.planBox,
       ),
       this.settingsBar,
-      h("div", { cls: "bs-bar bs-actions" }, this.pdfButton, this.epubButton, this.reportButton),
+      h("div", { cls: "bs-bar bs-actions" }, this.pdfButton, this.epubButton, this.reportButton, this.editionsButton),
       this.status,
       h("div", { cls: "bs-tabs", attr: { role: "tablist", "aria-label": "Book Studio views" } }, ...tabIds.map((t) => this.tabs[t])),
       ...tabIds.map((t) => this.panels[t]),
@@ -352,6 +355,39 @@ export class Studio {
     await this.write("Writing the report…", async () => ({ ...exportReport(built, this.plan(), this.choices()), mime: "text/html" }));
   }
 
+  async exportEditions(): Promise<void> {
+    const built = await this.ensureBuilt();
+    const source = this.host.source();
+    const path = this.current;
+    if (!built || !source || !path) return this.host.notify("Open a book first.");
+    const plan = planEditions(built.book);
+    if (!plan.editions.length) return this.host.notify("This book has no editions: add an editions: block to the book note.");
+    if (!hasFeature(this.plan(), "editions")) {
+      await this.gate([{ feature: "editions", message: "Exporting several editions at once is part of Book Studio Pro." }]);
+      if (!hasFeature(this.plan(), "editions")) return;
+    }
+    if (plan.problems.length) {
+      const answer = await this.host.ask({ title: "Check the editions first", message: `${plan.problems.join("\n")}\n\nExport anyway?`, ok: "Export anyway", cancel: "Cancel" });
+      if (answer !== "ok") return;
+    }
+    const fonts = await this.loadFonts();
+    const before = this.status.textContent ?? "";
+    try {
+      // One edition at a time: a phone shouldn't have to hold several books in memory.
+      for (const [i, edition] of plan.editions.entries()) {
+        this.setStatus(`Building edition ${edition.id} (${i + 1} of ${plan.editions.length})…`, true);
+        await nextFrame();
+        const files = await exportEdition(source, path, fonts, edition, this.plan(), this.choices());
+        for (const f of files) await this.host.save(f);
+      }
+      this.host.notify(`Exported ${plan.editions.length} edition${plan.editions.length === 1 ? "" : "s"}.`);
+      this.setStatus(before);
+    } catch (e) {
+      console.error("Book Studio:", e);
+      this.setStatus(`Export failed: ${e instanceof Error ? e.message : String(e)}`, false, true);
+    }
+  }
+
   private async write(message: string, make: () => Promise<{ name: string; mime: string; data: Uint8Array | string }>): Promise<void> {
     const before = this.status.textContent ?? "";
     this.setStatus(message, true);
@@ -390,14 +426,15 @@ export class Studio {
       h("pre", { text: "---\nbook: true\ntitle: The Lighthouse Keeper\nauthor: Jane Doe\n---\n## Chapters\n1. [[The Storm]]\n2. [[Landfall]]" }),
     );
     this.pagesEl.appendChild(box);
-    for (const b of [this.pdfButton, this.epubButton, this.reportButton]) b.disabled = true;
+    for (const b of [this.pdfButton, this.epubButton, this.reportButton, this.editionsButton]) b.disabled = true;
     this.renderTabs();
   }
 
   private renderAll(): void {
     const built = this.built;
     if (!built) return;
-    for (const b of [this.pdfButton, this.epubButton, this.reportButton]) b.disabled = false;
+    for (const b of [this.pdfButton, this.epubButton, this.reportButton, this.editionsButton]) b.disabled = false;
+    this.editionsButton.hidden = FREE_EDITION || Object.keys(built.book.meta.editions).length === 0;
     this.renderSettings();
     this.renderStatus();
     this.renderPreview();
