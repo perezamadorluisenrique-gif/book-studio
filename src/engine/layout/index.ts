@@ -14,7 +14,7 @@ import { offsetDraw, paginate, type FlowPage } from "./paginate";
 import { fromTextStyle, Styler } from "./style";
 import type { Draw, Layout, LayoutPage, LayoutWarning, PageRole, TextPos, TocEntry } from "./types";
 
-export type { Layout, LayoutPage, LayoutWarning, Draw, TextDraw, ImageDraw, RuleDraw, TocEntry, TextPos } from "./types";
+export type { Layout, LayoutPage, LayoutWarning, Draw, TextDraw, ImageDraw, RectDraw, RuleDraw, Rgb, TocEntry, TextPos } from "./types";
 
 interface RawPage {
   role: PageRole;

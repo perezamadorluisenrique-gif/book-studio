@@ -49,6 +49,8 @@ export interface Theme {
   folio: { style: TextStyle; position: "top-outside" | "bottom-center"; onOpeners: boolean };
   blockquote: { indent: number; italic: boolean };
   titlePage: { title: TextStyle; subtitle: TextStyle; author: TextStyle; publisher: TextStyle };
+  /** Colours of a typographic cover (no front image) as hex, unless the manifest sets its own. */
+  cover: { background: string; ink: string };
 }
 
 const classic: Theme = {
@@ -79,6 +81,7 @@ const classic: Theme = {
     author: { family: "eb-garamond", size: 14, smallCaps: true, tracking: 0.12 },
     publisher: { family: "eb-garamond", size: 10, smallCaps: true, tracking: 0.12 },
   },
+  cover: { background: "#f4eee0", ink: "#2b2118" },
 };
 
 const modern: Theme = {
@@ -108,6 +111,7 @@ const modern: Theme = {
     author: { family: "montserrat", size: 12, uppercase: true, tracking: 0.2 },
     publisher: { family: "montserrat", size: 8, uppercase: true, tracking: 0.2 },
   },
+  cover: { background: "#12263f", ink: "#f4f6f8" },
 };
 
 const elegant: Theme = {
@@ -138,6 +142,7 @@ const elegant: Theme = {
     author: { family: "cormorant", size: 15, smallCaps: true, tracking: 0.2 },
     publisher: { family: "cormorant", size: 11, smallCaps: true, tracking: 0.2 },
   },
+  cover: { background: "#f3e6e1", ink: "#4a2a35" },
 };
 
 const nonfiction: Theme = {
@@ -167,6 +172,7 @@ const nonfiction: Theme = {
     author: { family: "montserrat", size: 12, uppercase: true, tracking: 0.15 },
     publisher: { family: "montserrat", size: 8, uppercase: true, tracking: 0.2 },
   },
+  cover: { background: "#ffffff", ink: "#0b3d5c" },
 };
 
 const largePrint: Theme = {
@@ -196,9 +202,102 @@ const largePrint: Theme = {
     author: { family: "atkinson", size: 18 },
     publisher: { family: "atkinson", size: 12 },
   },
+  cover: { background: "#ffffff", ink: "#000000" },
 };
 
-export const THEMES: Theme[] = [classic, modern, elegant, nonfiction, largePrint];
+const thriller: Theme = {
+  id: "thriller",
+  name: "Thriller",
+  description: "Crimson Pro text under bold Montserrat chapter numbers, short chapter openers and plenty of white space.",
+  pro: true,
+  body: { family: "crimson-pro", size: 11, leading: 14.5, oldstyle: false, justify: true, hyphenate: true, indent: 1.1, blockParagraphs: false },
+  margins: { top: 0.75, bottom: 0.85, outside: 0.65, inside: 0.8 },
+  chapter: {
+    sink: 0.1,
+    label: { show: true, format: "numeral", prefix: false, style: { family: "montserrat", size: 44, bold: true } },
+    title: { family: "montserrat", size: 11, uppercase: true, tracking: 0.3, align: "left" },
+    spaceAfter: 3,
+  },
+  part: { label: { family: "montserrat", size: 11, uppercase: true, tracking: 0.3 }, title: { family: "montserrat", size: 30, bold: true, uppercase: true } },
+  firstParagraph: { dropCap: 0, leadInWords: 3 },
+  heading2: { family: "montserrat", size: 11, bold: true, uppercase: true, tracking: 0.12, align: "left" },
+  heading3: { family: "montserrat", size: 9, bold: true, uppercase: true, tracking: 0.12, align: "left" },
+  sceneBreak: { glyph: "◆ ◆ ◆", family: "montserrat", size: 5 },
+  runningHead: { family: "montserrat", size: 7, uppercase: true, tracking: 0.25 },
+  folio: { style: { family: "montserrat", size: 8 }, position: "bottom-center", onOpeners: false },
+  blockquote: { indent: 1.4, italic: true },
+  titlePage: {
+    title: { family: "montserrat", size: 32, bold: true, uppercase: true, tracking: 0.1 },
+    subtitle: { family: "crimson-pro", size: 14, italic: true },
+    author: { family: "montserrat", size: 12, uppercase: true, tracking: 0.3 },
+    publisher: { family: "montserrat", size: 7.5, uppercase: true, tracking: 0.25 },
+  },
+  cover: { background: "#0c0c0f", ink: "#ececec" },
+};
+
+const romance: Theme = {
+  id: "romance",
+  name: "Romance",
+  description: "Garamond text, Cormorant italic chapter titles with a flourish, and a two-line drop cap.",
+  pro: true,
+  body: { family: "eb-garamond", size: 11.5, leading: 15.5, oldstyle: true, justify: true, hyphenate: true, indent: 1.2, blockParagraphs: false },
+  margins: { top: 0.8, bottom: 0.85, outside: 0.65, inside: 0.8 },
+  chapter: {
+    sink: 0.2,
+    label: { show: true, format: "numeral", prefix: false, style: { family: "cormorant", size: 30, italic: true } },
+    title: { family: "cormorant", size: 22, italic: true, align: "center" },
+    ornament: { glyph: "❦", family: "eb-garamond", size: 15 },
+    spaceAfter: 2,
+  },
+  part: { label: { family: "cormorant", size: 13, smallCaps: true, tracking: 0.2 }, title: { family: "cormorant", size: 30, italic: true } },
+  firstParagraph: { dropCap: 2, dropCapFamily: "cormorant", leadInWords: 2 },
+  heading2: { family: "cormorant", size: 15, italic: true, align: "center" },
+  heading3: { family: "cormorant", size: 12, smallCaps: true, tracking: 0.1, align: "center" },
+  sceneBreak: { glyph: "❦", family: "eb-garamond", size: 13 },
+  runningHead: { family: "cormorant", size: 10, italic: true },
+  folio: { style: { family: "cormorant", size: 11 }, position: "bottom-center", onOpeners: false },
+  blockquote: { indent: 1.5, italic: true },
+  titlePage: {
+    title: { family: "cormorant", size: 38, italic: true },
+    subtitle: { family: "cormorant", size: 16 },
+    author: { family: "cormorant", size: 15, smallCaps: true, tracking: 0.22 },
+    publisher: { family: "cormorant", size: 10.5, smallCaps: true, tracking: 0.2 },
+  },
+  cover: { background: "#f7e3e8", ink: "#5e1d36" },
+};
+
+const fantasy: Theme = {
+  id: "fantasy",
+  name: "Fantasy",
+  description: "Garamond with a three-line drop cap, small-caps chapter labels and a fleuron under each chapter title.",
+  pro: true,
+  body: { family: "eb-garamond", size: 11.5, leading: 15, oldstyle: true, justify: true, hyphenate: true, indent: 1.2, blockParagraphs: false },
+  margins: { top: 0.75, bottom: 0.8, outside: 0.625, inside: 0.75 },
+  chapter: {
+    sink: 0.22,
+    label: { show: true, format: "word", prefix: true, style: { family: "eb-garamond", size: 12, smallCaps: true, tracking: 0.25 } },
+    title: { family: "eb-garamond", size: 24, bold: true, align: "center" },
+    ornament: { glyph: "☙", family: "eb-garamond", size: 18 },
+    spaceAfter: 2,
+  },
+  part: { label: { family: "eb-garamond", size: 13, smallCaps: true, tracking: 0.25 }, title: { family: "eb-garamond", size: 28, bold: true } },
+  firstParagraph: { dropCap: 3, dropCapFamily: "eb-garamond", leadInWords: 3 },
+  heading2: { family: "eb-garamond", size: 14, bold: true, align: "center" },
+  heading3: { family: "eb-garamond", size: 11.5, smallCaps: true, tracking: 0.1, align: "center" },
+  sceneBreak: { glyph: "☙", family: "eb-garamond", size: 14 },
+  runningHead: { family: "eb-garamond", size: 9.5, smallCaps: true, tracking: 0.15 },
+  folio: { style: { family: "eb-garamond", size: 10 }, position: "bottom-center", onOpeners: false },
+  blockquote: { indent: 1.5, italic: true },
+  titlePage: {
+    title: { family: "eb-garamond", size: 34, bold: true },
+    subtitle: { family: "eb-garamond", size: 15, italic: true },
+    author: { family: "eb-garamond", size: 14, smallCaps: true, tracking: 0.2 },
+    publisher: { family: "eb-garamond", size: 10, smallCaps: true, tracking: 0.15 },
+  },
+  cover: { background: "#1b2a22", ink: "#e9dcae" },
+};
+
+export const THEMES: Theme[] = [classic, modern, elegant, nonfiction, largePrint, thriller, romance, fantasy];
 
 export function themeById(id: string): Theme {
   return THEMES.find((t) => t.id === id) ?? classic;

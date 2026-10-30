@@ -10,6 +10,7 @@ import { bookSlug, writeEpub } from "../engine/epub";
 import type { FontSet } from "../engine/fonts";
 import { layoutBook, type Layout } from "../engine/layout/index";
 import type { Book, BookSettings } from "../engine/model";
+import { composeCover, type Cover } from "../engine/cover/cover";
 import { writePdf } from "../engine/pdf";
 
 export const GENERATOR = `${PRODUCT_NAME} ${VERSION}`;
@@ -30,12 +31,9 @@ export async function buildBook(source: VaultSource, manifestPath: string, fonts
   return { book, layout, audit, ms: Math.round(performance.now() - t0) };
 }
 
-export const isBoxSet = (book: Book) => book.chapters.some((c) => c.volume);
+export { spineWidth } from "../engine/cover/geometry";
 
-/** KDP spine width in inches for the page count; white paper is 0.002252" a page, cream 0.0025". */
-export function spineWidth(pages: number, paper: "white" | "cream" = "white"): number {
-  return pages * (paper === "white" ? 0.002252 : 0.0025);
-}
+export const isBoxSet = (book: Book) => book.chapters.some((c) => c.volume);
 
 export function pdfBlockers(plan: Plan, built: Built): ExportBlocker[] {
   return printBlockers(plan, built.book.settings, { boxSet: isBoxSet(built.book) });
@@ -45,9 +43,23 @@ export function ebookBlockers(plan: Plan, built: Built): ExportBlocker[] {
   return epubBlockers(plan, built.book.settings, { boxSet: isBoxSet(built.book) });
 }
 
-export async function exportPdf(built: Built, fonts: FontSet): Promise<{ name: string; data: Uint8Array }> {
-  const data = await writePdf(built.book, built.layout, fonts, { producer: GENERATOR });
-  return { name: `${bookSlug(built.book)}-paperback-${built.layout.trim.id}.pdf`, data };
+export const SAMPLE_WATERMARK = "SAMPLE – Book Studio Pro";
+
+/** `sample` stamps every page with a watermark, so a Pro design can be tried in KDP's previewer but not printed. */
+export async function exportPdf(built: Built, fonts: FontSet, opts: { sample?: boolean } = {}): Promise<{ name: string; data: Uint8Array }> {
+  const data = await writePdf(built.book, built.layout, fonts, { producer: GENERATOR, watermark: opts.sample ? SAMPLE_WATERMARK : undefined });
+  return { name: `${bookSlug(built.book)}-paperback-${built.layout.trim.id}${opts.sample ? "-SAMPLE" : ""}.pdf`, data };
+}
+
+/** The flat paperback cover for the book as laid out, sized to its page count and paper. */
+export function buildCover(built: Built, fonts: FontSet, opts: { guides?: boolean } = {}): Cover {
+  return composeCover(built.book, fonts, built.layout.pages.length, opts);
+}
+
+export async function exportCover(built: Built, fonts: FontSet): Promise<{ name: string; data: Uint8Array; cover: Cover }> {
+  const cover = buildCover(built, fonts);
+  const data = await writePdf(built.book, cover.layout, fonts, { producer: GENERATOR, title: `${built.book.meta.title}: cover` });
+  return { name: `${bookSlug(built.book)}-cover-${built.layout.trim.id}-${built.layout.pages.length}p.pdf`, data, cover };
 }
 
 export interface EpubChoices {

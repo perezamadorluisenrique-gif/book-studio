@@ -4,7 +4,7 @@
 
 // Default import: the ES build exports only `default`, unlike its typings.
 import fontkit from "@pdf-lib/fontkit";
-import { PDFDocument, type PDFFont, type PDFImage } from "pdf-lib";
+import { PDFDocument, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { parseFaceKey, type FontFile, type FontSet } from "./fonts";
 import type { Book } from "./model";
 import type { Layout } from "./layout/types";
@@ -32,6 +32,10 @@ interface GlyphRecord {
 export interface PdfOptions {
   /** Producer string, e.g. "Book Studio 0.1.0". */
   producer?: string;
+  /** Document title, when it should not be the book's title (a cover, a sample). */
+  title?: string;
+  /** Text printed across every page, faintly: how a sample shows it is not for printing. */
+  watermark?: string;
 }
 
 const fmt = (n: number) => (Math.abs(n) < 1e-6 ? "0" : String(Math.round(n * 1000) / 1000));
@@ -40,7 +44,7 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
   const { meta } = book;
-  doc.setTitle(meta.subtitle ? `${meta.title}: ${meta.subtitle}` : meta.title, { showInWindowTitleBar: true });
+  doc.setTitle(opts.title ?? (meta.subtitle ? `${meta.title}: ${meta.subtitle}` : meta.title), { showInWindowTitleBar: true });
   if (meta.authors.length) doc.setAuthor(meta.authors.join(", "));
   if (meta.description) doc.setSubject(meta.description);
   if (meta.subjects.length) doc.setKeywords(meta.subjects);
@@ -92,6 +96,7 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
     let curFont = "";
     let curSize = -1;
     let curTc = 0;
+    let curColor = "";
     const endText = () => {
       if (inText) ops.push("ET");
       inText = false;
@@ -107,11 +112,17 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
           fontNames.set(file, name);
         }
         if (!inText) {
-          ops.push("BT", "0 g");
+          ops.push("BT");
           inText = true;
           curFont = "";
           curSize = -1;
           curTc = 0;
+          curColor = "";
+        }
+        const color = d.color ? `${d.color.map(fmt).join(" ")} rg` : "0 g";
+        if (color !== curColor) {
+          ops.push(color);
+          curColor = color;
         }
         if (curFont !== name || curSize !== d.size) {
           ops.push(`${name} ${fmt(d.size)} Tf`);
@@ -123,7 +134,7 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
           ops.push(`${fmt(tc)} Tc`);
           curTc = tc;
         }
-        ops.push(`1 0 0 1 ${fmt(d.x + offX)} ${fmt(H + b - d.y)} Tm`);
+        ops.push(`${matrix(d.angle)} ${fmt(d.x + offX)} ${fmt(H + b - d.y)} Tm`);
         ops.push(`${tjArray(font, d.text, features)} TJ`);
       } else if (d.kind === "image") {
         const img = await imageFor(d.path);
@@ -134,17 +145,61 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
           name = page.node.newXObject("Im", img.ref).asString();
           imageNames.set(d.path, name);
         }
-        ops.push("q", `${fmt(d.w)} 0 0 ${fmt(d.h)} ${fmt(d.x + offX)} ${fmt(H + b - d.y - d.h)} cm`, `${name} Do`, "Q");
+        ops.push("q");
+        if (d.clip) ops.push(`${fmt(d.clip.x + offX)} ${fmt(H + b - d.clip.y - d.clip.h)} ${fmt(d.clip.w)} ${fmt(d.clip.h)} re W n`);
+        ops.push(`${fmt(d.w)} 0 0 ${fmt(d.h)} ${fmt(d.x + offX)} ${fmt(H + b - d.y - d.h)} cm`, `${name} Do`, "Q");
+      } else if (d.kind === "rect") {
+        endText();
+        const paint = d.fill && d.stroke ? "B" : d.fill ? "f" : "S";
+        ops.push("q");
+        if (d.fill) ops.push(`${d.fill.map(fmt).join(" ")} rg`);
+        if (d.stroke || !d.fill) ops.push(`${(d.stroke ?? [0, 0, 0]).map(fmt).join(" ")} RG`, `${fmt(d.strokeWidth ?? 0.5)} w`);
+        if (d.dash?.length) ops.push(`[${d.dash.map(fmt).join(" ")}] 0 d`);
+        ops.push(`${fmt(d.x + offX)} ${fmt(H + b - d.y - d.h)} ${fmt(d.w)} ${fmt(d.h)} re`, paint, "Q");
       } else {
         endText();
         ops.push("q", "0 G", `${fmt(d.width)} w`, `${fmt(d.x1 + offX)} ${fmt(H + b - d.y1)} m`, `${fmt(d.x2 + offX)} ${fmt(H + b - d.y2)} l`, "S", "Q");
       }
+    }
+    if (opts.watermark) {
+      endText();
+      ops.push(...(await watermarkOps(opts.watermark, page, fontFor, fontNames, W, H, offX, b)));
     }
     endText();
     const stream = doc.context.flateStream(ops.join("\n"));
     page.node.addContentStream(doc.context.register(stream));
   }
   return doc.save({ useObjectStreams: true });
+}
+
+const matrix = (angle = 0) => {
+  if (!angle) return "1 0 0 1";
+  const r = (angle * Math.PI) / 180;
+  const c = Math.cos(r);
+  const s = Math.sin(r);
+  return [c, s, -s, c].map(fmt).join(" ");
+};
+
+/** Light grey text across the page, inside the text area so it can't be trimmed away. */
+async function watermarkOps(text: string, page: PDFPage, fontFor: (file: FontFile) => Promise<PDFFont>, fontNames: Map<FontFile, string>, W: number, H: number, offX: number, b: number): Promise<string[]> {
+  const file: FontFile = "Montserrat-SemiBold";
+  const font = await fontFor(file);
+  let name = fontNames.get(file);
+  if (!name) {
+    name = page.node.newFontDictionary(file, font.ref).asString();
+    fontNames.set(file, name);
+  }
+  const size = Math.min(W / (text.length * 0.42), 54);
+  const width = font.widthOfTextAtSize(text, size);
+  const angle = 35;
+  const r = (angle * Math.PI) / 180;
+  // Centre the string on the page by backing off half its length along the rotated baseline.
+  const cx = offX + W / 2;
+  const cy = H / 2 + b;
+  const x = cx - (Math.cos(r) * width) / 2;
+  const y = cy - (Math.sin(r) * width) / 2 - size * 0.3;
+  const sid = tjArray(font, text, []);
+  return ["BT", "0.78 g", `${name} ${fmt(size)} Tf`, `${matrix(angle)} ${fmt(x)} ${fmt(y)} Tm`, `${sid} TJ`, "ET"];
 }
 
 /** Shape `text` with the embedder's own font and encode it as a TJ array with kerning. */

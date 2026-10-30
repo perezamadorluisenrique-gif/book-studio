@@ -102,6 +102,7 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
     series: fmString(fm, "series"),
     seriesNumber: Number(fmString(fm, "series-number", "series-index")) || undefined,
     accessibilitySummary: fmString(fm, "accessibility-summary"),
+    coverDesign: { blurb: [], bio: [] },
   };
   if (!authors.length) warnings.push({ message: "No author in the manifest frontmatter (author: Your Name).", src: { file: manifestPath, line: 1 } });
 
@@ -111,6 +112,21 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
     const path = source.resolve(target, manifestPath) ?? "";
     if (!path) warnings.push({ message: `Cover image not found: ${target}`, src: { file: manifestPath, line: 1 } });
     meta.cover = { path, target, alt: `Cover of ${meta.title}`, decorative: false };
+  }
+
+  const design = meta.coverDesign;
+  design.tagline = smart(fmString(fm, "tagline", "cover-tagline"));
+  design.spineTitle = fmString(fm, "spine-title", "spine-text");
+  design.background = hexColor(fmString(fm, "cover-background", "cover-color"));
+  design.ink = hexColor(fmString(fm, "cover-ink", "cover-text-color"));
+  design.blurb = (await paragraphsOf(source, manifestPath, fmGet(fm, "back-blurb", "back-cover", "back-cover-text") ?? fmGet(fm, "description", "blurb"))).map((p) => smart(p) ?? p);
+  design.bio = (await paragraphsOf(source, manifestPath, fmGet(fm, "author-bio", "about-the-author-short"))).map((p) => smart(p) ?? p);
+  const photoTarget = fmGet(fm, "author-photo");
+  if (typeof photoTarget === "string" && photoTarget.trim()) {
+    const target = photoTarget.replace(/^!?\[\[|\]\]$/g, "").split("|")[0].trim();
+    const path = source.resolve(target, manifestPath) ?? "";
+    if (!path) warnings.push({ message: `Author photo not found: ${target}`, src: { file: manifestPath, line: 1 } });
+    design.photo = { path, target, alt: `Photo of ${authors[0] ?? "the author"}`, decorative: false };
   }
 
   let blockCounter = 0;
@@ -235,6 +251,7 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
     c.notes.forEach((n) => collectImages(n.blocks, refs));
   }
   if (meta.cover) refs.push(meta.cover);
+  if (design.photo) refs.push(design.photo);
   const images = new Map<string, ImageAsset>();
   for (const ref of refs) {
     if (!ref.path || images.has(ref.path)) continue;
@@ -286,4 +303,42 @@ function stripUndefined<T extends object>(o: T): Partial<T> {
   const out: Partial<T> = {};
   for (const [k, v] of Object.entries(o)) if (v !== undefined) (out as Record<string, unknown>)[k] = v;
   return out;
+}
+
+/** "#abc" or "#aabbcc" in lower case, or undefined for anything else. */
+export function hexColor(v: string | undefined): string | undefined {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec((v ?? "").trim());
+  if (!m) return undefined;
+  const h = m[1].length === 3 ? [...m[1]].map((c) => c + c).join("") : m[1];
+  return `#${h.toLowerCase()}`;
+}
+
+/**
+ * Paragraphs of plain text from a frontmatter value: a list of paragraphs, a
+ * string with blank lines between them, or a link to a note whose text is used.
+ */
+async function paragraphsOf(source: VaultSource, from: string, v: unknown): Promise<string[]> {
+  let text = "";
+  if (Array.isArray(v)) text = v.map((x) => String(x)).join("\n\n");
+  else if (typeof v === "string") text = v;
+  else return [];
+  const link = /^\s*!?\[\[([^\]|]+)(?:\|[^\]]*)?\]\]\s*$/.exec(text);
+  if (link) {
+    const path = source.resolve(link[1].trim(), from);
+    if (!path) return [];
+    text = splitFrontmatter(await source.read(path)).body;
+  }
+  return text
+    .split(/\n\s*\n/)
+    .map((p) =>
+      p
+        .replace(/^#+\s+.*$/gm, "")
+        .replace(/!?\[\[([^\]|]*\|)?([^\]]*)\]\]/g, "$2")
+        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+        .replace(/(\*\*|__|\*|_|~~|`)/g, "")
+        .replace(/^>\s?/gm, "")
+        .replace(/\s*\n\s*/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
 }

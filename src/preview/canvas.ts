@@ -84,25 +84,51 @@ export class PagePainter {
         const upm = this.fonts.unitsPerEm(file);
         const s = d.size / upm;
         const shaped = this.fonts.shape(d.face, d.text);
-        let x = d.x;
+        let x = 0;
+        ctx.save();
+        ctx.translate(d.x, d.y);
+        if (d.angle) ctx.rotate((-d.angle * Math.PI) / 180);
+        if (d.color) ctx.fillStyle = `rgb(${d.color.map((c) => Math.round(c * 255)).join(",")})`;
         for (const g of shaped.glyphs) {
           ctx.save();
-          ctx.translate(x + g.xOffset * s, d.y - g.yOffset * s);
+          ctx.translate(x + g.xOffset * s, -g.yOffset * s);
           ctx.scale(s, -s);
           ctx.fill(this.glyph(file, g.id));
           ctx.restore();
           x += g.xAdvance * s + (d.tracking ?? 0);
         }
+        ctx.restore();
       } else if (d.kind === "image") {
         const bmp = bitmaps.get(d.path);
-        if (bmp) ctx.drawImage(bmp, d.x, d.y, d.w, d.h);
-        else {
+        if (bmp) {
+          ctx.save();
+          if (d.clip) {
+            ctx.beginPath();
+            ctx.rect(d.clip.x, d.clip.y, d.clip.w, d.clip.h);
+            ctx.clip();
+          }
+          ctx.drawImage(bmp, d.x, d.y, d.w, d.h);
+          ctx.restore();
+        } else {
           ctx.save();
           ctx.strokeStyle = "#c33";
           ctx.lineWidth = 0.5;
           ctx.strokeRect(d.x, d.y, d.w, d.h);
           ctx.restore();
         }
+      } else if (d.kind === "rect") {
+        ctx.save();
+        if (d.fill) {
+          ctx.fillStyle = `rgb(${d.fill.map((c) => Math.round(c * 255)).join(",")})`;
+          ctx.fillRect(d.x, d.y, d.w, d.h);
+        }
+        if (d.stroke || !d.fill) {
+          ctx.strokeStyle = d.stroke ? `rgb(${d.stroke.map((c) => Math.round(c * 255)).join(",")})` : ink;
+          ctx.lineWidth = d.strokeWidth ?? 0.5;
+          ctx.setLineDash(d.dash ?? []);
+          ctx.strokeRect(d.x, d.y, d.w, d.h);
+        }
+        ctx.restore();
       } else {
         ctx.lineWidth = d.width;
         ctx.beginPath();

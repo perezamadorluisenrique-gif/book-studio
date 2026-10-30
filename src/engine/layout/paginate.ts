@@ -92,7 +92,8 @@ export function paginate(items: VItem[], capacity: number): FlowPage[] {
 
 export function offsetDraw(d: Draw, dx: number, dy: number): Draw {
   if (d.kind === "text") return { ...d, x: d.x + dx, y: d.y + dy };
-  if (d.kind === "image") return { ...d, x: d.x + dx, y: d.y + dy };
+  if (d.kind === "image") return { ...d, x: d.x + dx, y: d.y + dy, clip: d.clip && { ...d.clip, x: d.clip.x + dx, y: d.clip.y + dy } };
+  if (d.kind === "rect") return { ...d, x: d.x + dx, y: d.y + dy };
   return { ...d, x1: d.x1 + dx, x2: d.x2 + dx, y1: d.y1 + dy, y2: d.y2 + dy };
 }
 

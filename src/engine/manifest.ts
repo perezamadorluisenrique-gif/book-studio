@@ -92,9 +92,11 @@ export function settingsFromFrontmatter(fm: Record<string, unknown>, base: BookS
   const start = fmString(fm, "chapter-start")?.toLowerCase();
   const heads = fmString(fm, "running-heads")?.toLowerCase();
   const size = Number(fmString(fm, "font-size"));
+  const paper = fmString(fm, "paper", "paper-color")?.toLowerCase();
   return {
     theme: fmString(fm, "theme")?.toLowerCase() ?? base.theme,
     trim: fmString(fm, "trim", "trim-size")?.toLowerCase().replace(/\s|"|in/g, "").replace("×", "x") ?? base.trim,
+    paper: paper === "white" || paper === "cream" || paper === "color" ? paper : base.paper,
     bleed: fmBool(fm, base.bleed, "bleed"),
     chapterStart: start === "any" || start === "recto" ? start : base.chapterStart,
     runningHeads: heads === "none" || heads === "author-title" || heads === "title-chapter" ? heads : base.runningHeads,
