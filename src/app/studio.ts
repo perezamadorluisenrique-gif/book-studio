@@ -12,9 +12,10 @@ import { PagePainter } from "../preview/canvas";
 import { append, clear, h, nextFrame, select } from "./dom";
 import type { BookChoice, StudioHost } from "./host";
 import type { LicenseManager } from "./license-manager";
+import { KdpPanel } from "./kdp-panel";
 import { buildBook, ebookBlockers, exportEpub, exportPdf, exportReport, pdfBlockers, spineWidth, type Built, type EpubChoices } from "./pipeline";
 
-type Tab = "preview" | "problems" | "accessibility";
+type Tab = "preview" | "problems" | "kdp" | "accessibility";
 type Zoom = "page" | "fit" | "0.5" | "0.75" | "1" | "1.5" | "2";
 
 const ZOOMS: { value: Zoom; label: string }[] = [
@@ -58,6 +59,7 @@ export class Studio {
   private resize: ResizeObserver | null = null;
   private unsubscribe: () => void;
   private disposed = false;
+  private kdp: KdpPanel;
 
   private bookSelect = h("select", { cls: "bs-book", attr: { "aria-label": "Book" } });
   private planBox = h("div", { cls: "bs-plan" });
@@ -76,7 +78,7 @@ export class Studio {
     container: HTMLElement,
     private license: LicenseManager,
   ) {
-    const tabIds: Tab[] = ["preview", "problems", "accessibility"];
+    const tabIds: Tab[] = ["preview", "problems", "kdp", "accessibility"];
     const uid = Math.random().toString(36).slice(2, 8);
     this.tabs = {} as Record<Tab, HTMLButtonElement>;
     this.panels = {} as Record<Tab, HTMLElement>;
@@ -109,6 +111,20 @@ export class Studio {
       h("div", { cls: "bs-tabs", attr: { role: "tablist", "aria-label": "Book Studio views" } }, ...tabIds.map((t) => this.tabs[t])),
       ...tabIds.map((t) => this.panels[t]),
     );
+    this.kdp = new KdpPanel(this.panels.kdp, {
+      host: this.host,
+      plan: () => this.plan(),
+      built: () => this.built,
+      fonts: () => this.loadFonts(),
+      painter: () => this.painter,
+      gate: async (b) => (await this.gate(b)) === true,
+      write: (m, make) => this.write(m, make),
+      showPage: (folio) => {
+        const index = this.built?.layout.pages.findIndex((p) => p.folio === folio) ?? -1;
+        if (index >= 0) this.scrollToPage(index);
+      },
+      openLicense: () => this.host.openLicense(),
+    });
     container.appendChild(this.root);
     this.unsubscribe = this.license.onChange(() => this.planChanged());
     this.showTab("preview");
@@ -227,6 +243,7 @@ export class Studio {
       if (this.disposed || path !== this.current) return;
       this.painter?.dispose();
       this.painter = new PagePainter(fonts, built.book.images);
+      this.kdp.fontsNow = fonts;
       this.built = built;
       this.renderAll();
     } catch (e) {
@@ -269,8 +286,11 @@ export class Studio {
     append(this.planBox, h("button", { text: plan === "pro" && !this.license.previewPro ? "License" : "Get Pro", on: { click: () => this.host.openLicense() } }));
   }
 
-  /** Ask before an export the plan doesn't include. Resolves true to go ahead. */
-  private async gate(blockers: ExportBlocker[]): Promise<boolean> {
+  /**
+   * Ask before an export the plan doesn't include. Resolves true to go ahead, or
+   * "sample" when the person picks the watermarked sample (print PDFs only).
+   */
+  private async gate(blockers: ExportBlocker[], offerSample = false): Promise<boolean | "sample"> {
     if (!blockers.length) return true;
     if (FREE_EDITION) {
       await this.host.ask({ title: "Not available in this edition", message: `${blockers.map((b) => editionMessage(b.message)).join("\n")}\n\nChoose an included option in the toolbar to export.`, ok: "OK" });
@@ -278,13 +298,14 @@ export class Studio {
     }
     const answer = await this.host.ask({
       title: "This export needs Book Studio Pro",
-      message: `${blockers.map((b) => b.message).join("\n")}\n\nYou can keep previewing everything; switch to an included option to export on the free plan.`,
+      message: `${blockers.map((b) => b.message).join("\n")}\n\nYou can keep previewing everything; switch to an included option to export on the free plan.${offerSample ? " Or export a sample: the same PDF with a SAMPLE watermark on every page, to try in KDP's previewer." : ""}`,
       ok: "Get Pro",
       cancel: "Not now",
-      extra: PRO_PREVIEW ? "Try Pro preview" : undefined,
+      extra: offerSample ? "Export a sample" : PRO_PREVIEW ? "Try Pro preview" : undefined,
     });
     if (answer === "ok") this.host.openLicense();
     if (answer === "extra") {
+      if (offerSample) return "sample";
       this.license.previewPro = true;
       return true;
     }
@@ -300,9 +321,11 @@ export class Studio {
   async exportPdf(): Promise<void> {
     const built = await this.ensureBuilt();
     if (!built) return this.host.notify("Open a book first.");
-    if (!(await this.gate(pdfBlockers(this.plan(), built)))) return;
-    await this.write("Writing the print PDF…", async () => {
-      const out = await exportPdf(built, await this.loadFonts());
+    const go = await this.gate(pdfBlockers(this.plan(), built), true);
+    if (!go) return;
+    const sample = go === "sample";
+    await this.write(sample ? "Writing the sample PDF…" : "Writing the print PDF…", async () => {
+      const out = await exportPdf(built, await this.loadFonts(), { sample });
       return { ...out, mime: "application/pdf" };
     });
   }
@@ -310,7 +333,7 @@ export class Studio {
   async exportEpub(): Promise<void> {
     const built = await this.ensureBuilt();
     if (!built) return this.host.notify("Open a book first.");
-    if (!(await this.gate(ebookBlockers(this.plan(), built)))) return;
+    if ((await this.gate(ebookBlockers(this.plan(), built))) !== true) return;
     const plan = this.plan();
     await this.write("Writing the EPUB…", async () => {
       const out = await exportEpub(built, await this.loadFonts(), plan, this.choices());
@@ -379,6 +402,7 @@ export class Studio {
     this.renderStatus();
     this.renderPreview();
     this.renderProblems();
+    this.kdp.render();
     this.renderAccessibility();
     this.renderTabs();
   }
@@ -387,7 +411,7 @@ export class Studio {
     const { book, layout, ms } = this.built!;
     const pages = layout.pages.length;
     const gutter = (layout.margins.inside / 72).toFixed(3).replace(/0+$/, "");
-    this.setStatus(`${book.meta.title}: ${pages} pages at ${layout.trim.label}, inside margin ${gutter} in, spine ${spineWidth(pages).toFixed(3)} in on white paper. Built in ${ms} ms.`);
+    this.setStatus(`${book.meta.title}: ${pages} pages at ${layout.trim.label}, inside margin ${gutter} in, spine ${spineWidth(pages, book.settings.paper).toFixed(3)} in on ${book.settings.paper === "white" ? "white" : book.settings.paper === "cream" ? "cream" : "premium color"} paper. Built in ${ms} ms.`);
   }
 
   private renderSettings(): void {
@@ -405,6 +429,11 @@ export class Studio {
       s.trim,
       { attr: { "aria-label": "Trim size" }, on: { change: () => this.setOverride({ trim: trim.value }) } },
     );
+    const paper = select(
+      (["white", "cream", "color"] as const).map((p) => ({ value: p, label: { white: "White paper", cream: "Cream paper", color: "Premium color" }[p] })),
+      s.paper,
+      { attr: { "aria-label": "Interior paper" }, on: { change: () => this.setOverride({ paper: paper.value as BookSettings["paper"] }) } },
+    );
     const start = select(
       [
         { value: "recto", label: "Right-hand page" },
@@ -418,6 +447,7 @@ export class Studio {
       this.settingsBar,
       h("label", { cls: "bs-field" }, h("span", { text: "Theme" }), theme),
       h("label", { cls: "bs-field" }, h("span", { text: "Trim" }), trim),
+      h("label", { cls: "bs-field" }, h("span", { text: "Paper" }), paper),
       h("label", { cls: "bs-field" }, h("span", { text: "Chapters start on" }), start),
       h("label", { cls: "bs-check" }, bleed, "Bleed"),
     );
@@ -719,6 +749,8 @@ export class Studio {
     this.tabs.preview.textContent = "Preview";
     this.tabs.problems.textContent = problems ? `Problems (${problems})` : "Problems";
     // The free edition's EPUB has no accessibility pack, so there is nothing to show.
+    this.tabs.kdp.hidden = FREE_EDITION;
+    this.tabs.kdp.textContent = "KDP";
     this.tabs.accessibility.hidden = FREE_EDITION;
     this.tabs.accessibility.textContent = audit && pro && !audit.passed ? "Accessibility (!)" : pro || FREE_EDITION ? "Accessibility" : "Accessibility (Pro)";
   }
@@ -733,7 +765,7 @@ export class Studio {
   }
 
   private tabKey(e: KeyboardEvent, tab: Tab): void {
-    const order: Tab[] = FREE_EDITION ? ["preview", "problems"] : ["preview", "problems", "accessibility"];
+    const order: Tab[] = FREE_EDITION ? ["preview", "problems"] : ["preview", "problems", "kdp", "accessibility"];
     const i = order.indexOf(tab);
     let next: Tab | null = null;
     if (e.key === "ArrowRight") next = order[(i + 1) % order.length];
