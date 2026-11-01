@@ -61,6 +61,15 @@
   cursor: pointer;
 }
 
+/* Touch screens and narrow windows: checkboxes at least 24 px (WCAG 2.5.8). */
+@media (pointer: coarse), (max-width: 600px) {
+  .bs-check input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+    margin: 0;
+  }
+}
+
 .bs-book {
   max-width: 28em;
 }

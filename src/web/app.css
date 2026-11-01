@@ -131,6 +131,19 @@ button.mod-cta {
   gap: 8px;
 }
 
+.app-guides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 12px;
+}
+
+.app-guides a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--app-accent);
+}
+
 .app-main {
   flex: 1;
   min-height: 0;

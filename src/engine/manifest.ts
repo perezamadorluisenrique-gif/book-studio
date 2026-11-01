@@ -115,8 +115,8 @@ const LINK = /!?\[\[([^\]|]+)(?:\|([^\]]*))?\]\]|\[([^\]]*)\]\(<?([^)>]+)>?\)/;
 
 function sectionOf(heading: string): Matter | null {
   const h = heading.toLowerCase();
-  if (/front/.test(h)) return "front";
-  if (/back|end ?matter|appendi/.test(h)) return "back";
+  if (/front|preliminar/.test(h)) return "front";
+  if (/back|end ?matter|appendi|ap[eé]ndice|parte final/.test(h)) return "back";
   if (/chapter|body|main|content|manuscript|story|text|cap[ií]tulos|kapitel|chapitres/.test(h)) return "body";
   return null;
 }
