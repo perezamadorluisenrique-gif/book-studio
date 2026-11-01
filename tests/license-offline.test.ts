@@ -41,7 +41,7 @@ describe("verifyLicense", () => {
     const forged = toBase64Url(new TextEncoder().encode(JSON.stringify({ ...base, oid: "ord-2" })));
     expect(verifyLicense([p, forged, sig].join("."), trust)).toEqual({ ok: false, reason: "signature" });
     // one flipped character in the signature
-    const flipped = sig.slice(0, -2) + (sig.endsWith("A") ? "B" : "A") + sig.slice(-1);
+    const flipped = sig.slice(0, -2) + (sig.charAt(sig.length - 2) === "A" ? "B" : "A") + sig.slice(-1);
     expect(verifyLicense([p, body, flipped].join("."), trust)).toEqual({ ok: false, reason: "signature" });
   });
 
