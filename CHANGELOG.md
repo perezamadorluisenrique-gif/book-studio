@@ -7,7 +7,8 @@ renames the `Unreleased` heading below to that version.
 ## Unreleased
 
 - Free: unlimited books, and the 5" × 8" and 5.5" × 8.5" trims next to 6" × 9".
-- Book Studio Pro, unlocked by an offline Ed25519 license key (checked on the device, no network): more themes and trims, large print, KDP preflight with an HTML report, a full wraparound cover with barcode space, footnotes at the page foot, a back-of-book index, editions, a KDP details sheet and box sets.
+- Book Studio Pro, a one-time payment unlocked by the license key from the purchase email (checked once with the payment service when you press Activate; offline signed keys are also accepted): more themes and trims, large print, KDP preflight with an HTML report, a full wraparound cover with barcode space, footnotes at the page foot, a back-of-book index, editions, a KDP details sheet and box sets.
+- Activate is the only network request, and nothing else is ever sent.
 - Without a key, the print PDF of a Pro design carries a SAMPLE watermark.
 - New manifest properties: `paper`, `footnotes`, `index-terms`, `editions`, `back-blurb`, `author-bio`, `author-photo`, `tagline`, `cover-background`, `cover-ink`, `spine-title`.
 

@@ -1,10 +1,12 @@
+import type { OnlineConfig } from "./engine/license-online";
+
 // Build-time settings, set by esbuild.config.mjs from environment variables.
 // `typeof` guards keep tests and unbundled runs working without the defines.
 
 /**
  * The community edition has no Pro plan at all: Pro options are hidden rather
  * than locked and there is no license screen. The default build is the full
- * one, where Pro is unlocked by a license key checked on the device.
+ * one, where Pro is unlocked by a license key.
  */
 export const FREE_EDITION: boolean = typeof __FREE_EDITION__ === "boolean" ? __FREE_EDITION__ : false;
 
@@ -23,13 +25,10 @@ export const EXTRA_PUBLIC_KEYS: Record<string, string> = Object.fromEntries(
 );
 
 /**
- * Where "Get Pro" links to. Empty until the Pro product exists, and then the
- * panel says Pro isn't on sale yet instead of linking anywhere.
+ * Only for e2e: the licence settings that point at a local stand-in for the
+ * payment service. Null in a release (esbuild's PRO_LICENSE_TEST_API is unset).
  */
-export const CHECKOUT_URL: string = typeof __CHECKOUT_URL__ === "string" ? __CHECKOUT_URL__ : "";
-
-/** The page where a buyer swaps the store's receipt for a license key. */
-export const ACTIVATE_URL: string = typeof __ACTIVATE_URL__ === "string" ? __ACTIVATE_URL__ : "";
+export const PRO_LICENSE_TEST: OnlineConfig | null = typeof __PRO_LICENSE_TEST__ === "object" ? __PRO_LICENSE_TEST__ : null;
 
 export const PRODUCT_NAME = "Book Studio";
 /** The release version, from manifest.json, for the PDF producer and EPUB generator fields. */

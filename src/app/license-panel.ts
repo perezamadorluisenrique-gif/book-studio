@@ -1,8 +1,10 @@
 // License controls for the web app's dialog. The Obsidian plugin shows the
 // same choices in its settings tab with Obsidian's own controls.
 
-import { ACTIVATE_URL, CHECKOUT_URL, PRO_PREVIEW } from "../config";
+import { PRO_PREVIEW } from "../config";
 import { PRO_FEATURES } from "../engine/entitlements";
+import type { Post } from "../engine/license-online";
+import { SALES_PAGE } from "../engine/pro-config";
 import { append, clear, h } from "./dom";
 import type { StudioHost } from "./host";
 import { LicenseError, type LicenseManager } from "./license-manager";
@@ -17,7 +19,7 @@ export function pickLicenseFile(onText: (text: string) => void): void {
   input.click();
 }
 
-export function renderLicensePanel(container: HTMLElement, license: LicenseManager, host: Pick<StudioHost, "openUrl">): void {
+export function renderLicensePanel(container: HTMLElement, license: LicenseManager, host: Pick<StudioHost, "openUrl">, post: Post): void {
   const draw = () => {
     clear(container);
     const box = h("div", { cls: "bs-license" });
@@ -31,16 +33,18 @@ export function renderLicensePanel(container: HTMLElement, license: LicenseManag
       append(box, h("div", { cls: "bs-license-row" }, h("button", { text: "Remove key from this browser", on: { click: () => (license.remove(), draw()) } })));
     } else {
       const id = `bs-key-${Math.random().toString(36).slice(2, 8)}`;
-      const input = h("input", { attr: { id, type: "text", autocomplete: "off", spellcheck: "false", placeholder: "BS1.…" } });
+      const input = h("input", { attr: { id, type: "text", autocomplete: "off", spellcheck: "false", placeholder: "Your license key" } });
       const activate = h("button", { cls: "mod-cta", text: "Activate" });
       const run = (text: string) => {
         error.textContent = "";
-        try {
-          license.activate(text);
-          draw();
-        } catch (e) {
-          error.textContent = e instanceof LicenseError ? e.message : "Activation failed.";
-        }
+        activate.disabled = true;
+        license
+          .activate(text, post)
+          .then(() => draw())
+          .catch((e: unknown) => {
+            error.textContent = e instanceof LicenseError ? e.message : "Activation failed.";
+            activate.disabled = false;
+          });
       };
       activate.addEventListener("click", () => run(input.value));
       input.addEventListener("keydown", (e) => {
@@ -48,16 +52,13 @@ export function renderLicensePanel(container: HTMLElement, license: LicenseManag
       });
       append(
         box,
-        h("label", { attr: { for: id }, text: "Have a license key? Paste it here, or import the .bslicense file:" }),
+        h("label", { attr: { for: id }, text: "License key (it is in your purchase email or receipt):" }),
         h("div", { cls: "bs-license-row" }, input, activate, h("button", { text: "Import file…", on: { click: () => pickLicenseFile(run) } })),
       );
     }
     append(box, error);
     if (license.configured) {
-      const buttons = h("div", { cls: "bs-license-row" });
-      if (CHECKOUT_URL) append(buttons, h("button", { text: "Get Book Studio Pro", on: { click: () => host.openUrl(CHECKOUT_URL) } }));
-      if (ACTIVATE_URL) append(buttons, h("button", { text: "I have bought it: get my key", on: { click: () => host.openUrl(ACTIVATE_URL) } }));
-      append(box, CHECKOUT_URL ? buttons : h("p", { text: "Book Studio Pro isn't on sale yet." }));
+      append(box, h("div", { cls: "bs-license-row" }, h("button", { text: "Get Book Studio Pro", on: { click: () => host.openUrl(SALES_PAGE) } })));
     }
     if (PRO_PREVIEW) {
       const toggle = h("input", { attr: { type: "checkbox", checked: license.previewPro } });
@@ -67,7 +68,7 @@ export function renderLicensePanel(container: HTMLElement, license: LicenseManag
       });
       append(box, h("label", { cls: "bs-check" }, toggle, "Try Pro without a key (developer builds only)"));
     }
-    append(box, h("p", { cls: "bs-where", text: "A key is checked on your device, without the internet, and never expires. Book Studio makes no network requests, and your notes and books never leave your device." }));
+    append(box, h("p", { cls: "bs-where", text: "Pro is a one-time payment and the key never expires. Activate sends the key once to the payment service to check it, and nothing else ever leaves your device: your notes and books stay here." }));
     container.appendChild(box);
   };
   draw();

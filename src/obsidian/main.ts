@@ -1,8 +1,8 @@
 // The Obsidian plugin: a Book Studio view over the vault, commands for the
 // common exports, and a settings tab for the export folder and the Pro key.
 
-import { App, getLinkpath, ItemView, Modal, normalizePath, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, type SettingDefinitionItem, type WorkspaceLeaf } from "obsidian";
-import { ACTIVATE_URL, CHECKOUT_URL, FREE_EDITION, PRO_PREVIEW } from "../config";
+import { App, getLinkpath, requestUrl, ItemView, Modal, normalizePath, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, type SettingDefinitionItem, type WorkspaceLeaf } from "obsidian";
+import { FREE_EDITION, PRO_PREVIEW } from "../config";
 import { append, h, setElementFactory } from "../app/dom";
 import type { BookChoice, Dialog, OutputFile, Store, StudioHost } from "../app/host";
 import { LicenseError, LicenseManager } from "../app/license-manager";
@@ -10,6 +10,8 @@ import { pickLicenseFile } from "../app/license-panel";
 import { Studio } from "../app/studio";
 import type { VaultSource } from "../engine/book";
 import { PRO_FEATURES } from "../engine/entitlements";
+import type { Post } from "../engine/license-online";
+import { SALES_PAGE } from "../engine/pro-config";
 import { fmString, isManifestFrontmatter, manifestTemplate } from "../engine/manifest";
 import type { SourceRef } from "../engine/model";
 import { loadBundledFont } from "./fonts";
@@ -315,6 +317,18 @@ class AskModal extends Modal {
   }
 }
 
+/** The licence call on Obsidian's requestUrl: no CORS, and an error status comes back as a status. */
+const post: Post = async ({ url, contentType, body }) => {
+  const res = await requestUrl({ url, method: "POST", contentType, body, throw: false });
+  let json: unknown = null;
+  try {
+    json = res.json;
+  } catch {
+    json = null;
+  }
+  return { status: res.status, json };
+};
+
 /** License controls, shared by the settings tab and the modal the studio opens. */
 function licenseSettings(containerEl: HTMLElement, plugin: BookStudioPlugin, redraw: () => void): void {
   const license = plugin.license;
@@ -336,26 +350,27 @@ function licenseSettings(containerEl: HTMLElement, plugin: BookStudioPlugin, red
     const error = createDiv({ cls: "bs-setting-error" });
     const activate = (text: string) => {
       error.setText("");
-      try {
-        license.activate(text);
-        new Notice("Book Studio Pro is active.");
-        redraw();
-      } catch (e) {
-        error.setText(e instanceof LicenseError ? e.message : "Activation failed.");
-      }
+      license
+        .activate(text, post)
+        .then(() => {
+          new Notice("Book Studio Pro is active.");
+          redraw();
+        })
+        .catch((e: unknown) => error.setText(e instanceof LicenseError ? e.message : "Activation failed."));
     };
     const setting = new Setting(containerEl)
       .setName("License key")
-      .setDesc("Paste your key, or import the .bslicense file. It is checked on this device, without the internet.")
+      .setDesc("Paste the key from your purchase email or receipt. Activate sends it once to the payment service to check it.")
       .addText((t) => t.setPlaceholder("Paste your key").onChange((v) => (key = v)))
       .addButton((b) => b.setButtonText("Activate").setCta().onClick(() => activate(key)))
       .addButton((b) => b.setButtonText("Import file…").onClick(() => pickLicenseFile(activate)));
     setting.descEl.appendChild(error);
   }
 
-  const buy = new Setting(containerEl).setName("Get Book Studio Pro").setDesc(CHECKOUT_URL ? Object.values(PRO_FEATURES).join(" · ") : `Book Studio Pro isn't on sale yet. It will add: ${Object.values(PRO_FEATURES).join(" · ")}`);
-  if (CHECKOUT_URL) buy.addButton((b) => b.setButtonText("Buy").onClick(() => window.open(CHECKOUT_URL)));
-  if (CHECKOUT_URL && ACTIVATE_URL) buy.addButton((b) => b.setButtonText("I have bought it: get my key").onClick(() => window.open(ACTIVATE_URL)));
+  new Setting(containerEl)
+    .setName("Get Book Studio Pro")
+    .setDesc(`A one-time payment. ${Object.values(PRO_FEATURES).join(" · ")}`)
+    .addButton((b) => b.setButtonText("Get Book Studio Pro").onClick(() => window.open(SALES_PAGE)));
 
   if (PRO_PREVIEW) {
     new Setting(containerEl)
@@ -369,7 +384,7 @@ function licenseSettings(containerEl: HTMLElement, plugin: BookStudioPlugin, red
       );
   }
 
-  containerEl.createEl("p", { cls: "setting-item-description", text: "A key never expires. Book Studio makes no network requests: your notes and books never leave your device." });
+  containerEl.createEl("p", { cls: "setting-item-description", text: "A key never expires. Activate is the only network request Book Studio makes: your notes and books never leave your device." });
 }
 
 class LicenseModal extends Modal {

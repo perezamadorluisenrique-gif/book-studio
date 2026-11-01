@@ -6,6 +6,7 @@ import { append, clear, h, setElementFactory } from "../app/dom";
 import type { BookChoice, Dialog, OutputFile, Store, StudioHost } from "../app/host";
 import { renderLicensePanel } from "../app/license-panel";
 import { LicenseManager } from "../app/license-manager";
+import { fetchPost } from "./post";
 import { Studio } from "../app/studio";
 import type { VaultSource } from "../engine/book";
 import type { FontFile } from "../engine/fonts";
@@ -245,7 +246,7 @@ const host: StudioHost = {
   openUrl: (url) => void window.open(url, "_blank", "noopener"),
   openLicense: () => {
     const box = h("div");
-    renderLicensePanel(box, license, host);
+    renderLicensePanel(box, license, host, fetchPost);
     void showDialog("Book Studio Pro", [box], [{ label: "Done", value: "ok", primary: true }]);
   },
   bookKey: (path) => `${folder?.name ?? ""}/${path}`,

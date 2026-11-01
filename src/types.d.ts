@@ -10,6 +10,5 @@ declare module "hyphen/*" {
 declare const __FREE_EDITION__: boolean;
 declare const __PRO_PREVIEW__: boolean;
 declare const __EXTRA_PUBLIC_KEYS__: string;
-declare const __CHECKOUT_URL__: string;
-declare const __ACTIVATE_URL__: string;
+declare const __PRO_LICENSE_TEST__: import("./engine/license-online").OnlineConfig | null;
 declare const __VERSION__: string;
