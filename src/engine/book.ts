@@ -112,7 +112,7 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
     seriesNumber: Number(fmString(fm, "series-number", "series-index")) || undefined,
     accessibilitySummary: fmString(fm, "accessibility-summary"),
     editions: editionsOf(fmGet(fm, "editions")),
-    indexTerms: fmList(fm, "index-terms", "index").map((t) => t.trim()).filter(Boolean),
+    indexTerms: fmList(fm, "index-terms").map((t) => t.trim()).filter(Boolean),
     coverDesign: { blurb: [], bio: [] },
   };
   if (!authors.length) warnings.push({ message: "No author in the manifest frontmatter (author: Your Name).", src: { file: manifestPath, line: 1 } });

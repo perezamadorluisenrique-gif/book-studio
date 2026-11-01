@@ -93,7 +93,7 @@ export function settingsFromFrontmatter(fm: Record<string, unknown>, base: BookS
   const heads = fmString(fm, "running-heads")?.toLowerCase();
   const size = Number(fmString(fm, "font-size"));
   const paper = fmString(fm, "paper", "paper-color")?.toLowerCase();
-  const notes = fmString(fm, "notes", "note-placement", "footnotes")?.toLowerCase();
+  const notes = fmString(fm, "footnotes", "note-placement")?.toLowerCase();
   return {
     theme: fmString(fm, "theme")?.toLowerCase() ?? base.theme,
     trim: fmString(fm, "trim", "trim-size")?.toLowerCase().replace(/\s|"|in/g, "").replace("×", "x") ?? base.trim,

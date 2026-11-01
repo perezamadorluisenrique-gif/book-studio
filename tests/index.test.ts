@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { buildBook } from "../src/app/pipeline";
+import { buildBook, pdfBlockers } from "../src/app/pipeline";
 import type { FontSet } from "../src/engine/fonts";
 import { buildIndex, formatPages, parseIndexSpecs } from "../src/engine/index-terms";
 import { printBlockers } from "../src/engine/entitlements";
@@ -97,5 +97,17 @@ describe("the index in print", () => {
   it("is a Pro feature for print", () => {
     expect(printBlockers("free", { theme: "classic", trim: "6x9" }, { index: true }).map((x) => x.feature)).toEqual(["index"]);
     expect(printBlockers("pro", { theme: "classic", trim: "6x9" }, { index: true })).toEqual([]);
+  });
+});
+
+describe("keys a 0.1.3 book may already use", () => {
+  it("does not read a generic index or notes key as a Pro request", async () => {
+    const vault = memVault({
+      "Book.md": "---\nbook: true\ntitle: Old\nauthor: Ada Writer\nindex: true\nnotes: page\n---\n## Chapters\n1. [[One]]\n",
+      "One.md": "# One\n\nText.\n",
+    });
+    const b = await buildBook(vault, "Book.md", fonts);
+    expect(b.book.meta.indexTerms).toEqual([]);
+    expect(pdfBlockers("free", b)).toEqual([]);
   });
 });
