@@ -49,7 +49,7 @@ Kindle Create es gratis, lo ofrece Amazon y tiene una vía directa a KDP. Import
 - No tiene procesador de textos. Escribes en Obsidian u otro editor de Markdown.
 - El plan gratuito no incluye diseñador de cubiertas. Te da el ancho del lomo para quien la diseñe.
 - Tiene menos temas que Vellum.
-- El plan gratuito imprime un solo formato, 6 × 9. Book Studio Pro añade todos los formatos de KDP, más temas, cajas de libros y el paquete de EPUB accesible (pago único): [ver Pro](pro:).
+- El plan gratuito imprime tres formatos (6 × 9, 5 × 8, 5,5 × 8,5); Book Studio admite 12 de los 16 de KDP. Book Studio Pro añade los otros nueve, más temas, la cubierta completa, índice analítico, cajas de libros y el paquete de EPUB accesible (pago único): [ver Pro](pro:).
 - Es un proyecto joven, de un solo desarrollador.
 
 ## Cuál elegir

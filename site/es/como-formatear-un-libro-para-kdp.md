@@ -27,7 +27,7 @@ Añade una nota más con `book: true` en las propiedades. Bajo `## Preliminares`
 
 ## 3. Elige el tamaño de corte
 
-Decide el formato antes que nada, porque de él dependen el número de páginas y los márgenes. El plan gratuito imprime en 6 × 9 pulgadas, el tamaño de tapa blanda más habitual en KDP. Book Studio Pro añade todos los formatos de KDP (pago único): [ver Pro](pro:). Todos los formatos, la tabla de márgenes y las reglas de sangrado están en [tamaños de KDP: corte, márgenes y sangrado](guide:tamanos-kdp).
+Decide el formato antes que nada, porque de él dependen el número de páginas y los márgenes. El plan gratuito imprime en 6 × 9 pulgadas, el tamaño de tapa blanda más habitual en KDP, y en 5 × 8 y 5,5 × 8,5. Book Studio Pro añade nueve formatos más (pago único): [ver Pro](pro:). Todos los formatos, la tabla de márgenes y las reglas de sangrado están en [tamaños de KDP: corte, márgenes y sangrado](guide:tamanos-kdp).
 
 El margen interior (medianil) depende del número de páginas, y Book Studio lo fija por ti:
 

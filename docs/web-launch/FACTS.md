@@ -25,8 +25,9 @@ Source: KDP Help, "Set trim size, bleed, and margins", https://kdp.amazon.com/en
 - Front and back matter built for you: half title, title page, copyright page (ISBN, edition, publisher), dedication, epigraph, table of contents, "Also by" page, footnotes collected as endnotes ("Notes").
 - EPUB: semantic XHTML, navigable table of contents and landmarks, embedded fonts, cover, the book's language on every page, image descriptions from the Markdown alt text. An accessibility check flags images without a description.
 - Live paged preview (facing pages, zoom), and a Problems tab listing broken links and missing images with the note and line.
-- Free plan today: the 6 × 9 in trim (KDP's most common paperback size), Classic and Modern themes, print PDF and EPUB, no watermark, no page or book limit in the web app, no time limit.
-- Book Studio Pro (one-time purchase, not on sale yet; the page is https://perezamadorluisenrique-gif.github.io/pro/book-studio/ and `/es/` for Spanish): every KDP trim, every theme (Elegant, Nonfiction, Large Print, more), box sets, the accessible-EPUB pack (accessibility metadata, conformance claim and report). Say "Pro adds …" once per page; never say a price; never call anything that is free today a Pro feature.
+- Free plan (since book-studio #11): the 6 × 9, 5 × 8 and 5.5 × 8.5 in trims, Classic and Modern themes, print PDF and EPUB, unlimited books, no time limit. Free designs print with no watermark; a Pro design exported without a key carries a SAMPLE watermark.
+- Book Studio supports 12 of KDP's 16 trims (not 8.25 × 6, 8.25 × 8.25, 8.5 × 8.5, 8.27 × 11.69).
+- Book Studio Pro (one-time purchase; sale page https://perezamadorluisenrique-gif.github.io/pro/book-studio/ and `/es/`, "Coming soon" until the payment link exists): the other nine trims, every theme (Elegant, Non-fiction, Thriller, Romance, Fantasy), large print, KDP preflight with a report, a full wraparound cover (spine width, bleed, barcode area), footnotes at the page foot, a back-of-book index, several editions in one export, a KDP metadata sheet, box sets, the accessible-EPUB pack (accessibility metadata, image-description audit, conformance claim and report). Source: `PRO_FEATURES` in `src/engine/entitlements.ts`. Say "Pro adds …" once per page; never a price; never call anything that is free today a Pro feature.
 
 ## Sample books on the site
 

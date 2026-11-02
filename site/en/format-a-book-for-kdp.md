@@ -27,7 +27,7 @@ Add one more note with `book: true` in its front matter. Under `## Front matter`
 
 ## 3. Choose the trim size
 
-Pick your trim before you worry about anything else, because it decides the page count and the margins. The free plan prints 6 × 9 in, KDP's most common paperback size. Book Studio Pro adds every KDP trim (one-time purchase): [see Pro](pro:). All the KDP trims, the margin table and the bleed rules are in [KDP trim sizes, margins and bleed](guide:kdp-trim-sizes).
+Pick your trim before you worry about anything else, because it decides the page count and the margins. The free plan prints 6 × 9 in, KDP's most common paperback size, plus 5 × 8 and 5.5 × 8.5. Book Studio Pro adds nine more trims (one-time purchase): [see Pro](pro:). All the KDP trims, the margin table and the bleed rules are in [KDP trim sizes, margins and bleed](guide:kdp-trim-sizes).
 
 The inside margin depends on page count, and Book Studio sets it for you:
 

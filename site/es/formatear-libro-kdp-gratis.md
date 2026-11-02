@@ -22,7 +22,7 @@ Tampoco recoge nada. No hay cookies ni analítica. Tu manuscrito se queda en tu 
 
 ## Qué incluye el plan gratuito
 
-El plan gratuito imprime en el formato de 6 × 9 pulgadas, el tamaño de tapa blanda más habitual en KDP. Incluye los temas Classic y Modern, el PDF de imprenta y el EPUB. De los demás formatos y temas se habla en la sección Pro, más abajo.
+El plan gratuito imprime en tres formatos: 6 × 9 pulgadas, el tamaño de tapa blanda más habitual en KDP, y además 5 × 8 y 5,5 × 8,5. Incluye los temas Classic y Modern, el PDF de imprenta y el EPUB. De los demás formatos y temas se habla en la sección Pro, más abajo.
 
 ## Lo que hace el PDF por ti
 
@@ -56,10 +56,10 @@ En la app, una vista previa paginada muestra páginas enfrentadas y zoom. Una pe
 
 ## Lo que no hace
 
-No incluye procesador de textos: escribes en otra herramienta. El plan gratuito no tiene diseñador de cubiertas, solo te da el ancho del lomo. Imprime un solo formato. Y es un proyecto joven, de un solo desarrollador. Si comparas herramientas, [Book Studio frente a Vellum, Atticus y Kindle Create](guide:vellum-atticus-kindle-create) es una comparación honesta.
+No incluye procesador de textos: escribes en otra herramienta. El plan gratuito no tiene diseñador de cubiertas, solo te da el ancho del lomo. Imprime tres formatos. Y es un proyecto joven, de un solo desarrollador. Si comparas herramientas, [Book Studio frente a Vellum, Atticus y Kindle Create](guide:vellum-atticus-kindle-create) es una comparación honesta.
 
 ## Pro
 
-Book Studio Pro añade todos los formatos de KDP, más temas como Elegant, Nonfiction y Large Print, cajas de libros y el paquete de EPUB accesible (pago único). [Más sobre Book Studio Pro](pro:).
+Book Studio Pro añade nueve formatos de KDP más, más temas, letra grande, una revisión previa para KDP, la cubierta completa con lomo, notas al pie de página, índice analítico, cajas de libros y el paquete de EPUB accesible (pago único). [Más sobre Book Studio Pro](pro:).
 
 Cuando quieras, [abre la app](app:) y exporta tu primer PDF, o vuelve a [todas las guías](hub:).

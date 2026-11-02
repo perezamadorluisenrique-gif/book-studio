@@ -22,7 +22,7 @@ It also collects nothing. There are no cookies and no analytics. Your manuscript
 
 ## What the free plan includes
 
-The free plan prints the 6 × 9 in trim, which is KDP's most common paperback size. It includes the Classic and Modern themes, the print PDF and the EPUB. Other trim sizes and themes are covered in the Pro section below.
+The free plan prints three trims: 6 × 9 in, KDP's most common paperback size, plus 5 × 8 and 5.5 × 8.5. It includes the Classic and Modern themes, the print PDF and the EPUB. Other trim sizes and themes are covered in the Pro section below.
 
 ## What the PDF does for you
 
@@ -56,10 +56,10 @@ In the app, a live paged preview shows facing pages and zoom. A Problems tab lis
 
 ## What it does not do
 
-There is no built-in word processor. You write elsewhere. The free plan has no cover designer, only the spine width. It prints one trim. And it is a young project by one developer. If you are comparing tools, [Book Studio against Vellum, Atticus and Kindle Create](guide:vellum-atticus-kindle-create) is an honest side-by-side.
+There is no built-in word processor. You write elsewhere. The free plan has no cover designer, only the spine width. It prints three trims. And it is a young project by one developer. If you are comparing tools, [Book Studio against Vellum, Atticus and Kindle Create](guide:vellum-atticus-kindle-create) is an honest side-by-side.
 
 ## Pro
 
-Book Studio Pro adds every KDP trim, more themes such as Elegant, Nonfiction and Large Print, box sets and the accessible-EPUB pack (one-time purchase). [Read about Book Studio Pro](pro:).
+Book Studio Pro adds nine more KDP trims, more themes, large print, a KDP preflight check, a full wraparound cover, footnotes at the page foot, a back-of-book index, box sets and the accessible-EPUB pack (one-time purchase). [Read about Book Studio Pro](pro:).
 
 When you are ready, [open the app](app:) and export your first PDF. Or see [all guides](hub:).

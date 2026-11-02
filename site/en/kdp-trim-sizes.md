@@ -13,26 +13,26 @@ Pick a trim size, check that your page count fits it, then set the margins KDP r
 
 KDP lists these sizes in inches, width × height.
 
-| Trim (inches) | Note |
+| Trim (inches) | In Book Studio |
 |---|---|
-| 5 × 8 |  |
-| 5.06 × 7.81 |  |
-| 5.25 × 8 |  |
-| 5.5 × 8.5 |  |
-| 6 × 9 | KDP's most common; the free plan prints this |
-| 6.14 × 9.21 |  |
-| 6.69 × 9.61 |  |
-| 7 × 10 |  |
-| 7.44 × 9.69 |  |
-| 7.5 × 9.25 |  |
-| 8 × 10 |  |
-| 8.25 × 6 |  |
-| 8.25 × 8.25 |  |
-| 8.5 × 8.5 |  |
-| 8.5 × 11 |  |
-| 8.27 × 11.69 | A4 |
+| 5 × 8 | Free |
+| 5.06 × 7.81 | Pro |
+| 5.25 × 8 | Pro |
+| 5.5 × 8.5 | Free |
+| 6 × 9 | KDP's most common; free |
+| 6.14 × 9.21 | Pro |
+| 6.69 × 9.61 | Pro |
+| 7 × 10 | Pro |
+| 7.44 × 9.69 | Pro |
+| 7.5 × 9.25 | Pro |
+| 8 × 10 | Pro |
+| 8.25 × 6 | Not in Book Studio yet |
+| 8.25 × 8.25 | Not in Book Studio yet |
+| 8.5 × 8.5 | Not in Book Studio yet |
+| 8.5 × 11 | Pro |
+| 8.27 × 11.69 | A4; not in Book Studio yet |
 
-The 6 × 9 trim is KDP's most common paperback size. It is the trim the free plan of Book Studio prints. Book Studio Pro adds every KDP trim (one-time purchase): [see Pro](pro:).
+The 6 × 9 trim is KDP's most common paperback size. Book Studio's free plan prints 6 × 9, 5 × 8 and 5.5 × 8.5. Book Studio Pro adds the other nine trims in the table (one-time purchase): [see Pro](pro:). The four largest and square sizes are not in Book Studio yet.
 
 ## Inside margin depends on page count
 
