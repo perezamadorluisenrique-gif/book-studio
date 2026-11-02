@@ -4,6 +4,14 @@ The release workflow uses the section named after the version being released
 as the release description, so every version needs one. `npm version <x.y.z>`
 renames the `Unreleased` heading below to that version.
 
+## Unreleased
+
+- Free: unlimited books, and the 5" × 8" and 5.5" × 8.5" trims next to 6" × 9".
+- Book Studio Pro, a one-time payment unlocked by the license key from the purchase email (checked once with the payment service when you press Activate; offline signed keys are also accepted): more themes and trims, large print, KDP preflight with an HTML report, a full wraparound cover with barcode space, footnotes at the page foot, a back-of-book index, editions, a KDP details sheet and box sets.
+- Activate is the only network request, and nothing else is ever sent.
+- Without a key, the print PDF of a Pro design carries a SAMPLE watermark.
+- New manifest properties: `paper`, `footnotes`, `index-terms`, `editions`, `back-blurb`, `author-bio`, `author-photo`, `tagline`, `cover-background`, `cover-ink`, `spine-title`.
+
 ## 0.1.3
 
 - `![[Report.pdf]]` and other embeds that aren't notes or images are left out with a warning, instead of printing the file's raw bytes as text.

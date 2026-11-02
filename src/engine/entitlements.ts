@@ -1,28 +1,36 @@
 // What each plan includes. The engine never looks at a plan: hosts ask these
 // functions before a build or export and pass the answers to the engine.
 //
-// Free: one book, the Classic and Modern themes, 6" × 9" print, EPUB export.
-// Pro:  every trim and theme (including Large Print), any number of books,
-//       box sets, and the accessible-EPUB pack (accessibility metadata,
-//       image-description audit, conformance claim and report).
+// Free, for good: any number of books, the Classic and Modern themes, the three
+// most common trims (6" × 9", 5" × 8", 5.5" × 8.5"), print PDF, EPUB 3 with its
+// basic accessibility metadata, and the preview of everything. What 0.1.x let
+// people do is never taken away; tests/entitlements.test.ts holds that line.
+// Pro: every trim and theme (including Large Print), box sets, the KDP preflight,
+// the full cover, real footnotes, the back-of-book index, several editions at
+// once, the KDP metadata sheet, and the accessible-EPUB pack.
 
 import type { BookSettings } from "./model";
-import { FREE_TRIM } from "./trims";
+import { FREE_TRIMS } from "./trims";
 
 export type Plan = "free" | "pro";
 
 export const FREE_THEMES: readonly string[] = ["classic", "modern"];
-export { FREE_TRIM };
+export { FREE_TRIMS };
 
-export type ProFeature = "theme" | "trim" | "multiBook" | "accessiblePack" | "boxSets" | "largePrint";
+export type ProFeature = "theme" | "trim" | "accessiblePack" | "boxSets" | "largePrint" | "preflight" | "cover" | "footnotes" | "index" | "editions" | "kdpSheet";
 
 export const PRO_FEATURES: Record<ProFeature, string> = {
-  theme: "All themes",
-  trim: "All KDP trim sizes",
-  multiBook: "Unlimited books",
-  accessiblePack: "Accessible EPUB pack: accessibility metadata, image-description audit, conformance claim and report",
-  boxSets: "Box sets that combine several books",
+  theme: "Every theme, including Elegant, Non-fiction, Thriller, Romance and Fantasy",
+  trim: "All twelve KDP trim sizes",
   largePrint: "Large-print edition",
+  preflight: "KDP preflight: checks the finished PDF against KDP's rules before you upload it",
+  cover: "Full paperback cover: back, spine and front on one sheet, with spine width, bleed and barcode area",
+  footnotes: "Real footnotes at the foot of the page",
+  index: "Back-of-book index with page numbers, set in two columns",
+  editions: "Several editions of one book (paperback, large print, …) exported in one go",
+  kdpSheet: "A KDP metadata sheet ready to paste: title, series, keywords, description",
+  boxSets: "Box sets that combine several books",
+  accessiblePack: "Accessible EPUB pack: image-description audit, conformance claim and report",
 };
 
 export function themeAllowed(plan: Plan, theme: string): boolean {
@@ -30,7 +38,7 @@ export function themeAllowed(plan: Plan, theme: string): boolean {
 }
 
 export function trimAllowed(plan: Plan, trim: string): boolean {
-  return plan === "pro" || trim === FREE_TRIM;
+  return plan === "pro" || FREE_TRIMS.includes(trim);
 }
 
 /** Features that are wholly Pro; themes and trims are partly free, see above. */
@@ -45,14 +53,17 @@ export interface ExportBlocker {
 
 /**
  * Why a print export isn't included in the plan, if it isn't. Free users can
- * preview Pro themes and trims; only exporting them needs Pro.
+ * preview Pro themes and trims, and export a watermarked sample of them; only
+ * the clean export needs Pro.
  */
-export function printBlockers(plan: Plan, settings: Pick<BookSettings, "theme" | "trim">, opts: { boxSet?: boolean } = {}): ExportBlocker[] {
+export function printBlockers(plan: Plan, settings: Pick<BookSettings, "theme" | "trim"> & Partial<Pick<BookSettings, "footnotes">>, opts: { boxSet?: boolean; index?: boolean } = {}): ExportBlocker[] {
   if (plan === "pro") return [];
   const out: ExportBlocker[] = [];
   if (settings.theme === "large-print") out.push({ feature: "largePrint", message: "The Large Print theme is part of Book Studio Pro." });
   else if (!themeAllowed(plan, settings.theme)) out.push({ feature: "theme", message: `The ${settings.theme} theme is part of Book Studio Pro. Free includes Classic and Modern.` });
-  if (!trimAllowed(plan, settings.trim)) out.push({ feature: "trim", message: `The ${settings.trim} trim is part of Book Studio Pro. Free prints at 6" × 9".` });
+  if (!trimAllowed(plan, settings.trim)) out.push({ feature: "trim", message: `The ${settings.trim} trim is part of Book Studio Pro. Free prints at 6" × 9", 5" × 8" and 5.5" × 8.5".` });
+  if (settings.footnotes === "page") out.push({ feature: "footnotes", message: "Footnotes at the foot of the page are part of Book Studio Pro. Free sets notes together at the end of the book." });
+  if (opts.index) out.push({ feature: "index", message: "The back-of-book index is part of Book Studio Pro. Remove index-terms from the book note to export without it." });
   if (opts.boxSet) out.push({ feature: "boxSets", message: "Box sets are part of Book Studio Pro." });
   return out;
 }
@@ -68,29 +79,4 @@ export function epubBlockers(plan: Plan, settings: Pick<BookSettings, "theme">, 
   if (!themeAllowed(plan, settings.theme)) out.push({ feature: settings.theme === "large-print" ? "largePrint" : "theme", message: `The ${settings.theme} theme is part of Book Studio Pro. Free includes Classic and Modern.` });
   if (opts.boxSet) out.push({ feature: "boxSets", message: "Box sets are part of Book Studio Pro." });
   return out;
-}
-
-/**
- * The free plan's one book. Hosts keep the book the person chose; they can
- * move the free plan to another book once every FREE_SWITCH_INTERVAL.
- */
-export interface FreeBookState {
-  path: string | null;
-  /** When the free book last changed, ms since the epoch. */
-  since?: number;
-}
-
-export const FREE_SWITCH_INTERVAL = 7 * 24 * 60 * 60 * 1000;
-
-export type FreeBookCheck = { ok: true } | { ok: false; current: string; canSwitch: boolean; switchAt: number };
-
-export function checkFreeBook(plan: Plan, state: FreeBookState, manifestPath: string, now = Date.now()): FreeBookCheck {
-  if (plan === "pro" || !state.path || state.path === manifestPath) return { ok: true };
-  const switchAt = (state.since ?? 0) + FREE_SWITCH_INTERVAL;
-  return { ok: false, current: state.path, canSwitch: now >= switchAt, switchAt };
-}
-
-/** The state after making `manifestPath` the free book. */
-export function chooseFreeBook(state: FreeBookState, manifestPath: string, now = Date.now()): FreeBookState {
-  return state.path === manifestPath ? state : { path: manifestPath, since: now };
 }

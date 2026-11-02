@@ -10,6 +10,9 @@ interface BookStrings {
   contents: string;
   notes: string;
   alsoBy: string;
+  /** The back-of-book index. */
+  index: string;
+  see: string;
   numberWord: (n: number) => string | null;
 }
 
@@ -34,12 +37,12 @@ function esWord(n: number): string | null {
 }
 
 const STRINGS: Record<string, BookStrings> = {
-  en: { chapter: "Chapter", part: "Part", book: "Book", contents: "Contents", notes: "Notes", alsoBy: "Also by", numberWord: enWord },
-  es: { chapter: "Capítulo", part: "Parte", book: "Libro", contents: "Índice", notes: "Notas", alsoBy: "Del mismo autor", numberWord: esWord },
-  fr: { chapter: "Chapitre", part: "Partie", book: "Livre", contents: "Table des matières", notes: "Notes", alsoBy: "Du même auteur", numberWord: () => null },
-  de: { chapter: "Kapitel", part: "Teil", book: "Buch", contents: "Inhalt", notes: "Anmerkungen", alsoBy: "Vom selben Autor", numberWord: () => null },
-  it: { chapter: "Capitolo", part: "Parte", book: "Libro", contents: "Indice", notes: "Note", alsoBy: "Dello stesso autore", numberWord: () => null },
-  pt: { chapter: "Capítulo", part: "Parte", book: "Livro", contents: "Sumário", notes: "Notas", alsoBy: "Do mesmo autor", numberWord: () => null },
+  en: { chapter: "Chapter", part: "Part", book: "Book", contents: "Contents", notes: "Notes", alsoBy: "Also by", index: "Index", see: "see", numberWord: enWord },
+  es: { chapter: "Capítulo", part: "Parte", book: "Libro", contents: "Índice", notes: "Notas", alsoBy: "Del mismo autor", index: "Índice analítico", see: "véase", numberWord: esWord },
+  fr: { chapter: "Chapitre", part: "Partie", book: "Livre", contents: "Table des matières", notes: "Notes", alsoBy: "Du même auteur", index: "Index", see: "voir", numberWord: () => null },
+  de: { chapter: "Kapitel", part: "Teil", book: "Buch", contents: "Inhalt", notes: "Anmerkungen", alsoBy: "Vom selben Autor", index: "Register", see: "siehe", numberWord: () => null },
+  it: { chapter: "Capitolo", part: "Parte", book: "Libro", contents: "Indice", notes: "Note", alsoBy: "Dello stesso autore", index: "Indice analitico", see: "vedi", numberWord: () => null },
+  pt: { chapter: "Capítulo", part: "Parte", book: "Livro", contents: "Sumário", notes: "Notas", alsoBy: "Do mesmo autor", index: "Índice remissivo", see: "veja", numberWord: () => null },
 };
 
 export function strings(lang: string): BookStrings {

@@ -2,7 +2,6 @@
 
 import type { VaultSource } from "../engine/book";
 import type { FontLoader } from "../engine/fonts";
-import type { HttpPost } from "../engine/license";
 import type { SourceRef } from "../engine/model";
 
 export interface BookChoice {
@@ -39,7 +38,6 @@ export interface StudioHost {
   loadFont: FontLoader;
   /** Save an output; resolves to a message saying where, or null if cancelled. */
   save(file: OutputFile): Promise<string | null>;
-  http: HttpPost;
   store: Store;
   ask(dialog: Dialog): Promise<"ok" | "cancel" | "extra">;
   notify(message: string): void;
@@ -48,12 +46,8 @@ export interface StudioHost {
   openSource?(src: SourceRef): void;
   /** Open the host's license settings. */
   openLicense(): void;
-  /** Name for this device's license activation, e.g. "Obsidian". */
-  activationLabel: string;
   /** A stable name for a book across sessions, e.g. folder name plus path; defaults to the path. */
   bookKey?(path: string): string;
-  /** The open book is the bundled sample, which doesn't count as the free plan's book. */
-  isSample?(): boolean;
   /** Fill the empty state shown before a folder or vault has a book. */
   renderEmpty?(container: HTMLElement): void;
 }

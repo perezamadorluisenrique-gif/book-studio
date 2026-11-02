@@ -5,7 +5,9 @@ import type { ImageAsset } from "./model";
 export function imageInfo(path: string, bytes: Uint8Array): ImageAsset | null {
   if (bytes.length > 24 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
     const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    return { path, bytes, mime: "image/png", width: dv.getUint32(16), height: dv.getUint32(20) };
+    // IHDR colour type 4 (grey) and 6 (RGB) carry an alpha channel; a tRNS chunk adds one to the others.
+    const alpha = bytes[25] === 4 || bytes[25] === 6 || hasChunk(bytes, "tRNS");
+    return { path, bytes, mime: "image/png", width: dv.getUint32(16), height: dv.getUint32(20), alpha };
   }
   if (bytes.length > 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
     const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -35,4 +37,18 @@ export function mimeForPath(path: string): string {
   if (ext === "webp") return "image/webp";
   if (ext === "svg") return "image/svg+xml";
   return "application/octet-stream";
+}
+
+/** Whether a PNG has a chunk of this type before its image data. */
+function hasChunk(bytes: Uint8Array, type: string): boolean {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let i = 8;
+  while (i + 12 <= bytes.length) {
+    const len = dv.getUint32(i);
+    const name = String.fromCharCode(bytes[i + 4], bytes[i + 5], bytes[i + 6], bytes[i + 7]);
+    if (name === type) return true;
+    if (name === "IDAT" || name === "IEND") return false;
+    i += 12 + len;
+  }
+  return false;
 }

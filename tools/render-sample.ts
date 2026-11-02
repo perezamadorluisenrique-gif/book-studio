@@ -10,12 +10,15 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildBook, ebookBlockers, exportEpub, exportPdf, exportReport, pdfBlockers } from "../src/app/pipeline";
+import { buildBook, ebookBlockers, exportCover, exportEpub, exportPdf, exportReport, pdfBlockers } from "../src/app/pipeline";
+import { runPreflight } from "../src/engine/preflight";
+import { preflightReport } from "../src/engine/preflight-report";
+import { buildKdpSheet } from "../src/engine/kdp-sheet";
 import type { Plan } from "../src/engine/entitlements";
 import { FontSet } from "../src/engine/fonts";
 import { isManifestFrontmatter } from "../src/engine/manifest";
 import { splitFrontmatter } from "../src/engine/markdown";
-import type { BookSettings } from "../src/engine/model";
+import type { BookSettings, Paper } from "../src/engine/model";
 import { fsVault } from "../tests/helpers/fsVault";
 
 const say = (line: string): void => void process.stdout.write(`${line}\n`);
@@ -47,6 +50,7 @@ if (!manifest) {
 const overrides: Partial<BookSettings> = {};
 if (flags.theme) overrides.theme = flags.theme;
 if (flags.trim) overrides.trim = flags.trim;
+if (flags.paper) overrides.paper = flags.paper as Paper;
 
 const fonts = await FontSet.load(async (f) => new Uint8Array(readFileSync(new URL(`../fonts/${f}.ttf`, import.meta.url))));
 const built = await buildBook(vault, manifest, fonts, overrides);
@@ -66,6 +70,12 @@ if (pdfBlocked.length) say(`  print PDF skipped: ${pdfBlocked.map((b) => b.messa
 else {
   const pdf = await exportPdf(built, fonts);
   save(pdf.name, pdf.data);
+  if (plan === "pro") {
+    const report = await runPreflight({ book, layout, fonts, pdf: pdf.data });
+    save(`${pdf.name.replace(/\.pdf$/, "")}-preflight.html`, preflightReport(book, report));
+    say(`  preflight: ${report.ok ? "ok" : `${report.errors} error(s)`}, ${report.warnings} warning(s), ${report.passed.length} rules passed`);
+    for (const f of report.findings) say(`    ${f.severity}: ${f.message}${f.page ? ` (page ${f.page})` : ""}`);
+  }
 }
 
 const epubBlocked = ebookBlockers(plan, built);
@@ -76,7 +86,11 @@ else {
 }
 
 if (plan === "pro") {
+  const cover = await exportCover(built, fonts);
+  save(cover.name, cover.data);
+  for (const f of cover.cover.findings) say(`  cover ${f.severity}: ${f.message}`);
   const report = exportReport(built, plan, choices);
   save(report.name, report.data);
+  save("kdp-sheet.txt", buildKdpSheet(book, layout.pages.length).text);
 }
 say(`  accessibility: ${audit.passed ? "passes every automated check" : `${audit.issues.length} issue(s) to look at`}.`);

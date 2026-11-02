@@ -5,14 +5,18 @@ import { join, relative, sep } from "node:path";
 
 const production = process.argv[2] === "production";
 const only = process.argv[3]; // "plugin" | "web" | undefined (both)
-// Pro builds let people try Pro features without a license key unless
-// BOOK_STUDIO_PRO_PREVIEW=0; Pro release builds also set the Polar settings.
-// Builds are the free edition, which leaves Pro and licensing out entirely,
-// unless BOOK_STUDIO_EDITION=pro.
-const freeEdition = process.env.BOOK_STUDIO_EDITION !== "pro";
-const proPreview = !freeEdition && process.env.BOOK_STUDIO_PRO_PREVIEW !== "0";
-const polarOrg = process.env.BOOK_STUDIO_POLAR_ORG_ID ?? "";
-const checkoutUrl = process.env.BOOK_STUDIO_CHECKOUT_URL ?? "";
+// The default build is the full one: free features plus Pro, unlocked by a
+// license key that is checked on the device. BOOK_STUDIO_EDITION=community
+// leaves Pro and licensing out entirely. Developer settings, none of them set
+// for a release:
+//   BOOK_STUDIO_PRO_PREVIEW=1       lets people try Pro without a key
+//   BOOK_STUDIO_EXTRA_PUBLIC_KEYS   "kid:hex,..." extra license keys, for tests
+//   PRO_LICENSE_TEST_API            e2e only: a local stand-in for the payment
+//                                   service's licence endpoint (never in a release)
+const freeEdition = process.env.BOOK_STUDIO_EDITION === "community";
+const proPreview = !freeEdition && process.env.BOOK_STUDIO_PRO_PREVIEW === "1";
+const extraKeys = process.env.BOOK_STUDIO_EXTRA_PUBLIC_KEYS ?? "";
+const proLicenseTestApi = (process.env.PRO_LICENSE_TEST_API ?? "").replace(/\/+$/, "");
 
 // JSZip's prebuilt browser file asks the page's require() for Node's
 // "stream", which Obsidian reports as an error. Bundling JSZip from its source
@@ -54,8 +58,9 @@ const common = {
   define: {
     __FREE_EDITION__: JSON.stringify(freeEdition),
     __PRO_PREVIEW__: JSON.stringify(proPreview),
-    __POLAR_ORG_ID__: JSON.stringify(polarOrg),
-    __CHECKOUT_URL__: JSON.stringify(checkoutUrl),
+    __EXTRA_PUBLIC_KEYS__: JSON.stringify(extraKeys),
+    // The whole e2e configuration lives here, so a release build has none of it.
+    __PRO_LICENSE_TEST__: JSON.stringify(proLicenseTestApi ? { provider: "polar", accountId: "e2e-org", productId: "e2e-benefit", apiBase: proLicenseTestApi } : null),
     __VERSION__: JSON.stringify(JSON.parse(readFileSync("manifest.json", "utf8")).version),
   },
   loader: { ".ttf": "binary" },

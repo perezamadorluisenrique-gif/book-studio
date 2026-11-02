@@ -13,7 +13,7 @@ export default defineConfig([
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ["eslint.config.mjs", "esbuild.config.mjs"],
+          allowDefaultProject: ["eslint.config.mjs", "esbuild.config.mjs", "tools/*.mjs"],
         },
       },
     },
@@ -21,7 +21,7 @@ export default defineConfig([
       "obsidianmd/ui/sentence-case": [
         "warn",
         {
-          brands: [...DEFAULT_BRANDS, "Book Studio", "Book Studio Pro", "Polar"],
+          brands: [...DEFAULT_BRANDS, "Book Studio", "Book Studio Pro"],
           acronyms: [...DEFAULT_ACRONYMS, "EPUB", "KDP", "WCAG"],
         },
       ],
@@ -30,8 +30,8 @@ export default defineConfig([
     },
   },
   {
-    files: ["*.mjs", "tools/**"],
-    languageOptions: { globals: { process: "readonly", console: "readonly" } },
+    files: ["*.mjs", "tools/**", "tests/**"],
+    languageOptions: { globals: { process: "readonly", console: "readonly", Buffer: "readonly" } },
   },
   {
     // Build-time constants replaced by esbuild's define (see src/types.d.ts).

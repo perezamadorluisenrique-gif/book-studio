@@ -3,7 +3,7 @@
 // and the web app both mount it; everything host-specific goes through StudioHost.
 
 import { FREE_EDITION, PRO_PREVIEW } from "../config";
-import { checkFreeBook, chooseFreeBook, FREE_SWITCH_INTERVAL, hasFeature, PRO_FEATURES, themeAllowed, trimAllowed, type ExportBlocker, type FreeBookState, type Plan } from "../engine/entitlements";
+import { hasFeature, PRO_FEATURES, themeAllowed, trimAllowed, type ExportBlocker, type Plan } from "../engine/entitlements";
 import { FontSet } from "../engine/fonts";
 import type { BookSettings, SourceRef } from "../engine/model";
 import { THEMES } from "../engine/themes";
@@ -12,9 +12,10 @@ import { PagePainter } from "../preview/canvas";
 import { append, clear, h, nextFrame, select } from "./dom";
 import type { BookChoice, StudioHost } from "./host";
 import type { LicenseManager } from "./license-manager";
-import { buildBook, ebookBlockers, exportEpub, exportPdf, exportReport, pdfBlockers, spineWidth, type Built, type EpubChoices } from "./pipeline";
+import { KdpPanel } from "./kdp-panel";
+import { buildBook, ebookBlockers, exportEdition, exportEpub, exportPdf, exportReport, pdfBlockers, planEditions, spineWidth, type Built, type EpubChoices } from "./pipeline";
 
-type Tab = "preview" | "problems" | "accessibility";
+type Tab = "preview" | "problems" | "kdp" | "accessibility";
 type Zoom = "page" | "fit" | "0.5" | "0.75" | "1" | "1.5" | "2";
 
 const ZOOMS: { value: Zoom; label: string }[] = [
@@ -58,6 +59,7 @@ export class Studio {
   private resize: ResizeObserver | null = null;
   private unsubscribe: () => void;
   private disposed = false;
+  private kdp: KdpPanel;
 
   private bookSelect = h("select", { cls: "bs-book", attr: { "aria-label": "Book" } });
   private planBox = h("div", { cls: "bs-plan" });
@@ -70,13 +72,14 @@ export class Studio {
   private pdfButton = h("button", { cls: "mod-cta bs-primary", text: "Export print PDF" });
   private epubButton = h("button", { text: "Export EPUB" });
   private reportButton = h("button", { text: "Accessibility report" });
+  private editionsButton = h("button", { text: "Export all editions" });
 
   constructor(
     private host: StudioHost,
     container: HTMLElement,
     private license: LicenseManager,
   ) {
-    const tabIds: Tab[] = ["preview", "problems", "accessibility"];
+    const tabIds: Tab[] = ["preview", "problems", "kdp", "accessibility"];
     const uid = Math.random().toString(36).slice(2, 8);
     this.tabs = {} as Record<Tab, HTMLButtonElement>;
     this.panels = {} as Record<Tab, HTMLElement>;
@@ -91,6 +94,8 @@ export class Studio {
     this.epubButton.addEventListener("click", () => void this.exportEpub());
     this.reportButton.addEventListener("click", () => void this.exportReport());
     this.reportButton.hidden = FREE_EDITION;
+    this.editionsButton.hidden = true;
+    this.editionsButton.addEventListener("click", () => void this.exportEditions());
 
     this.root = h(
       "div",
@@ -104,11 +109,25 @@ export class Studio {
         this.planBox,
       ),
       this.settingsBar,
-      h("div", { cls: "bs-bar bs-actions" }, this.pdfButton, this.epubButton, this.reportButton),
+      h("div", { cls: "bs-bar bs-actions" }, this.pdfButton, this.epubButton, this.reportButton, this.editionsButton),
       this.status,
       h("div", { cls: "bs-tabs", attr: { role: "tablist", "aria-label": "Book Studio views" } }, ...tabIds.map((t) => this.tabs[t])),
       ...tabIds.map((t) => this.panels[t]),
     );
+    this.kdp = new KdpPanel(this.panels.kdp, {
+      host: this.host,
+      plan: () => this.plan(),
+      built: () => this.built,
+      fonts: () => this.loadFonts(),
+      painter: () => this.painter,
+      gate: async (b) => (await this.gate(b)) === true,
+      write: (m, make) => this.write(m, make),
+      showPage: (folio) => {
+        const index = this.built?.layout.pages.findIndex((p) => p.folio === folio) ?? -1;
+        if (index >= 0) this.scrollToPage(index);
+      },
+      openLicense: () => this.host.openLicense(),
+    });
     container.appendChild(this.root);
     this.unsubscribe = this.license.onChange(() => this.planChanged());
     this.showTab("preview");
@@ -227,6 +246,7 @@ export class Studio {
       if (this.disposed || path !== this.current) return;
       this.painter?.dispose();
       this.painter = new PagePainter(fonts, built.book.images);
+      this.kdp.fontsNow = fonts;
       this.built = built;
       this.renderAll();
     } catch (e) {
@@ -269,8 +289,11 @@ export class Studio {
     append(this.planBox, h("button", { text: plan === "pro" && !this.license.previewPro ? "License" : "Get Pro", on: { click: () => this.host.openLicense() } }));
   }
 
-  /** Ask before an export the plan doesn't include. Resolves true to go ahead. */
-  private async gate(blockers: ExportBlocker[]): Promise<boolean> {
+  /**
+   * Ask before an export the plan doesn't include. Resolves true to go ahead, or
+   * "sample" when the person picks the watermarked sample (print PDFs only).
+   */
+  private async gate(blockers: ExportBlocker[], offerSample = false): Promise<boolean | "sample"> {
     if (!blockers.length) return true;
     if (FREE_EDITION) {
       await this.host.ask({ title: "Not available in this edition", message: `${blockers.map((b) => editionMessage(b.message)).join("\n")}\n\nChoose an included option in the toolbar to export.`, ok: "OK" });
@@ -278,61 +301,17 @@ export class Studio {
     }
     const answer = await this.host.ask({
       title: "This export needs Book Studio Pro",
-      message: `${blockers.map((b) => b.message).join("\n")}\n\nYou can keep previewing everything; switch to an included option to export on the free plan.`,
+      message: `${blockers.map((b) => b.message).join("\n")}\n\nYou can keep previewing everything; switch to an included option to export on the free plan.${offerSample ? " Or export a sample: the same PDF with a SAMPLE watermark on every page, to try in KDP's previewer." : ""}`,
       ok: "Get Pro",
       cancel: "Not now",
-      extra: PRO_PREVIEW ? "Try Pro preview" : undefined,
+      extra: offerSample ? "Export a sample" : PRO_PREVIEW ? "Try Pro preview" : undefined,
     });
     if (answer === "ok") this.host.openLicense();
     if (answer === "extra") {
+      if (offerSample) return "sample";
       this.license.previewPro = true;
       return true;
     }
-    return false;
-  }
-
-  private titleOf(path: string): string {
-    return this.books.find((b) => b.path === path || this.host.bookKey?.(b.path) === path)?.title ?? path.replace(/^.*\//, "").replace(/\.md$/i, "");
-  }
-
-  /** The free plan's one-book rule. Resolves true to go ahead. */
-  private async freeBookOk(): Promise<boolean> {
-    const path = this.current;
-    if (!path) return false;
-    if (FREE_EDITION || this.host.isSample?.()) return true;
-    const key = this.host.bookKey?.(path) ?? path;
-    const state = this.host.store.get<FreeBookState>("freeBook") ?? { path: null };
-    const check = checkFreeBook(this.plan(), state, key);
-    const title = this.titleOf(path);
-    if (check.ok) {
-      if (this.plan() === "free" && state.path !== key) {
-        this.host.store.set("freeBook", chooseFreeBook(state, key));
-        this.host.notify(`“${title}” is now your free book. The free plan covers one book at a time.`);
-      }
-      return true;
-    }
-    const current = this.titleOf(check.current);
-    const days = Math.round(FREE_SWITCH_INTERVAL / 86_400_000);
-    if (check.canSwitch) {
-      const answer = await this.host.ask({
-        title: "Switch your free book?",
-        message: `The free plan covers one book at a time. Your free book is “${current}”. Make it “${title}” instead? You can switch again in ${days} days.`,
-        ok: "Switch",
-        cancel: "Cancel",
-        extra: "Get Pro",
-      });
-      if (answer === "extra") this.host.openLicense();
-      if (answer !== "ok") return false;
-      this.host.store.set("freeBook", chooseFreeBook(state, key));
-      return true;
-    }
-    const answer = await this.host.ask({
-      title: "The free plan covers one book",
-      message: `Your free book is “${current}”. You can switch to another book on ${new Date(check.switchAt).toLocaleDateString(undefined, { dateStyle: "medium" })}, or get Pro for any number of books.`,
-      ok: "Get Pro",
-      cancel: "Close",
-    });
-    if (answer === "ok") this.host.openLicense();
     return false;
   }
 
@@ -345,9 +324,11 @@ export class Studio {
   async exportPdf(): Promise<void> {
     const built = await this.ensureBuilt();
     if (!built) return this.host.notify("Open a book first.");
-    if (!(await this.gate(pdfBlockers(this.plan(), built))) || !(await this.freeBookOk())) return;
-    await this.write("Writing the print PDF…", async () => {
-      const out = await exportPdf(built, await this.loadFonts());
+    const go = await this.gate(pdfBlockers(this.plan(), built), true);
+    if (!go) return;
+    const sample = go === "sample";
+    await this.write(sample ? "Writing the sample PDF…" : "Writing the print PDF…", async () => {
+      const out = await exportPdf(built, await this.loadFonts(), { sample });
       return { ...out, mime: "application/pdf" };
     });
   }
@@ -355,7 +336,7 @@ export class Studio {
   async exportEpub(): Promise<void> {
     const built = await this.ensureBuilt();
     if (!built) return this.host.notify("Open a book first.");
-    if (!(await this.gate(ebookBlockers(this.plan(), built))) || !(await this.freeBookOk())) return;
+    if ((await this.gate(ebookBlockers(this.plan(), built))) !== true) return;
     const plan = this.plan();
     await this.write("Writing the EPUB…", async () => {
       const out = await exportEpub(built, await this.loadFonts(), plan, this.choices());
@@ -372,6 +353,39 @@ export class Studio {
       if (!hasFeature(this.plan(), "accessiblePack")) return;
     }
     await this.write("Writing the report…", async () => ({ ...exportReport(built, this.plan(), this.choices()), mime: "text/html" }));
+  }
+
+  async exportEditions(): Promise<void> {
+    const built = await this.ensureBuilt();
+    const source = this.host.source();
+    const path = this.current;
+    if (!built || !source || !path) return this.host.notify("Open a book first.");
+    const plan = planEditions(built.book);
+    if (!plan.editions.length) return this.host.notify("This book has no editions: add an editions: block to the book note.");
+    if (!hasFeature(this.plan(), "editions")) {
+      await this.gate([{ feature: "editions", message: "Exporting several editions at once is part of Book Studio Pro." }]);
+      if (!hasFeature(this.plan(), "editions")) return;
+    }
+    if (plan.problems.length) {
+      const answer = await this.host.ask({ title: "Check the editions first", message: `${plan.problems.join("\n")}\n\nExport anyway?`, ok: "Export anyway", cancel: "Cancel" });
+      if (answer !== "ok") return;
+    }
+    const fonts = await this.loadFonts();
+    const before = this.status.textContent ?? "";
+    try {
+      // One edition at a time: a phone shouldn't have to hold several books in memory.
+      for (const [i, edition] of plan.editions.entries()) {
+        this.setStatus(`Building edition ${edition.id} (${i + 1} of ${plan.editions.length})…`, true);
+        await nextFrame();
+        const files = await exportEdition(source, path, fonts, edition, this.plan(), this.choices());
+        for (const f of files) await this.host.save(f);
+      }
+      this.host.notify(`Exported ${plan.editions.length} edition${plan.editions.length === 1 ? "" : "s"}.`);
+      this.setStatus(before);
+    } catch (e) {
+      console.error("Book Studio:", e);
+      this.setStatus(`Export failed: ${e instanceof Error ? e.message : String(e)}`, false, true);
+    }
   }
 
   private async write(message: string, make: () => Promise<{ name: string; mime: string; data: Uint8Array | string }>): Promise<void> {
@@ -412,18 +426,20 @@ export class Studio {
       h("pre", { text: "---\nbook: true\ntitle: The Lighthouse Keeper\nauthor: Jane Doe\n---\n## Chapters\n1. [[The Storm]]\n2. [[Landfall]]" }),
     );
     this.pagesEl.appendChild(box);
-    for (const b of [this.pdfButton, this.epubButton, this.reportButton]) b.disabled = true;
+    for (const b of [this.pdfButton, this.epubButton, this.reportButton, this.editionsButton]) b.disabled = true;
     this.renderTabs();
   }
 
   private renderAll(): void {
     const built = this.built;
     if (!built) return;
-    for (const b of [this.pdfButton, this.epubButton, this.reportButton]) b.disabled = false;
+    for (const b of [this.pdfButton, this.epubButton, this.reportButton, this.editionsButton]) b.disabled = false;
+    this.editionsButton.hidden = FREE_EDITION || Object.keys(built.book.meta.editions).length === 0;
     this.renderSettings();
     this.renderStatus();
     this.renderPreview();
     this.renderProblems();
+    this.kdp.render();
     this.renderAccessibility();
     this.renderTabs();
   }
@@ -432,7 +448,7 @@ export class Studio {
     const { book, layout, ms } = this.built!;
     const pages = layout.pages.length;
     const gutter = (layout.margins.inside / 72).toFixed(3).replace(/0+$/, "");
-    this.setStatus(`${book.meta.title}: ${pages} pages at ${layout.trim.label}, inside margin ${gutter} in, spine ${spineWidth(pages).toFixed(3)} in on white paper. Built in ${ms} ms.`);
+    this.setStatus(`${book.meta.title}: ${pages} pages at ${layout.trim.label}, inside margin ${gutter} in, spine ${spineWidth(pages, book.settings.paper).toFixed(3)} in on ${book.settings.paper === "white" ? "white" : book.settings.paper === "cream" ? "cream" : "premium color"} paper. Built in ${ms} ms.`);
   }
 
   private renderSettings(): void {
@@ -450,6 +466,11 @@ export class Studio {
       s.trim,
       { attr: { "aria-label": "Trim size" }, on: { change: () => this.setOverride({ trim: trim.value }) } },
     );
+    const paper = select(
+      (["white", "cream", "color"] as const).map((p) => ({ value: p, label: { white: "White paper", cream: "Cream paper", color: "Premium color" }[p] })),
+      s.paper,
+      { attr: { "aria-label": "Interior paper" }, on: { change: () => this.setOverride({ paper: paper.value as BookSettings["paper"] }) } },
+    );
     const start = select(
       [
         { value: "recto", label: "Right-hand page" },
@@ -463,6 +484,7 @@ export class Studio {
       this.settingsBar,
       h("label", { cls: "bs-field" }, h("span", { text: "Theme" }), theme),
       h("label", { cls: "bs-field" }, h("span", { text: "Trim" }), trim),
+      h("label", { cls: "bs-field" }, h("span", { text: "Paper" }), paper),
       h("label", { cls: "bs-field" }, h("span", { text: "Chapters start on" }), start),
       h("label", { cls: "bs-check" }, bleed, "Bleed"),
     );
@@ -764,6 +786,8 @@ export class Studio {
     this.tabs.preview.textContent = "Preview";
     this.tabs.problems.textContent = problems ? `Problems (${problems})` : "Problems";
     // The free edition's EPUB has no accessibility pack, so there is nothing to show.
+    this.tabs.kdp.hidden = FREE_EDITION;
+    this.tabs.kdp.textContent = "KDP";
     this.tabs.accessibility.hidden = FREE_EDITION;
     this.tabs.accessibility.textContent = audit && pro && !audit.passed ? "Accessibility (!)" : pro || FREE_EDITION ? "Accessibility" : "Accessibility (Pro)";
   }
@@ -778,7 +802,7 @@ export class Studio {
   }
 
   private tabKey(e: KeyboardEvent, tab: Tab): void {
-    const order: Tab[] = FREE_EDITION ? ["preview", "problems"] : ["preview", "problems", "accessibility"];
+    const order: Tab[] = FREE_EDITION ? ["preview", "problems"] : ["preview", "problems", "kdp", "accessibility"];
     const i = order.indexOf(tab);
     let next: Tab | null = null;
     if (e.key === "ArrowRight") next = order[(i + 1) % order.length];
