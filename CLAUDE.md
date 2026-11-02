@@ -1,5 +1,5 @@
 # Orientation
-- Before exploring, read `.claude/REPO_MAP.md` (files + top-level symbols, regenerated each session) and use the `repo-map` skill; delegate multi-file searches to the Explore subagent.
+- Before exploring, read `.claude/REPO_MAP.md` (files + top-level symbols; a SessionStart hook regenerates it, but repo hooks don't run in multi-repo sessions, so if it is missing run `python3 .claude/scripts/repo-map.py`) and use the `repo-map` skill; delegate multi-file searches to the Explore subagent.
 - Read large files with `offset`/`limit`; use Grep to locate first.
 
 # Compact instructions
