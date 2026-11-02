@@ -11,6 +11,9 @@ renames the `Unreleased` heading below to that version.
 - Activate is the only network request, and nothing else is ever sent.
 - Without a key, the print PDF of a Pro design carries a SAMPLE watermark.
 - New manifest properties: `paper`, `footnotes`, `index-terms`, `editions`, `back-blurb`, `author-bio`, `author-photo`, `tagline`, `cover-background`, `cover-ink`, `spine-title`.
+- Book notes can use Spanish section headings: `## Preliminares`, `## Capítulos`, `## Parte final` or `## Apéndices`.
+- Checkboxes are 24 px on touch screens and narrow windows.
+- Web app: guides for KDP authors in English and Spanish, a second sample book (Bécquer, *Leyendas y rimas*) and downloadable sample PDFs, EPUBs and sources.
 
 ## 0.1.3
 

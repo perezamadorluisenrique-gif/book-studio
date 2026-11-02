@@ -3,8 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Book Studio</title>
+    <title>Book Studio: free KDP book formatter in your browser</title>
     <meta name="description" content="Turn a folder of Markdown notes into a print-ready paperback PDF and an accessible EPUB 3. Everything runs in your browser." />
+    <link rel="canonical" href="https://perezamadorluisenrique-gif.github.io/book-studio/" />
+    <link rel="alternate" hreflang="en" href="https://perezamadorluisenrique-gif.github.io/book-studio/en/" />
+    <link rel="alternate" hreflang="es" href="https://perezamadorluisenrique-gif.github.io/book-studio/es/" />
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="studio.css" />
     <script type="module" src="app.js"></script>
@@ -18,6 +21,10 @@
         <button type="button" id="reopen-folder" hidden>Reopen</button>
         <button type="button" id="open-sample">Sample book</button>
         <input type="file" id="folder-input" webkitdirectory multiple hidden />
+      </nav>
+      <nav class="app-guides" aria-label="Guides">
+        <a href="en/">KDP guides</a>
+        <a href="es/" lang="es" hreflang="es">Guías en español</a>
       </nav>
     </header>
     <main id="studio" class="app-main"></main>

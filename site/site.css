@@ -1,0 +1,306 @@
+/* The guide pages around the web app. Same palette as the app (src/web/app.css). */
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("fonts/AtkinsonHyperlegible-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("fonts/AtkinsonHyperlegible-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("fonts/AtkinsonHyperlegible-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Crimson Pro";
+  src: url("fonts/CrimsonPro-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light dark;
+  --bg: #f7f6f2;
+  --fg: #1d1d1f;
+  --muted: #55555c;
+  --line: #d9d8d3;
+  --accent: #5e3f8a;
+  --on-accent: #ffffff;
+  --surface: #ffffff;
+  --code: #efede7;
+  --measure: 42rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #18181b;
+    --fg: #ececf0;
+    --muted: #b0b0b8;
+    --line: #3a3a40;
+    --accent: #c4aee6;
+    --on-accent: #18181b;
+    --surface: #222226;
+    --code: #26262b;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 1.0625rem/1.65 "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 0.15em;
+}
+
+/* Links in running text get a 24 px tall hit area (WCAG 2.5.8) without moving the lines. */
+main a {
+  padding: 0.25em 0;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.skip {
+  position: absolute;
+  left: -999px;
+  top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  z-index: 10;
+}
+
+.skip:focus {
+  left: 0.5rem;
+}
+
+.site-header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.site-header nav {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1.25rem;
+}
+
+.site-header a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: none;
+  color: var(--fg);
+}
+
+.site-header a:hover {
+  text-decoration: underline;
+}
+
+.site-header .brand {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-weight: 700;
+  font-size: 1.35rem;
+  margin-right: auto;
+}
+
+.site-header .cta {
+  padding: 0 1rem;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+
+.site-header .cta:hover {
+  text-decoration: none;
+  filter: brightness(1.08);
+}
+
+main {
+  max-width: calc(var(--measure) + 2rem);
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-weight: 700;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: clamp(2rem, 6vw, 2.75rem);
+  margin: 0 0 0.5rem;
+}
+
+h2 {
+  font-size: 1.6rem;
+  margin: 2.25rem 0 0.5rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+  margin: 1.75rem 0 0.25rem;
+}
+
+p,
+ul,
+ol {
+  margin: 0 0 1rem;
+}
+
+li + li {
+  margin-top: 0.35rem;
+}
+
+.updated,
+.muted {
+  color: var(--muted);
+}
+
+.updated {
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--code);
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+}
+
+pre {
+  background: var(--code);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  line-height: 1.45;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+}
+
+blockquote {
+  margin: 0 0 1rem;
+  padding: 0.25rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--surface);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 0 0 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95rem;
+}
+
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+thead th {
+  background: var(--code);
+}
+
+tbody th {
+  font-weight: 700;
+}
+
+.guide-list {
+  list-style: none;
+  padding: 0;
+}
+
+.guide-list li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--line);
+  margin: 0;
+}
+
+.guide-list a {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  padding: 1.5rem 1rem 2rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.site-footer p {
+  max-width: 48rem;
+  margin: 0 auto 0.5rem;
+}
+
+.site-footer a {
+  display: inline-block;
+  padding: 0.6rem 0.25rem;
+}

@@ -159,19 +159,25 @@ Open the studio from the ribbon icon or the command palette. The commands are *O
 
 Open [the web app](https://perezamadorluisenrique-gif.github.io/book-studio/) and choose **Open a folder** to load your own notes. To host it yourself, `npm run build:web` writes a static site to `dist/web/` that any static host can serve.
 
+The site also has guides for KDP authors in [English](https://perezamadorluisenrique-gif.github.io/book-studio/en/) and [Spanish](https://perezamadorluisenrique-gif.github.io/book-studio/es/) (trim sizes and margins, accessible EPUB, Markdown to book, a comparison with other formatters) and two sample books to download as print PDF, EPUB and Markdown source: *The Wonderful Wizard of Oz* and Bécquer's *Leyendas y rimas* (`?sample=leyendas` opens it in the app).
+
 ## Development
 
 ```sh
 npm install
 npm run build          # plugin (main.js, styles.css)
 npm run build:all      # plugin and web app
-npm run build:web      # just the web app
+npm run build:web      # the web app, the sample downloads and the guide pages (dist/web/)
+npm run downloads      # sample PDFs, EPUBs and source zips; fails if a PDF breaks a KDP rule
+npm run epubcheck      # W3C EPUBCheck on the sample EPUBs (needs Java)
 npm run dev            # unminified builds with source maps
 npm run typecheck
 npm run lint           # ESLint with Obsidian's plugin review rules
-npm test               # Vitest: parsing, layout, EPUB, audit
+npm test               # Vitest: parsing, layout, EPUB, audit, KDP check, guide pages
 npm run sample         # render the sample book to out/ from the command line
 ```
+
+The guide pages are Markdown in `site/en/` and `site/es/`, built by `tools/site.mjs` (no JavaScript on the pages, no requests to other hosts). Their facts and sources are in `docs/web-launch/FACTS.md`.
 
 `npm run sample` runs the same pipeline from Node, which helps when checking output. Its script, `tools/render-sample.ts`, is a development tool that reads and writes files with `node:fs` and `node:path`; it is not part of the plugin, which never touches the file system outside Obsidian's vault API:
 

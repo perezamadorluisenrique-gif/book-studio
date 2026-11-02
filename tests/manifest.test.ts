@@ -36,6 +36,11 @@ describe("manifest", () => {
     ]);
   });
 
+  it("reads section headings written in Spanish", () => {
+    const m = parseManifest("---\nbook: true\n---\n## Preliminares\n- [[Prólogo]]\n## Capítulos\n1. [[Uno]]\n## Parte final\n- [[Epílogo]]\n## Apéndices\n- [[Notas]]\n");
+    expect(m.entries.map((e) => (e.kind === "part" ? e.title : `${e.matter}:${e.target}`))).toEqual(["front:Prólogo", "body:Uno", "back:Epílogo", "back:Notas"]);
+  });
+
   it("reads layout settings in the spellings people write", () => {
     const { settings } = parseManifest(MANIFEST);
     expect(settings).toMatchObject({ trim: "5.5x8.5", theme: "elegant" });

@@ -1,5 +1,7 @@
-# Publishes the web app (the same studio, in the browser) to GitHub Pages on
-# every push to main. Pages must be set to "GitHub Actions" once, under
+# Publishes the web app (the same studio, in the browser), the guide pages and
+# the sample downloads to GitHub Pages on every push to main. Nothing deploys
+# unless every sample PDF passes the KDP check (inside `npm run build:web`) and
+# every sample EPUB passes EPUBCheck. Pages must be set to "GitHub Actions" once, under
 # Settings -> Pages -> Build and deployment -> Source.
 name: Web app
 
@@ -29,8 +31,14 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
       - run: npm ci
+      - run: npm test
       - run: npm run build:web
+      - run: npm run epubcheck
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

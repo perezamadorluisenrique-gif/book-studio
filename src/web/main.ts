@@ -73,8 +73,16 @@ function folderFromFiles(list: FileList): Folder {
   return { name, paths: [...files.keys()], file: async (p) => need(files.get(p), p) };
 }
 
+// The bundled sample books; `?sample=leyendas` opens the Spanish one (the guides link to it).
+const SAMPLES = ["oz", "leyendas"];
+
+function sampleName(): string {
+  const asked = new URLSearchParams(location.search).get("sample") ?? "";
+  return SAMPLES.includes(asked) ? asked : SAMPLES[0];
+}
+
 async function sampleFolder(): Promise<Folder> {
-  const base = new URL("sample/oz/", doc.baseURI);
+  const base = new URL(`sample/${sampleName()}/`, doc.baseURI);
   const res = await fetch(new URL("files.json", base));
   if (!res.ok) throw new Error("The sample book couldn't be loaded.");
   const paths = (await res.json()) as string[];
@@ -263,9 +271,12 @@ const host: StudioHost = {
 const license = new LicenseManager(host);
 const studio = new Studio(host, $("studio"), license);
 
+// The page's own title (what search results show) stays while the sample is open.
+const PAGE_TITLE = doc.title;
+
 async function open(next: Folder): Promise<void> {
   folder = next;
-  doc.title = next.sample ? "Book Studio" : `${next.name} · Book Studio`;
+  doc.title = next.sample ? PAGE_TITLE : `${next.name} · Book Studio`;
   await studio.refresh();
 }
 
