@@ -7,7 +7,7 @@
 //   3. lines such as "Chapter 3", "Capítulo 3", "CHAPTER IV" or "Capítulo uno: El viaje".
 // Text with none of these becomes one chapter.
 
-import type { Project, ProjectChapter, ProjectSection, SectionKind } from "./model";
+import type { Project, ProjectAsset, ProjectChapter, ProjectSection, SectionKind } from "./model";
 
 export interface ImportedBook {
   /** The book's title when the text gives one (front matter or a lone "# " heading). */
@@ -180,19 +180,23 @@ export interface ImportOptions {
   language?: string;
 }
 
-/** A new project made from an imported manuscript. */
-export function projectFromText(raw: string, o: ImportOptions): { project: Project; imported: ImportedBook } {
-  const imported = importText(raw, o.fileName);
+/** A new project made from chapters that were already split (also used by the Word import). */
+export function projectFromImport(imported: ImportedBook & { assets?: ProjectAsset[] }, o: ImportOptions): Project {
   const name = o.name?.trim() || imported.title || "Untitled";
-  const project: Project = {
+  return {
     id: o.id,
     name,
     meta: { title: name, author: imported.author ?? "", language: imported.language ?? o.language ?? "en" },
     settings: { theme: "classic", trim: "6x9" },
     sections: imported.sections,
     chapters: imported.chapters,
-    assets: [],
+    assets: imported.assets ?? [],
     updatedAt: o.now,
   };
-  return { project, imported };
+}
+
+/** A new project made from an imported manuscript. */
+export function projectFromText(raw: string, o: ImportOptions): { project: Project; imported: ImportedBook } {
+  const imported = importText(raw, o.fileName);
+  return { project: projectFromImport(imported, o), imported };
 }

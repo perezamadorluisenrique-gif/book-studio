@@ -4,13 +4,14 @@
 import { append, clear, h } from "../app/dom";
 import type { Dialog } from "../app/host";
 import { t, tn, getLocale } from "../app/ui-i18n";
+import type { DocxReport } from "../project/import-docx";
 import type { Project } from "../project/model";
 
 export interface ProjectsDeps {
   list(): Promise<Project[]>;
   create(name: string, template: boolean): Promise<Project>;
-  /** Make a book from a manuscript's text; `fileName` is empty when the text was pasted. */
-  importText(text: string, fileName: string, name: string): Promise<{ project: Project; notes: string[] }>;
+  /** Make a book from a manuscript: pasted text, or a file (`bytes` for a .docx, `text` for .md/.txt). */
+  importManuscript(input: { text?: string; bytes?: Uint8Array; fileName: string; name: string }): Promise<{ project: Project; notes: string[]; report?: DocxReport }>;
   rename(p: Project, name: string): Promise<void>;
   remove(p: Project): Promise<void>;
   open(p: Project): void;
@@ -18,8 +19,18 @@ export interface ProjectsDeps {
   notify(message: string): void;
 }
 
+/** The report of a Word import as sentences. */
+function reportLines(r: DocxReport): string[] {
+  const out: string[] = [];
+  for (const { code, count } of r.items) out.push(tn(`imp.r.${code}`, count));
+  if (r.footnotes) out.push(tn("imp.r.footnotes", r.footnotes));
+  if (r.images) out.push(tn("imp.r.images", r.images));
+  return out;
+}
+
 function fail(deps: ProjectsDeps, e: unknown): void {
-  deps.notify(t("proj.failed", { error: e instanceof Error ? e.message : String(e) }));
+  const m = e instanceof Error ? e.message : String(e);
+  deps.notify(m === "docx.notDocx" || m === "docx.tooBig" ? t(m) : t("proj.failed", { error: m }));
 }
 
 /** Draw the whole screen inside `box`; call it again after anything changes. */
@@ -65,7 +76,7 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
   );
 
   const pasteBox = h("textarea", { attr: { id: "imp-text", rows: "6", "aria-describedby": "imp-hint" } });
-  const fileInput = h("input", { attr: { type: "file", id: "imp-file", accept: ".md,.markdown,.txt,text/plain,text/markdown", "aria-describedby": "imp-hint" } });
+  const fileInput = h("input", { attr: { type: "file", id: "imp-file", accept: ".md,.markdown,.txt,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document", "aria-describedby": "imp-hint" } });
   const importName = h("input", { attr: { type: "text", id: "imp-name", autocomplete: "off", value: "" } });
   const importForm = h(
     "form",
@@ -78,14 +89,28 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
           void (async () => {
             try {
               const file = fileInput.files?.[0];
-              const text = file ? await file.text() : pasteBox.value;
-              if (!text.trim()) {
+              const fileName = file?.name ?? "";
+              if (/\.doc$/i.test(fileName)) {
+                deps.notify(t("imp.oldDoc"));
+                return;
+              }
+              const isDocx = /\.docx$/i.test(fileName);
+              const text = file && !isDocx ? await file.text() : file ? "" : pasteBox.value;
+              if (!file && !text.trim()) {
                 deps.notify(t("imp.empty"));
                 return;
               }
-              const { project, notes } = await deps.importText(text, file?.name ?? "", importName.value.trim());
-              const extra = notes.includes("intro") ? ` ${t("imp.intro")}` : "";
-              deps.notify(`${tn("imp.done", project.chapters.length, { name: project.name })}${extra}`);
+              const bytes = file && isDocx ? new Uint8Array(await file.arrayBuffer()) : undefined;
+              const name = importName.value.trim();
+              if (!bytes && !text.trim()) {
+                deps.notify(t("imp.empty"));
+                return;
+              }
+              const { project, notes, report } = await deps.importManuscript({ text: bytes ? undefined : text, bytes, fileName, name });
+              const done = tn("imp.done", project.chapters.length, { name: project.name });
+              const extra = [notes.includes("intro") ? t("imp.intro") : "", ...(report ? reportLines(report) : [])].filter(Boolean);
+              if (extra.length) await deps.ask({ title: t("imp.reportTitle"), message: `${done}\n\n${extra.map((l) => `• ${l}`).join("\n")}`, ok: t("imp.reportOk") });
+              else deps.notify(done);
               deps.open(project);
             } catch (e) {
               fail(deps, e);
