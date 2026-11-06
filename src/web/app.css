@@ -837,3 +837,78 @@ button.mod-cta {
     grid-template-columns: 1fr;
   }
 }
+
+/* Saved versions and find-and-replace windows (they reuse .pub-dialog) */
+.ver-new,
+.find-field {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0;
+}
+
+.ver-new input[type="text"],
+.find-field input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--app-line);
+  border-radius: 6px;
+  background: var(--app-bg);
+}
+
+.ver-new button {
+  justify-self: start;
+}
+
+.ver-list,
+.find-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ver-item,
+.find-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+}
+
+.ver-info {
+  display: grid;
+  gap: 2px;
+}
+
+.ver-sub,
+.find-n {
+  color: var(--app-muted);
+}
+
+.ver-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.find-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 8px 0;
+}
+
+.find-title {
+  flex: 1 1 8em;
+  font-weight: 600;
+}
+
+.find-options input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+}

@@ -26,6 +26,9 @@ export interface WorkspaceDeps {
   layoutChanged(p: Project, keys: string[]): void;
   /** The "Publish checklist" button was pressed. */
   publish(): void;
+  /** The "Versions" and "Find and replace" buttons were pressed. */
+  versions(): void;
+  search(): void;
   /** Download a copy of the book as a .zip. */
   backup(p: Project): Promise<void>;
 }
@@ -52,6 +55,8 @@ export class Workspace {
   private listBox = h("div", { cls: "ws-list" });
   private detailsButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-details-btn" }, on: { click: () => this.openDetails() } });
   private publishButton = h("button", { cls: "ws-details-btn ws-publish-btn", attr: { type: "button", id: "ws-publish-btn" }, on: { click: () => this.deps.publish() } });
+  private versionsButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-versions-btn" }, on: { click: () => this.deps.versions() } });
+  private searchButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-search-btn" }, on: { click: () => this.deps.search() } });
   private backupButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-backup-btn" }, on: { click: () => void this.backup() } });
   private listInner = h("div");
   private editorBox = h("div", { cls: "ws-editor" });
@@ -75,7 +80,7 @@ export class Workspace {
       this.panels[id] = h("section", { cls: `ws-col ws-col-${id}`, attr: { id: `ws-panel-${id}` } });
     }
     this.panels.chapters.appendChild(this.listBox);
-    this.listBox.append(this.detailsButton, this.publishButton, this.backupButton, this.listInner);
+    this.listBox.append(this.detailsButton, this.publishButton, this.searchButton, this.versionsButton, this.backupButton, this.listInner);
     this.panels.write.append(this.editorBox, this.detailsBox);
     this.panels.book.appendChild(this.bookSlot);
     this.tabsEl.append(...TABS.map((id) => this.tabButtons[id]));
@@ -120,6 +125,10 @@ export class Workspace {
       },
       notify: (m) => this.deps.notify(m),
     });
+    this.versionsButton.textContent = t("ver.open");
+    this.versionsButton.setAttribute("aria-label", t("ver.openLabel"));
+    this.searchButton.textContent = t("find.open");
+    this.searchButton.setAttribute("aria-label", t("find.openLabel"));
     this.publishButton.textContent = t("pub.open");
     this.publishButton.setAttribute("aria-label", t("pub.openLabel"));
     this.backupButton.textContent = t("proj.backup");
@@ -255,6 +264,25 @@ export class Workspace {
     this.applyTab();
     this.renderList();
     this.showActive();
+  }
+
+  /** Show a chapter in the editor (from the search window). */
+  openChapter(id: string): void {
+    this.pick(id);
+    this.setTab("write");
+    this.editor.focus();
+  }
+
+  /** Put another version of the open book in place (a restore or a replace), show it and save it. */
+  replaceProject(next: Project): void {
+    if (!this.project || next.id !== this.project.id) return;
+    this.project = next;
+    if (!this.active || !chapterById(next, this.active)) this.active = bookOrder(next)[0] ?? null;
+    this.renaming = null;
+    this.renderList();
+    this.showActive();
+    if (this.view === "details") this.details.show();
+    this.markDirty(true);
   }
 
   /** Save what is waiting and hide the screen. */

@@ -917,3 +917,148 @@ describe("web app, publish checklist", () => {
     });
   }
 });
+
+describe("web app, versions and find and replace", () => {
+  async function startBook(page: Page, name: string, locale = "en"): Promise<void> {
+    await page.goto(`${base}?sample=oz`);
+    await page.getByRole("button", { name: locale === "es" ? "Exportar PDF de impresión" : "Export print PDF" }).waitFor();
+    await page.getByRole("button", { name: locale === "es" ? "Mis libros" : "My books" }).click();
+    await page.locator("#proj-name").fill(name);
+    await page.locator("#proj-new-title").locator("xpath=..").locator("input[value=template]").check();
+    await page.locator(".proj-new:not(.proj-import) button[type=submit]").click();
+    await page.locator("#ed-text").waitFor();
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+  }
+  const chapter = (page: Page, title: string) => page.getByRole("button", { name: title, exact: true });
+  const saved = (page: Page) => page.locator(".ed-status", { hasText: "Saved" }).waitFor({ state: "attached" });
+
+  it("saves a version, restores it, and a restore can be undone", async () => {
+    const page = await (await browser.newContext({ locale: "en-US" })).newPage();
+    await startBook(page, "Versions test");
+    await chapter(page, "Chapter Two").click();
+    await page.locator("#ed-text").fill("The first draft.");
+    await saved(page);
+
+    await page.getByRole("button", { name: "Saved versions of this book" }).click();
+    const dialog = page.getByRole("dialog", { name: "Saved versions" });
+    await dialog.waitFor();
+    await dialog.getByText("No saved versions yet.").waitFor();
+    await dialog.getByLabel("Name (optional)").fill("First draft");
+    await dialog.getByRole("button", { name: "Save a version now" }).click();
+    await dialog.getByText("Saved by you: First draft").waitFor();
+    await page.keyboard.press("Escape");
+
+    await page.locator("#ed-text").fill("A much worse second draft.");
+    await saved(page);
+    await page.getByRole("button", { name: "Saved versions of this book" }).click();
+    await dialog.getByRole("button", { name: /^Restore the version from/ }).click();
+    await dialog.getByText("Restored. What you had before is saved as a version too.").waitFor();
+    expect(await dialog.getByText("Saved before a restore").count()).toBe(1);
+    await page.keyboard.press("Escape");
+    expect(await page.locator("#ed-text").inputValue()).toBe("The first draft.");
+
+    // The restored text is kept after a reload, and undoing the restore brings the worse draft back.
+    await saved(page);
+    await page.goto(base);
+    await page.getByRole("button", { name: "Open Versions test" }).click();
+    await chapter(page, "Chapter Two").click();
+    expect(await page.locator("#ed-text").inputValue()).toBe("The first draft.");
+    await page.getByRole("button", { name: "Saved versions of this book" }).click();
+    const rows = dialog.locator(".ver-item");
+    await rows.filter({ hasText: "Saved before a restore" }).getByRole("button", { name: /^Restore/ }).click();
+    await dialog.getByText("Restored.").waitFor();
+    await page.keyboard.press("Escape");
+    expect(await page.locator("#ed-text").inputValue()).toBe("A much worse second draft.");
+    await page.close();
+  });
+
+  it("saves a version when you export, and can delete one", async () => {
+    const context = await browser.newContext({ locale: "en-US", acceptDownloads: true });
+    const page = await context.newPage();
+    await startBook(page, "Export version");
+    await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export print PDF" }).click()]);
+    await page.getByRole("button", { name: "Saved versions of this book" }).click();
+    const dialog = page.getByRole("dialog", { name: "Saved versions" });
+    await dialog.getByText("Saved when you exported").waitFor();
+    await dialog.getByRole("button", { name: /^Delete the version from/ }).click();
+    await dialog.getByText("No saved versions yet.").waitFor();
+    await context.close();
+  });
+
+  it("finds and replaces across the book, saves a version first, and goes to a chapter", async () => {
+    const page = await (await browser.newContext({ locale: "en-US" })).newPage();
+    await startBook(page, "Find test");
+    await chapter(page, "Chapter Two").click();
+    await page.locator("#ed-text").fill("Keep going, keep going.");
+    await saved(page);
+
+    await page.getByRole("button", { name: "Find and replace in the whole book" }).click();
+    const dialog = page.getByRole("dialog", { name: "Find and replace" });
+    await dialog.getByText("Type something to find.").waitFor();
+    await dialog.getByLabel("Find").fill("keep going");
+    await dialog.getByText("2 matches").first().waitFor();
+    // Case matters when asked.
+    await dialog.getByLabel("Match case").check();
+    await dialog.getByText("1 match").first().waitFor();
+    await dialog.getByLabel("Match case").uncheck();
+    await dialog.getByLabel("Replace with").fill("go on");
+    await dialog.getByRole("button", { name: "Replace all" }).click();
+    await dialog.getByText("Replaced 2 matches. Your earlier text is saved as a version.").waitFor();
+    await page.keyboard.press("Escape");
+    expect(await page.locator("#ed-text").inputValue()).toBe("go on, go on.");
+
+    // Nothing is left to find, and the version from before the replace is in the list.
+    await page.getByRole("button", { name: "Find and replace in the whole book" }).click();
+    await dialog.getByLabel("Find").fill("keep going");
+    await dialog.getByText("No matches.").waitFor();
+    await dialog.getByLabel("Find").fill("go on");
+    await dialog.getByRole("button", { name: "Open Chapter Two" }).click();
+    expect(await dialog.count()).toBe(0);
+    await page.getByRole("button", { name: "Saved versions of this book" }).click();
+    await page.getByRole("dialog", { name: "Saved versions" }).getByText("Saved before a replace").waitFor();
+    await page.close();
+  });
+
+  it("shows both windows in Spanish for an es-ES browser", async () => {
+    const page = await (await browser.newContext({ locale: "es-ES" })).newPage();
+    await startBook(page, "Libro versiones", "es");
+    await page.getByRole("button", { name: "Buscar y reemplazar en todo el libro" }).click();
+    const find = page.getByRole("dialog", { name: "Buscar y reemplazar" });
+    await find.getByText("Escribe algo para buscar.").waitFor();
+    expect(await find.getByLabel("Distinguir mayúsculas").count()).toBe(1);
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Versiones guardadas de este libro" }).click();
+    const ver = page.getByRole("dialog", { name: "Versiones guardadas" });
+    await ver.getByText("Todavía no hay versiones guardadas.").waitFor();
+    expect(await ver.getByRole("button", { name: "Guardar una versión ahora" }).count()).toBe(1);
+    await page.close();
+  });
+
+  for (const [label, size] of [["desktop", { width: 1280, height: 800 }], ["mobile 390 px", { width: 390, height: 800 }]] as const) {
+    it(`has no serious accessibility violations with the windows open, ${label}`, async () => {
+      const page = await (await browser.newContext({ locale: "en-US", viewport: size })).newPage();
+      await page.goto(`${base}?sample=oz`);
+      await page.getByRole("button", { name: "My books" }).click();
+      await page.locator("#proj-name").fill("A11y versions");
+      await page.locator(".proj-new:not(.proj-import) button[type=submit]").click();
+      await page.locator("#ed-text").waitFor();
+      if (size.width < 900) await page.getByRole("tab", { name: "Chapters" }).click();
+      for (const [button, dialogName] of [["Find and replace in the whole book", "Find and replace"], ["Saved versions of this book", "Saved versions"]] as const) {
+        await page.getByRole("button", { name: button }).click();
+        const dialog = page.getByRole("dialog", { name: dialogName });
+        await dialog.waitFor();
+        if (dialogName === "Find and replace") await dialog.getByLabel("Find").fill("Chapter");
+        else {
+          await dialog.getByRole("button", { name: "Save a version now" }).click();
+          await dialog.locator(".ver-item").waitFor();
+        }
+        const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+        expect(r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+        const small = await dialog.evaluate((el) => Array.from(el.querySelectorAll<HTMLElement>("input,button")).filter((x) => x.getBoundingClientRect().width > 0 && (x.getBoundingClientRect().height < 24 || x.getBoundingClientRect().width < 24)).map((x) => x.id || x.textContent));
+        expect(small).toEqual([]);
+        await page.keyboard.press("Escape");
+      }
+      await page.close();
+    });
+  }
+});

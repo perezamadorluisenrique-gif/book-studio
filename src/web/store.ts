@@ -1,10 +1,12 @@
 // The browser's own storage (IndexedDB) for the web app: the remembered folder and the book projects.
-// Version 1 only had "handles"; version 2 adds "projects" and keeps everything that was saved before.
+// Version 1 only had "handles"; version 2 adds "projects" and version 3 adds "snapshots" (saved versions of a book).
+// Each upgrade only adds what is missing, so everything saved before stays.
 
 import type { Project } from "../project/model";
+import { toPrune, type Snapshot } from "../project/snapshots";
 
 export const DB_NAME = "book-studio";
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -14,6 +16,7 @@ function open(): Promise<IDBDatabase> {
       const db = req.result;
       if (!db.objectStoreNames.contains("handles")) db.createObjectStore("handles");
       if (!db.objectStoreNames.contains("projects")) db.createObjectStore("projects", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("snapshots")) db.createObjectStore("snapshots", { keyPath: "id" }).createIndex("projectId", "projectId");
     };
     req.onsuccess = () => {
       // If another tab upgrades the database later, let it go ahead.
@@ -25,7 +28,7 @@ function open(): Promise<IDBDatabase> {
 }
 
 /** Run one request on one store and wait for it to be saved. */
-async function run<T>(storeName: "handles" | "projects", mode: IDBTransactionMode, make: (s: IDBObjectStore) => IDBRequest): Promise<T> {
+async function run<T>(storeName: "handles" | "projects" | "snapshots", mode: IDBTransactionMode, make: (s: IDBObjectStore) => IDBRequest): Promise<T> {
   const db = await open();
   try {
     return await new Promise<T>((resolve, reject) => {
@@ -76,4 +79,24 @@ export async function putProject(p: Project): Promise<void> {
 
 export async function deleteProject(id: string): Promise<void> {
   await run("projects", "readwrite", (s) => s.delete(id));
+  // A deleted book takes its saved versions with it.
+  for (const s of await listSnapshots(id)) await deleteSnapshot(s.id);
+}
+
+// ── Saved versions ──
+
+/** The saved versions of one book, the newest first. */
+export async function listSnapshots(projectId: string): Promise<Snapshot[]> {
+  const all = await run<Snapshot[]>("snapshots", "readonly", (s) => s.index("projectId").getAll(projectId));
+  return all.sort((a, b) => b.at - a.at);
+}
+
+/** Save a version and delete the oldest ones beyond the limit (automatic ones first). */
+export async function putSnapshot(snap: Snapshot): Promise<void> {
+  await run("snapshots", "readwrite", (s) => s.put(snap));
+  for (const id of toPrune(await listSnapshots(snap.projectId))) await deleteSnapshot(id);
+}
+
+export async function deleteSnapshot(id: string): Promise<void> {
+  await run("snapshots", "readwrite", (s) => s.delete(id));
 }

@@ -12,13 +12,17 @@ import { createProject, renameProject } from "../project/ops";
 import { exportZip, importZip, zipName } from "../project/zip";
 import { projectFromText } from "../project/import-text";
 import { registerPwa } from "./pwa";
+import { showSearch } from "./search";
+import { showVersions } from "./versions";
+import { makeSnapshot, restoreSnapshot, sameContent, contentOf, type SnapshotKind } from "../project/snapshots";
+import { replaceAll } from "../project/search";
 import { Workspace } from "./workspace";
 import { projectToVault, type ProjectVault } from "../project/to-vault";
 import type { Project } from "../project/model";
 import { fetchPost } from "./post";
 import { renderProjects } from "./projects";
 import { showPublishChecklist } from "./publish";
-import { deleteProject, getHandle, listProjects, putProject, setHandle } from "./store";
+import { deleteProject, deleteSnapshot, getHandle, listProjects, listSnapshots, putProject, putSnapshot, setHandle } from "./store";
 import { Studio } from "../app/studio";
 import { detectLocale, setLocale, t, type Locale } from "../app/ui-i18n";
 import type { VaultSource } from "../engine/book";
@@ -225,6 +229,8 @@ const host: StudioHost = {
   },
   save: async (file) => {
     download(file);
+    // Every export keeps a version of the book as it was (unless it is the same as the last one).
+    if (current) void saveVersion(current.project, "export", "", false);
     return t("web.downloaded", { name: file.name });
   },
   store,
@@ -283,6 +289,38 @@ const workspace = new Workspace($("workspace"), {
         },
       },
       document.getElementById("ws-publish-btn") ?? undefined,
+    ),
+  versions: () =>
+    showVersions(
+      {
+        project: () => current?.project ?? null,
+        list: async () => (current ? listSnapshots(current.project.id) : []),
+        save: async (name) => void (current && (await saveVersion(current.project, "manual", name, true))),
+        restore: async (s) => {
+          if (!current) return;
+          await saveVersion(current.project, "before-restore", "", true);
+          workspace.replaceProject(restoreSnapshot(current.project, s, Date.now()));
+        },
+        remove: (s) => deleteSnapshot(s.id),
+        notify: toast,
+      },
+      document.getElementById("ws-versions-btn") ?? undefined,
+    ),
+  search: () =>
+    showSearch(
+      {
+        project: () => current?.project ?? null,
+        replaceAll: async (find, to, o) => {
+          if (!current) return 0;
+          const r = replaceAll(current.project, find, to, o, Date.now());
+          if (!r.count) return 0;
+          await saveVersion(current.project, "before-replace", "", true);
+          workspace.replaceProject(r.project);
+          return r.count;
+        },
+        open: (id) => workspace.openChapter(id),
+      },
+      document.getElementById("ws-search-btn") ?? undefined,
     ),
   backup: (p) => backupProject(p),
   // The preview bar remembers theme and trim per book; a choice made in the book form must not be hidden by an older one.
@@ -347,6 +385,21 @@ async function openProject(project: Project): Promise<void> {
   showStudio();
   workspace.open(project);
   await refreshStudio();
+}
+
+// ── Saved versions ──
+
+/** Save a version of the book. An automatic one is skipped when nothing changed since the last version. */
+async function saveVersion(p: Project, kind: SnapshotKind, name: string, force: boolean): Promise<void> {
+  try {
+    if (!force) {
+      const last = (await listSnapshots(p.id))[0];
+      if (last && sameContent(last.content, contentOf(p))) return;
+    }
+    await putSnapshot(makeSnapshot(p, kind, Date.now(), crypto.randomUUID(), name));
+  } catch {
+    // No storage for versions (private window): the book itself still works.
+  }
 }
 
 // ── Copies and imports ──
