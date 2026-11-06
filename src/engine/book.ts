@@ -30,7 +30,7 @@ const SECTION_TYPES: [RegExp, SectionType][] = [
   [/^colophon$/i, "colophon"],
 ];
 
-const SECTION_TYPE_NAMES = new Set<string>(["chapter", "part", "prologue", "epilogue", "foreword", "preface", "introduction", "acknowledgments", "afterword", "appendix", "glossary", "bibliography", "colophon", "other"]);
+const SECTION_NAMES = new Set<string>(["chapter", "part", "prologue", "epilogue", "foreword", "preface", "introduction", "acknowledgments", "afterword", "appendix", "glossary", "bibliography", "colophon", "other"]);
 
 function sectionTypeFor(title: string): SectionType | null {
   const t = title.trim();
@@ -239,9 +239,9 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
       title = [{ kind: "text", text: smart(t) ?? t, style: {} }];
     }
     const titleText = inlineText(title).trim();
-    // A `section:` line the engine doesn't know (dedication, about-the-author…) is ignored, not trusted as a type.
-    const written = fmString(parsed.frontmatter, "section", "epub-type")?.toLowerCase();
-    const explicitType = SECTION_TYPE_NAMES.has(written ?? "") ? (written as SectionType) : undefined;
+    // A `section:` value that is not a known type (such as "dedication" from the Starter Book) is ignored, not trusted.
+    const asked = fmString(parsed.frontmatter, "section", "epub-type")?.trim().toLowerCase();
+    const explicitType = SECTION_NAMES.has(asked ?? "") ? (asked as SectionType) : undefined;
     const type: SectionType = explicitType ?? sectionTypeFor(titleText) ?? (entry.matter === "body" ? "chapter" : "other");
     const numberedFm = fmGet(parsed.frontmatter, "numbered");
     const numbered = entry.matter === "body" && type === "chapter" && !entry.unnumbered && numberedFm !== false && numberedFm !== "false";

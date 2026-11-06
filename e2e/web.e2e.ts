@@ -849,3 +849,71 @@ describe("web app, offline", () => {
     await context.close();
   });
 });
+
+describe("web app, publish checklist", () => {
+  async function startBook(page: Page, name: string, locale = "en"): Promise<void> {
+    await page.goto(`${base}?sample=oz`);
+    await page.getByRole("button", { name: locale === "es" ? "Exportar PDF de impresión" : "Export print PDF" }).waitFor();
+    await page.getByRole("button", { name: locale === "es" ? "Mis libros" : "My books" }).click();
+    await page.locator("#proj-name").fill(name);
+    await page.locator(".proj-new:not(.proj-import) button[type=submit]").click();
+    await page.locator("#ed-text").waitFor();
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+  }
+
+  it("lists what is missing, takes you to the fix, and says the book is ready once it is", async () => {
+    const page = await (await browser.newContext({ locale: "en-US" })).newPage();
+    await startBook(page, "Checklist test");
+    await page.getByRole("button", { name: "Check what is missing before publishing on KDP" }).click();
+    const dialog = page.getByRole("dialog", { name: "Publish checklist" });
+    await dialog.waitFor();
+    const todo = await dialog.locator(".pub-todo .pub-text").allTextContents();
+    expect(todo).toEqual(expect.arrayContaining([expect.stringContaining("author"), expect.stringContaining("description"), expect.stringContaining("cover"), expect.stringContaining("no text yet")]));
+    expect(await dialog.getByText("Some things are still missing").count()).toBe(1);
+    expect(await dialog.getByText("Next steps on KDP").count()).toBe(1);
+    expect(await dialog.getByText(/the spine at about [0-9.]+ in/).count()).toBe(1);
+
+    // A fix button closes the window and opens the book form.
+    await dialog.getByRole("button", { name: "Open the book details" }).first().click();
+    await page.getByRole("heading", { name: "Book details" }).waitFor();
+    expect(await dialog.isVisible()).toBe(false);
+    await page.locator(".dt").getByLabel("Author", { exact: true }).fill("Ana");
+    await page.locator(".dt").getByLabel("Description", { exact: true }).fill("Una historia.");
+    await page.locator(".ed-status", { hasText: "Saved" }).waitFor({ state: "attached" });
+    await page.getByRole("button", { name: "Check what is missing before publishing on KDP" }).click();
+    const again = await page.getByRole("dialog", { name: "Publish checklist" }).locator(".pub-todo .pub-text").allTextContents();
+    expect(again.some((t) => /author|description/.test(t))).toBe(false);
+    expect(again.some((t) => /cover/.test(t))).toBe(true);
+    await page.keyboard.press("Escape");
+    expect(await page.getByRole("dialog").count()).toBe(0);
+    await page.close();
+  });
+
+  it("is in Spanish for an es-ES browser", async () => {
+    const page = await (await browser.newContext({ locale: "es-ES" })).newPage();
+    await startBook(page, "Lista prueba", "es");
+    await page.getByRole("button", { name: "Revisar qué falta antes de publicar en KDP" }).click();
+    const dialog = page.getByRole("dialog", { name: "Lista de publicación" });
+    await dialog.waitFor();
+    expect(await dialog.getByText("Siguientes pasos en KDP").count()).toBe(1);
+    expect(await dialog.getByText("Pendiente").count()).toBeGreaterThan(0);
+    await page.close();
+  });
+
+  for (const [label, size] of [["desktop", { width: 1280, height: 800 }], ["mobile 390 px", { width: 390, height: 800 }]] as const) {
+    it(`has no serious accessibility violations with the checklist open, ${label}`, async () => {
+      const page = await (await browser.newContext({ locale: "en-US", viewport: size })).newPage();
+      await page.goto(`${base}?sample=oz`);
+      await page.getByRole("button", { name: "My books" }).click();
+      await page.locator("#proj-name").fill("A11y test");
+      await page.locator(".proj-new:not(.proj-import) button[type=submit]").click();
+      await page.locator("#ed-text").waitFor();
+      if (size.width < 900) await page.getByRole("tab", { name: "Chapters" }).click();
+      await page.getByRole("button", { name: "Check what is missing before publishing on KDP" }).click();
+      await page.getByRole("dialog", { name: "Publish checklist" }).waitFor();
+      const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+      expect(r.violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual([]);
+      await page.close();
+    });
+  }
+});

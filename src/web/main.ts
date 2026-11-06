@@ -17,6 +17,7 @@ import { projectToVault, type ProjectVault } from "../project/to-vault";
 import type { Project } from "../project/model";
 import { fetchPost } from "./post";
 import { renderProjects } from "./projects";
+import { showPublishChecklist } from "./publish";
 import { deleteProject, getHandle, listProjects, putProject, setHandle } from "./store";
 import { Studio } from "../app/studio";
 import { detectLocale, setLocale, t, type Locale } from "../app/ui-i18n";
@@ -269,6 +270,20 @@ const workspace = new Workspace($("workspace"), {
   ask: (d) => host.ask(d),
   notify: toast,
   plan: () => license.plan(),
+  publish: () =>
+    showPublishChecklist(
+      {
+        project: () => current?.project ?? null,
+        facts: () => studio.publishFacts(),
+        go: (place) => {
+          if (place === "problems") {
+            workspace.reveal("book");
+            studio.showProblems();
+          } else workspace.reveal(place);
+        },
+      },
+      document.getElementById("ws-publish-btn") ?? undefined,
+    ),
   backup: (p) => backupProject(p),
   // The preview bar remembers theme and trim per book; a choice made in the book form must not be hidden by an older one.
   layoutChanged: (project, keys) => {

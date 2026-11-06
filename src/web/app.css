@@ -8,6 +8,7 @@
   --app-line: #d9d8d3;
   --app-accent: #6a4c93;
   --app-surface: #ffffff;
+  --app-danger: #b3261e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,6 +19,7 @@
     --app-line: #3a3a40;
     --app-accent: #b79be0;
     --app-surface: #222226;
+    --app-danger: #ff8a80;
   }
 
   .bs-studio {
@@ -772,4 +774,66 @@ button.mod-cta {
   padding: 8px 16px;
   border-bottom: 1px solid var(--app-line);
   background: var(--app-surface);
+}
+
+/* Publish checklist window */
+.pub-dialog {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 20px;
+  border: 1px solid var(--app-line);
+  border-radius: 12px;
+  background: var(--app-surface);
+  color: inherit;
+  overflow: auto;
+}
+
+.pub-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.pub-list,
+.pub-steps {
+  margin: 12px 0;
+  padding: 0;
+}
+
+.pub-list {
+  list-style: none;
+}
+
+.pub-item {
+  display: grid;
+  grid-template-columns: 5.5em 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--app-line);
+}
+
+.pub-mark {
+  font-weight: 600;
+}
+
+.pub-todo .pub-mark {
+  color: var(--app-danger);
+}
+
+.pub-tip .pub-mark {
+  color: var(--app-muted);
+}
+
+.pub-steps {
+  padding-left: 1.4em;
+}
+
+.pub-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 520px) {
+  .pub-item {
+    grid-template-columns: 1fr;
+  }
 }

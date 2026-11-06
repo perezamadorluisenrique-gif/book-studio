@@ -46,7 +46,7 @@ El EPUB 3 usa XHTML semántico, un índice navegable, marcadores de estructura (
 
 ## Cómo escribes el libro
 
-Escribes en cualquier editor de Markdown, por ejemplo Obsidian. Una «nota de libro» enlaza tus capítulos y la app hace el resto. [De Markdown a libro](guide:markdown-a-libro) muestra el formato. Si prefieres el camino completo en orden, sigue [cómo formatear un libro para KDP](guide:como-formatear-un-libro-para-kdp).
+Escribes en cualquier editor de Markdown, por ejemplo Obsidian. Una «nota de libro» enlaza tus capítulos y la app hace el resto. [De Markdown a libro](guide:markdown-a-libro) muestra el formato. En la app web también puedes escribir los capítulos directamente en el navegador o importar un archivo de Word (.docx), Markdown o texto; las tablas, los cuadros de texto y los comentarios se dejan fuera y un informe te dice cuáles. Si prefieres el camino completo en orden, sigue [cómo formatear un libro para KDP](guide:como-formatear-un-libro-para-kdp).
 
 ## Comprueba el resultado antes de fiarte
 
@@ -56,7 +56,7 @@ En la app, una vista previa paginada muestra páginas enfrentadas y zoom. Una pe
 
 ## Lo que no hace
 
-No incluye procesador de textos: escribes en otra herramienta. El plan gratuito no tiene diseñador de cubiertas, solo te da el ancho del lomo. Imprime tres formatos. Y es un proyecto joven, de un solo desarrollador. Si comparas herramientas, [Book Studio frente a Vellum, Atticus y Kindle Create](guide:vellum-atticus-kindle-create) es una comparación honesta.
+No es un procesador de textos completo: la app web tiene un editor de capítulos sencillo, sin comentarios ni control de cambios, y puedes importar un archivo de Word. El plan gratuito no tiene diseñador de cubiertas, solo te da el ancho del lomo. Imprime tres formatos. Y es un proyecto joven, de un solo desarrollador. Si comparas herramientas, [Book Studio frente a Vellum, Atticus y Kindle Create](guide:vellum-atticus-kindle-create) es una comparación honesta.
 
 ## Pro
 
