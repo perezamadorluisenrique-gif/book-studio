@@ -9,6 +9,7 @@ import { BUILT_IN_TRUST, describeFailure as describeOffline, describeLicense, LI
 import { describeFailure as describeOnline, validateOnline, type OnlineConfig, type Post, type Provider } from "../engine/license-online";
 import { ONLINE } from "../engine/pro-config";
 import type { StudioHost } from "./host";
+import { t } from "./ui-i18n";
 
 const KEY = "license";
 const PREVIEW = "previewPro";
@@ -83,7 +84,7 @@ export class LicenseManager {
 
   describe(): string {
     const v = this.stored;
-    if (typeof v === "object") return `Book Studio Pro is active (key checked with the payment service on ${v.validatedAt.slice(0, 10)}). It never expires.`;
+    if (typeof v === "object") return t("lic.active", { date: v.validatedAt.slice(0, 10) });
     return describeLicense(v, this.trust);
   }
 

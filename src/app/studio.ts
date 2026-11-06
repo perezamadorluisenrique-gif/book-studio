@@ -13,14 +13,15 @@ import { append, clear, h, nextFrame, select } from "./dom";
 import type { BookChoice, StudioHost } from "./host";
 import type { LicenseManager } from "./license-manager";
 import { KdpPanel } from "./kdp-panel";
+import { t, tn } from "./ui-i18n";
 import { buildBook, ebookBlockers, exportEdition, exportEpub, exportPdf, exportReport, pdfBlockers, planEditions, spineWidth, type Built, type EpubChoices } from "./pipeline";
 
 type Tab = "preview" | "problems" | "kdp" | "accessibility";
 type Zoom = "page" | "fit" | "0.5" | "0.75" | "1" | "1.5" | "2";
 
-const ZOOMS: { value: Zoom; label: string }[] = [
-  { value: "page", label: "Fit page" },
-  { value: "fit", label: "Fit width" },
+const zooms = (): { value: Zoom; label: string }[] => [
+  { value: "page", label: t("zoom.page") },
+  { value: "fit", label: t("zoom.fit") },
   { value: "0.5", label: "50%" },
   { value: "0.75", label: "75%" },
   { value: "1", label: "100%" },
@@ -35,7 +36,7 @@ interface Problem {
   page?: string;
 }
 
-const SEVERITY_WORD = { error: "Error", warning: "Warning", info: "Note" } as const;
+const severityWord = (s: Problem["severity"]): string => t(`sev.${s}`);
 
 /** The free edition has no Pro to point to, so its messages say what it includes. */
 function editionMessage(message: string): string {
@@ -61,18 +62,18 @@ export class Studio {
   private disposed = false;
   private kdp: KdpPanel;
 
-  private bookSelect = h("select", { cls: "bs-book", attr: { "aria-label": "Book" } });
+  private bookSelect = h("select", { cls: "bs-book", attr: { "aria-label": t("studio.book") } });
   private planBox = h("div", { cls: "bs-plan" });
   private settingsBar = h("div", { cls: "bs-bar bs-settings" });
   private status = h("p", { cls: "bs-status", attr: { role: "status", "aria-live": "polite" } });
   private tabs: Record<Tab, HTMLButtonElement>;
   private panels: Record<Tab, HTMLElement>;
-  private pagesEl = h("div", { cls: "bs-pages", attr: { tabindex: 0, "aria-label": "Page preview" } });
+  private pagesEl = h("div", { cls: "bs-pages", attr: { tabindex: 0, "aria-label": t("studio.pagePreview") } });
   private previewTools = h("div", { cls: "bs-bar bs-preview-tools" });
-  private pdfButton = h("button", { cls: "mod-cta bs-primary", text: "Export print PDF" });
-  private epubButton = h("button", { text: "Export EPUB" });
-  private reportButton = h("button", { text: "Accessibility report" });
-  private editionsButton = h("button", { text: "Export all editions" });
+  private pdfButton = h("button", { cls: "mod-cta bs-primary", text: t("btn.pdf") });
+  private epubButton = h("button", { text: t("btn.epub") });
+  private reportButton = h("button", { text: t("btn.report") });
+  private editionsButton = h("button", { text: t("btn.editions") });
 
   constructor(
     private host: StudioHost,
@@ -83,9 +84,9 @@ export class Studio {
     const uid = Math.random().toString(36).slice(2, 8);
     this.tabs = {} as Record<Tab, HTMLButtonElement>;
     this.panels = {} as Record<Tab, HTMLElement>;
-    for (const t of tabIds) {
-      this.tabs[t] = h("button", { cls: "bs-tab", attr: { role: "tab", id: `bs-tab-${t}-${uid}`, "aria-controls": `bs-panel-${t}-${uid}` }, on: { click: () => this.showTab(t), keydown: (e) => this.tabKey(e, t) } });
-      this.panels[t] = h("div", { cls: `bs-panel bs-panel-${t}`, attr: { role: "tabpanel", id: `bs-panel-${t}-${uid}`, "aria-labelledby": `bs-tab-${t}-${uid}` } });
+    for (const id of tabIds) {
+      this.tabs[id] = h("button", { cls: "bs-tab", attr: { role: "tab", id: `bs-tab-${id}-${uid}`, "aria-controls": `bs-panel-${id}-${uid}` }, on: { click: () => this.showTab(id), keydown: (e) => this.tabKey(e, id) } });
+      this.panels[id] = h("div", { cls: `bs-panel bs-panel-${id}`, attr: { role: "tabpanel", id: `bs-panel-${id}-${uid}`, "aria-labelledby": `bs-tab-${id}-${uid}` } });
     }
     this.panels.preview.append(this.previewTools, this.pagesEl);
 
@@ -103,16 +104,16 @@ export class Studio {
       h(
         "div",
         { cls: "bs-bar bs-top" },
-        h("label", { cls: "bs-field" }, h("span", { text: "Book" }), this.bookSelect),
-        h("button", { text: "Rebuild", attr: { title: "Read the notes again and rebuild the book" }, on: { click: () => void this.refresh() } }),
+        h("label", { cls: "bs-field" }, h("span", { text: t("studio.book") }), this.bookSelect),
+        h("button", { text: t("studio.rebuild"), attr: { title: t("studio.rebuildTitle") }, on: { click: () => void this.refresh() } }),
         h("span", { cls: "bs-spacer" }),
         this.planBox,
       ),
       this.settingsBar,
       h("div", { cls: "bs-bar bs-actions" }, this.pdfButton, this.epubButton, this.reportButton, this.editionsButton),
       this.status,
-      h("div", { cls: "bs-tabs", attr: { role: "tablist", "aria-label": "Book Studio views" } }, ...tabIds.map((t) => this.tabs[t])),
-      ...tabIds.map((t) => this.panels[t]),
+      h("div", { cls: "bs-tabs", attr: { role: "tablist", "aria-label": t("studio.views") } }, ...tabIds.map((id) => this.tabs[id])),
+      ...tabIds.map((id) => this.panels[id]),
     );
     this.kdp = new KdpPanel(this.panels.kdp, {
       host: this.host,
@@ -144,7 +145,7 @@ export class Studio {
     const keep = [this.current, last].find((p) => p && this.books.some((b) => b.path === p));
     this.current = keep ?? this.books[0]?.path ?? null;
     clear(this.bookSelect);
-    const shared = (t: string) => this.books.filter((o) => o.title === t).length > 1;
+    const shared = (title: string) => this.books.filter((o) => o.title === title).length > 1;
     for (const b of this.books) {
       const text = b.title === b.path || !shared(b.title) ? b.title : `${b.title} (${b.path})`;
       append(this.bookSelect, h("option", { attr: { value: b.path, title: b.path } }, text));
@@ -238,7 +239,7 @@ export class Studio {
     const source = this.host.source();
     const path = this.current;
     if (!source || !path) return this.renderEmpty();
-    this.setStatus("Building…", true);
+    this.setStatus(t("build.building"), true);
     await nextFrame();
     try {
       const fonts = await this.loadFonts();
@@ -251,7 +252,7 @@ export class Studio {
       this.renderAll();
     } catch (e) {
       console.error("Book Studio:", e);
-      this.setStatus(`Couldn't build the book: ${e instanceof Error ? e.message : String(e)}`, false, true);
+      this.setStatus(t("build.failed", { error: e instanceof Error ? e.message : String(e) }), false, true);
     }
   }
 
@@ -279,14 +280,14 @@ export class Studio {
     clear(this.planBox);
     if (FREE_EDITION) return;
     const plan = this.plan();
-    const label = this.license.previewPro ? "Pro preview" : plan === "pro" ? "Pro" : "Free plan";
+    const label = this.license.previewPro ? t("plan.proPreview") : plan === "pro" ? t("plan.pro") : t("plan.free");
     append(this.planBox, h("span", { cls: ["bs-badge", plan === "pro" && "is-pro"], text: label }));
     if (PRO_PREVIEW) {
       const box = h("input", { attr: { type: "checkbox", checked: this.license.previewPro } });
       box.addEventListener("change", () => (this.license.previewPro = box.checked));
-      append(this.planBox, h("label", { cls: "bs-check", attr: { title: "This prototype build lets you try Pro without a key" } }, box, "Try Pro"));
+      append(this.planBox, h("label", { cls: "bs-check", attr: { title: t("plan.tryProTitle") } }, box, t("plan.tryPro")));
     }
-    append(this.planBox, h("button", { text: plan === "pro" && !this.license.previewPro ? "License" : "Get Pro", on: { click: () => this.host.openLicense() } }));
+    append(this.planBox, h("button", { text: plan === "pro" && !this.license.previewPro ? t("plan.license") : t("plan.getPro"), on: { click: () => this.host.openLicense() } }));
   }
 
   /**
@@ -296,15 +297,15 @@ export class Studio {
   private async gate(blockers: ExportBlocker[], offerSample = false): Promise<boolean | "sample"> {
     if (!blockers.length) return true;
     if (FREE_EDITION) {
-      await this.host.ask({ title: "Not available in this edition", message: `${blockers.map((b) => editionMessage(b.message)).join("\n")}\n\nChoose an included option in the toolbar to export.`, ok: "OK" });
+      await this.host.ask({ title: t("gate.notInEditionTitle"), message: t("gate.notInEditionMessage", { messages: blockers.map((b) => editionMessage(b.message)).join("\n") }), ok: t("gate.ok") });
       return false;
     }
     const answer = await this.host.ask({
-      title: "This export needs Book Studio Pro",
-      message: `${blockers.map((b) => b.message).join("\n")}\n\nYou can keep previewing everything; switch to an included option to export on the free plan.${offerSample ? " Or export a sample: the same PDF with a SAMPLE watermark on every page, to try in KDP's previewer." : ""}`,
-      ok: "Get Pro",
-      cancel: "Not now",
-      extra: offerSample ? "Export a sample" : PRO_PREVIEW ? "Try Pro preview" : undefined,
+      title: t("gate.needsProTitle"),
+      message: t("gate.needsProMessage", { messages: blockers.map((b) => b.message).join("\n") }) + (offerSample ? t("gate.sampleOffer") : ""),
+      ok: t("gate.getPro"),
+      cancel: t("gate.notNow"),
+      extra: offerSample ? t("gate.exportSample") : PRO_PREVIEW ? t("gate.tryProPreview") : undefined,
     });
     if (answer === "ok") this.host.openLicense();
     if (answer === "extra") {
@@ -323,11 +324,11 @@ export class Studio {
 
   async exportPdf(): Promise<void> {
     const built = await this.ensureBuilt();
-    if (!built) return this.host.notify("Open a book first.");
+    if (!built) return this.host.notify(t("export.openFirst"));
     const go = await this.gate(pdfBlockers(this.plan(), built), true);
     if (!go) return;
     const sample = go === "sample";
-    await this.write(sample ? "Writing the sample PDF…" : "Writing the print PDF…", async () => {
+    await this.write(sample ? t("export.sampleWriting") : t("export.pdfWriting"), async () => {
       const out = await exportPdf(built, await this.loadFonts(), { sample });
       return { ...out, mime: "application/pdf" };
     });
@@ -335,10 +336,10 @@ export class Studio {
 
   async exportEpub(): Promise<void> {
     const built = await this.ensureBuilt();
-    if (!built) return this.host.notify("Open a book first.");
+    if (!built) return this.host.notify(t("export.openFirst"));
     if ((await this.gate(ebookBlockers(this.plan(), built))) !== true) return;
     const plan = this.plan();
-    await this.write("Writing the EPUB…", async () => {
+    await this.write(t("export.epubWriting"), async () => {
       const out = await exportEpub(built, await this.loadFonts(), plan, this.choices());
       return { ...out, mime: "application/epub+zip" };
     });
@@ -346,28 +347,28 @@ export class Studio {
 
   async exportReport(): Promise<void> {
     const built = await this.ensureBuilt();
-    if (!built) return this.host.notify("Open a book first.");
-    if (FREE_EDITION) return this.host.notify("The accessibility report isn't part of this edition.");
+    if (!built) return this.host.notify(t("export.openFirst"));
+    if (FREE_EDITION) return this.host.notify(t("export.reportNotInEdition"));
     if (!hasFeature(this.plan(), "accessiblePack")) {
-      await this.gate([{ feature: "accessiblePack", message: "The accessibility report is part of the accessible EPUB pack in Book Studio Pro." }]);
+      await this.gate([{ feature: "accessiblePack", message: t("export.reportPro") }]);
       if (!hasFeature(this.plan(), "accessiblePack")) return;
     }
-    await this.write("Writing the report…", async () => ({ ...exportReport(built, this.plan(), this.choices()), mime: "text/html" }));
+    await this.write(t("export.reportWriting"), async () => ({ ...exportReport(built, this.plan(), this.choices()), mime: "text/html" }));
   }
 
   async exportEditions(): Promise<void> {
     const built = await this.ensureBuilt();
     const source = this.host.source();
     const path = this.current;
-    if (!built || !source || !path) return this.host.notify("Open a book first.");
+    if (!built || !source || !path) return this.host.notify(t("export.openFirst"));
     const plan = planEditions(built.book);
-    if (!plan.editions.length) return this.host.notify("This book has no editions: add an editions: block to the book note.");
+    if (!plan.editions.length) return this.host.notify(t("export.noEditions"));
     if (!hasFeature(this.plan(), "editions")) {
-      await this.gate([{ feature: "editions", message: "Exporting several editions at once is part of Book Studio Pro." }]);
+      await this.gate([{ feature: "editions", message: t("export.editionsPro") }]);
       if (!hasFeature(this.plan(), "editions")) return;
     }
     if (plan.problems.length) {
-      const answer = await this.host.ask({ title: "Check the editions first", message: `${plan.problems.join("\n")}\n\nExport anyway?`, ok: "Export anyway", cancel: "Cancel" });
+      const answer = await this.host.ask({ title: t("export.checkEditionsTitle"), message: t("export.checkEditionsMessage", { problems: plan.problems.join("\n") }), ok: t("export.anyway"), cancel: t("export.cancel") });
       if (answer !== "ok") return;
     }
     const fonts = await this.loadFonts();
@@ -375,16 +376,16 @@ export class Studio {
     try {
       // One edition at a time: a phone shouldn't have to hold several books in memory.
       for (const [i, edition] of plan.editions.entries()) {
-        this.setStatus(`Building edition ${edition.id} (${i + 1} of ${plan.editions.length})…`, true);
+        this.setStatus(t("export.buildingEdition", { id: edition.id, i: i + 1, total: plan.editions.length }), true);
         await nextFrame();
         const files = await exportEdition(source, path, fonts, edition, this.plan(), this.choices());
         for (const f of files) await this.host.save(f);
       }
-      this.host.notify(`Exported ${plan.editions.length} edition${plan.editions.length === 1 ? "" : "s"}.`);
+      this.host.notify(tn("export.editionsDone", plan.editions.length));
       this.setStatus(before);
     } catch (e) {
       console.error("Book Studio:", e);
-      this.setStatus(`Export failed: ${e instanceof Error ? e.message : String(e)}`, false, true);
+      this.setStatus(t("export.failed", { error: e instanceof Error ? e.message : String(e) }), false, true);
     }
   }
 
@@ -399,7 +400,7 @@ export class Studio {
       this.setStatus(before);
     } catch (e) {
       console.error("Book Studio:", e);
-      this.setStatus(`Export failed: ${e instanceof Error ? e.message : String(e)}`, false, true);
+      this.setStatus(t("export.failed", { error: e instanceof Error ? e.message : String(e) }), false, true);
     }
   }
 
@@ -413,7 +414,7 @@ export class Studio {
   }
 
   private renderEmpty(): void {
-    this.setStatus(this.host.source() ? "No book found in this folder." : "");
+    this.setStatus(this.host.source() ? t("empty.noBook") : "");
     clear(this.settingsBar);
     clear(this.previewTools);
     clear(this.pagesEl);
@@ -422,7 +423,7 @@ export class Studio {
     if (this.host.renderEmpty) this.host.renderEmpty(box);
     append(
       box,
-      h("p", { text: "A book is a note with book: true in its frontmatter that lists the chapters in order:" }),
+      h("p", { text: t("empty.howTo") }),
       h("pre", { text: "---\nbook: true\ntitle: The Lighthouse Keeper\nauthor: Jane Doe\n---\n## Chapters\n1. [[The Storm]]\n2. [[Landfall]]" }),
     );
     this.pagesEl.appendChild(box);
@@ -448,7 +449,8 @@ export class Studio {
     const { book, layout, ms } = this.built!;
     const pages = layout.pages.length;
     const gutter = (layout.margins.inside / 72).toFixed(3).replace(/0+$/, "");
-    this.setStatus(`${book.meta.title}: ${pages} pages at ${layout.trim.label}, inside margin ${gutter} in, spine ${spineWidth(pages, book.settings.paper).toFixed(3)} in on ${book.settings.paper === "white" ? "white" : book.settings.paper === "cream" ? "cream" : "premium color"} paper. Built in ${ms} ms.`);
+    const paper = book.settings.paper === "white" ? t("paper.statusWhite") : book.settings.paper === "cream" ? t("paper.statusCream") : t("paper.statusColor");
+    this.setStatus(t("status.built", { title: book.meta.title, pages, trim: layout.trim.label, gutter, spine: spineWidth(pages, book.settings.paper).toFixed(3), paper, ms }));
   }
 
   private renderSettings(): void {
@@ -457,44 +459,44 @@ export class Studio {
     const plan = this.plan();
     clear(this.settingsBar);
     const theme = select(
-      THEMES.filter((t) => !FREE_EDITION || themeAllowed(plan, t.id) || t.id === s.theme).map((t) => ({ value: t.id, label: t.name, badge: themeAllowed(plan, t.id) ? undefined : FREE_EDITION ? "Not included" : "Pro" })),
+      THEMES.filter((th) => !FREE_EDITION || themeAllowed(plan, th.id) || th.id === s.theme).map((th) => ({ value: th.id, label: th.name, badge: themeAllowed(plan, th.id) ? undefined : FREE_EDITION ? t("set.notIncluded") : t("set.pro") })),
       s.theme,
-      { attr: { "aria-label": "Theme" }, on: { change: () => this.setOverride({ theme: theme.value }) } },
+      { attr: { "aria-label": t("set.theme") }, on: { change: () => this.setOverride({ theme: theme.value }) } },
     );
     const trim = select(
-      TRIMS.filter((t) => !FREE_EDITION || trimAllowed(plan, t.id) || t.id === s.trim).map((t) => ({ value: t.id, label: t.label, badge: trimAllowed(plan, t.id) ? undefined : FREE_EDITION ? "Not included" : "Pro" })),
+      TRIMS.filter((tr) => !FREE_EDITION || trimAllowed(plan, tr.id) || tr.id === s.trim).map((tr) => ({ value: tr.id, label: tr.label, badge: trimAllowed(plan, tr.id) ? undefined : FREE_EDITION ? t("set.notIncluded") : t("set.pro") })),
       s.trim,
-      { attr: { "aria-label": "Trim size" }, on: { change: () => this.setOverride({ trim: trim.value }) } },
+      { attr: { "aria-label": t("set.trimAria") }, on: { change: () => this.setOverride({ trim: trim.value }) } },
     );
     const paper = select(
-      (["white", "cream", "color"] as const).map((p) => ({ value: p, label: { white: "White paper", cream: "Cream paper", color: "Premium color" }[p] })),
+      (["white", "cream", "color"] as const).map((p) => ({ value: p, label: t(`paper.${p}`) })),
       s.paper,
-      { attr: { "aria-label": "Interior paper" }, on: { change: () => this.setOverride({ paper: paper.value as BookSettings["paper"] }) } },
+      { attr: { "aria-label": t("set.paperAria") }, on: { change: () => this.setOverride({ paper: paper.value as BookSettings["paper"] }) } },
     );
     const start = select(
       [
-        { value: "recto", label: "Right-hand page" },
-        { value: "any", label: "Next page" },
+        { value: "recto", label: t("start.recto") },
+        { value: "any", label: t("start.any") },
       ],
       s.chapterStart,
-      { attr: { "aria-label": "Chapters start on" }, on: { change: () => this.setOverride({ chapterStart: start.value as BookSettings["chapterStart"] }) } },
+      { attr: { "aria-label": t("set.chapterStart") }, on: { change: () => this.setOverride({ chapterStart: start.value as BookSettings["chapterStart"] }) } },
     );
     const bleed = h("input", { attr: { type: "checkbox", checked: s.bleed }, on: { change: () => this.setOverride({ bleed: bleed.checked }) } });
     append(
       this.settingsBar,
-      h("label", { cls: "bs-field" }, h("span", { text: "Theme" }), theme),
-      h("label", { cls: "bs-field" }, h("span", { text: "Trim" }), trim),
-      h("label", { cls: "bs-field" }, h("span", { text: "Paper" }), paper),
-      h("label", { cls: "bs-field" }, h("span", { text: "Chapters start on" }), start),
-      h("label", { cls: "bs-check" }, bleed, "Bleed"),
+      h("label", { cls: "bs-field" }, h("span", { text: t("set.theme") }), theme),
+      h("label", { cls: "bs-field" }, h("span", { text: t("set.trim") }), trim),
+      h("label", { cls: "bs-field" }, h("span", { text: t("set.paper") }), paper),
+      h("label", { cls: "bs-field" }, h("span", { text: t("set.chapterStart") }), start),
+      h("label", { cls: "bs-check" }, bleed, t("set.bleed")),
     );
     if (Object.keys(this.overrides()).length) {
       append(
         this.settingsBar,
         h("button", {
           cls: "bs-link",
-          text: "Use the manifest’s settings",
-          attr: { title: "Forget the choices made here and use the book note’s frontmatter" },
+          text: t("set.useManifest"),
+          attr: { title: t("set.useManifestTitle") },
           on: {
             click: () => {
               if (this.current) this.host.store.set(`settings:${this.key(this.current)}`, undefined);
@@ -505,7 +507,7 @@ export class Studio {
       );
     }
     const blockers = [...new Set([...pdfBlockers(plan, this.built!), ...ebookBlockers(plan, this.built!)].map((b) => editionMessage(b.message)))];
-    if (blockers.length) append(this.settingsBar, h("p", { cls: "bs-pro-note", text: FREE_EDITION ? `${blockers.join(" ")} Choose an included option to export.` : `Previewing Pro options. ${blockers.join(" ")}` }));
+    if (blockers.length) append(this.settingsBar, h("p", { cls: "bs-pro-note", text: FREE_EDITION ? t("set.chooseIncluded", { blockers: blockers.join(" ") }) : t("set.previewingPro", { blockers: blockers.join(" ") }) }));
   }
 
   // ── Preview ──
@@ -519,8 +521,8 @@ export class Studio {
     // Keep the reader's place across rebuilds.
     const keep = this.firstVisiblePage();
     clear(this.previewTools);
-    const zoom = select(ZOOMS, this.zoom(), {
-      attr: { "aria-label": "Zoom" },
+    const zoom = select(zooms(), this.zoom(), {
+      attr: { "aria-label": t("pv.zoom") },
       on: {
         change: () => {
           this.host.store.set("zoom", zoom.value);
@@ -538,9 +540,9 @@ export class Studio {
       this.host.store.set("guides", guides.checked);
       this.renderPreview();
     });
-    const jumpOptions = [{ value: "", label: "Go to…" }, ...layout.toc.map((t) => ({ value: t.chapterId, label: `${t.title} · ${t.folio}` }))];
+    const jumpOptions = [{ value: "", label: t("pv.goTo") }, ...layout.toc.map((e) => ({ value: e.chapterId, label: `${e.title} · ${e.folio}` }))];
     const jump = select(jumpOptions, "", {
-      attr: { "aria-label": "Go to a chapter" },
+      attr: { "aria-label": t("pv.goToAria") },
       on: {
         change: () => {
           const index = layout.pages.findIndex((p) => p.chapterId === jump.value);
@@ -551,9 +553,9 @@ export class Studio {
     });
     append(
       this.previewTools,
-      h("label", { cls: "bs-field" }, h("span", { text: "Zoom" }), zoom),
-      h("label", { cls: "bs-check" }, spreads, "Facing pages"),
-      h("label", { cls: "bs-check" }, guides, "Margins"),
+      h("label", { cls: "bs-field" }, h("span", { text: t("pv.zoom") }), zoom),
+      h("label", { cls: "bs-check" }, spreads, t("pv.facing")),
+      h("label", { cls: "bs-check" }, guides, t("pv.margins")),
       jump,
     );
 
@@ -611,8 +613,8 @@ export class Studio {
       const spread = h("div", { cls: ["bs-spread", row.length === 1 && facing && layout.pages[row[0]].recto && "is-recto-only"] });
       for (const i of row) {
         const p = layout.pages[i];
-        const label = p.role === "blank" ? `Blank page ${i + 1} of ${total}` : `Page ${p.folio}, ${i + 1} of ${total}`;
-        const fig = h("figure", { cls: ["bs-page", p.recto ? "is-recto" : "is-verso"], attr: { "data-index": i, "aria-label": label } }, h("canvas", { attr: { role: "img", "aria-label": label } }), h("figcaption", { text: p.showFolio ? p.folio : p.role === "blank" ? "blank" : `(${p.folio})` }));
+        const label = p.role === "blank" ? t("pv.blankPage", { n: i + 1, total }) : t("pv.page", { folio: p.folio, n: i + 1, total });
+        const fig = h("figure", { cls: ["bs-page", p.recto ? "is-recto" : "is-verso"], attr: { "data-index": i, "aria-label": label } }, h("canvas", { attr: { role: "img", "aria-label": label } }), h("figcaption", { text: p.showFolio ? p.folio : p.role === "blank" ? t("pv.blank") : `(${p.folio})` }));
         spread.appendChild(fig);
         this.observer.observe(fig);
       }
@@ -680,12 +682,12 @@ export class Studio {
     const panel = this.panels.problems;
     clear(panel);
     const list = this.problems();
-    if (!list.some((p) => p.severity !== "info")) append(panel, h("p", { cls: "bs-good", text: "No problems found." }));
+    if (!list.some((p) => p.severity !== "info")) append(panel, h("p", { cls: "bs-good", text: t("prob.none") }));
     const ul = h("ul", { cls: "bs-problems" });
     for (const p of list) {
-      const li = h("li", { cls: `is-${p.severity}` }, h("strong", { text: `${SEVERITY_WORD[p.severity]}: ` }), p.message);
+      const li = h("li", { cls: `is-${p.severity}` }, h("strong", { text: `${severityWord(p.severity)}: ` }), p.message);
       if (p.src) {
-        const where = `${p.src.file}, line ${p.src.line}`;
+        const where = t("prob.where", { file: p.src.file, line: p.src.line });
         if (this.host.openSource) {
           const src = p.src;
           append(li, " ", h("button", { cls: "bs-link", text: where, on: { click: () => this.host.openSource?.(src) } }));
@@ -693,7 +695,7 @@ export class Studio {
       }
       if (p.page) {
         const index = this.built!.layout.pages.findIndex((pg) => pg.folio === p.page);
-        if (index >= 0) append(li, " ", h("button", { cls: "bs-link", text: `Show page ${p.page}`, on: { click: () => this.scrollToPage(index) } }));
+        if (index >= 0) append(li, " ", h("button", { cls: "bs-link", text: t("prob.showPage", { folio: p.page }), on: { click: () => this.scrollToPage(index) } }));
       }
       ul.appendChild(li);
     }
@@ -713,7 +715,7 @@ export class Studio {
     if (!hasFeature(this.plan(), "accessiblePack")) {
       append(
         panel,
-        h("p", { text: "Every EPUB Book Studio makes has semantic structure, a navigable table of contents and landmarks, and the book’s language on every page." }),
+        h("p", { text: t("a11y.intro") }),
       );
       if (FREE_EDITION) return;
       append(
@@ -721,16 +723,16 @@ export class Studio {
         h(
           "p",
           { cls: "bs-pro-note" },
-          `The accessible EPUB pack in Book Studio Pro checks the book against EPUB Accessibility 1.1 and WCAG 2.1 AA, lists every image with its description, adds the accessibility metadata stores and libraries look for, includes the print page list, and writes a report. For this book it found ${errors} problem${errors === 1 ? "" : "s"} to fix, ${warnings} to review, and ${missingAlt} image${missingAlt === 1 ? "" : "s"} without a description.`,
+          t("a11y.proNote", { problems: tn("n.problem", errors), warnings, images: tn("n.image", missingAlt) }),
         ),
-        h("button", { cls: "mod-cta", text: "Get Pro", on: { click: () => this.host.openLicense() } }),
+        h("button", { cls: "mod-cta", text: t("plan.getPro"), on: { click: () => this.host.openLicense() } }),
       );
       return;
     }
 
     const verdict = audit.passed
-      ? "The book passes every automated check. Its EPUB can declare conformance to EPUB Accessibility 1.1, WCAG 2.1 Level AA."
-      : `Fix ${errors} problem${errors === 1 ? "" : "s"} before the EPUB can declare conformance.`;
+      ? t("a11y.pass")
+      : t("a11y.fix", { problems: tn("n.problem", errors) });
     append(panel, h("p", { cls: ["bs-verdict", audit.passed ? "is-pass" : "is-fail"], text: verdict }));
 
     const choices = this.choices();
@@ -740,14 +742,14 @@ export class Studio {
     cert.addEventListener("change", () => this.host.store.set("certifiedBy", cert.value.trim() || undefined));
     append(
       panel,
-      h("label", { cls: "bs-check" }, claim, "Declare conformance in the EPUB when every check passes"),
-      h("label", { cls: "bs-field bs-wide" }, h("span", { text: "Certified by" }), cert),
+      h("label", { cls: "bs-check" }, claim, t("a11y.claim")),
+      h("label", { cls: "bs-field bs-wide" }, h("span", { text: t("a11y.certifiedBy") }), cert),
     );
 
     if (audit.issues.length) {
       const ul = h("ul", { cls: "bs-problems" });
       for (const i of audit.issues) {
-        const li = h("li", { cls: `is-${i.severity}` }, h("strong", { text: `${SEVERITY_WORD[i.severity]}: ` }), i.message);
+        const li = h("li", { cls: `is-${i.severity}` }, h("strong", { text: `${severityWord(i.severity)}: ` }), i.message);
         if (i.fix) append(li, h("span", { cls: "bs-fix", text: ` ${i.fix}` }));
         if (i.src && this.host.openSource) {
           const src = i.src;
@@ -755,7 +757,7 @@ export class Studio {
         }
         ul.appendChild(li);
       }
-      append(panel, h("h3", { text: "Findings" }), ul);
+      append(panel, h("h3", { text: t("a11y.findings") }), ul);
     }
 
     if (audit.images.length) {
@@ -764,15 +766,15 @@ export class Studio {
           "tr",
           null,
           h("th", { attr: { scope: "row" }, text: img.target }),
-          h("td", { text: img.decorative ? "Decorative" : img.alt || "Missing" }),
-          h("td", { cls: img.ok ? "bs-good" : "bs-bad", text: img.ok ? "OK" : "Needs a description" }),
+          h("td", { text: img.decorative ? t("a11y.decorative") : img.alt || t("a11y.missing") }),
+          h("td", { cls: img.ok ? "bs-good" : "bs-bad", text: img.ok ? t("a11y.ok") : t("a11y.needsDescription") }),
         ),
       );
       append(
         panel,
-        h("h3", { text: "Image descriptions" }),
-        h("p", { text: "Check that each description tells someone who can’t see the image what it shows and why it’s there." }),
-        h("table", { cls: "bs-table" }, h("thead", null, h("tr", null, h("th", { attr: { scope: "col" }, text: "Image" }), h("th", { attr: { scope: "col" }, text: "Description" }), h("th", { attr: { scope: "col" }, text: "Status" }))), h("tbody", null, ...rows)),
+        h("h3", { text: t("a11y.images") }),
+        h("p", { text: t("a11y.imagesHelp") }),
+        h("table", { cls: "bs-table" }, h("thead", null, h("tr", null, h("th", { attr: { scope: "col" }, text: t("a11y.colImage") }), h("th", { attr: { scope: "col" }, text: t("a11y.colDescription") }), h("th", { attr: { scope: "col" }, text: t("a11y.colStatus") }))), h("tbody", null, ...rows)),
       );
     }
   }
@@ -783,13 +785,13 @@ export class Studio {
     const problems = this.built ? this.problems().filter((p) => p.severity !== "info").length : 0;
     const audit = this.built?.audit;
     const pro = hasFeature(this.plan(), "accessiblePack");
-    this.tabs.preview.textContent = "Preview";
-    this.tabs.problems.textContent = problems ? `Problems (${problems})` : "Problems";
+    this.tabs.preview.textContent = t("tab.preview");
+    this.tabs.problems.textContent = problems ? t("tab.problemsN", { n: problems }) : t("tab.problems");
     // The free edition's EPUB has no accessibility pack, so there is nothing to show.
     this.tabs.kdp.hidden = FREE_EDITION;
-    this.tabs.kdp.textContent = "KDP";
+    this.tabs.kdp.textContent = t("tab.kdp");
     this.tabs.accessibility.hidden = FREE_EDITION;
-    this.tabs.accessibility.textContent = audit && pro && !audit.passed ? "Accessibility (!)" : pro || FREE_EDITION ? "Accessibility" : "Accessibility (Pro)";
+    this.tabs.accessibility.textContent = audit && pro && !audit.passed ? t("tab.accessibilityFix") : pro || FREE_EDITION ? t("tab.accessibility") : t("tab.accessibilityPro");
   }
 
   private showTab(tab: Tab): void {
