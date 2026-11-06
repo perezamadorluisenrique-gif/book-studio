@@ -17,7 +17,7 @@ Prices are as listed on 2026-11-02 on each vendor's own page, except Atticus, wh
 |---|---|---|---|---|
 | Price | 249.99 USD one-time for Vellum Press (ebooks and paperbacks); 199.99 USD for Vellum Ebooks (tax not included). Free to download and try, pay to generate | 147 USD one-time, per [Kindlepreneur](https://kindlepreneur.com/atticus-review/) | Free from Amazon | Free web app, MIT licensed |
 | Platforms | Mac only (macOS 13 or newer) | Browser, plus an installable app on Windows, Mac, Linux and Chromebook | Windows and Mac | Any modern browser; Obsidian plugin on desktop and mobile |
-| Input | A Word (.docx) file | Built-in editor | A DOC/DOCX manuscript | A folder of Markdown notes |
+| Input | A Word (.docx) file | Built-in editor | A DOC/DOCX manuscript | A folder of Markdown notes, a Word, Markdown or text file to import, or its simple chapter editor |
 | Print PDF | Yes (PDF/X-1a), 24 trim sizes, large print | Yes | No PDF; a KPF file for upload to KDP | Yes, KDP print-ready PDF |
 | EPUB | EPUB 3 and EPUB 2 | Yes | Produces a KPF file, not an EPUB | EPUB 3 |
 | Works offline | Desktop app | After login, but needs a connection to log in and export | Desktop app | Runs on your device in the browser; nothing is uploaded |
@@ -30,7 +30,7 @@ Vellum is the benchmark for good-looking books. Its styles are polished, it offe
 
 ## Where Atticus is better
 
-Atticus is a writing tool as well as a formatter. It has a built-in editor and templates, and it works on Windows, Mac, Linux and Chromebook. If you want to write and format in one place, with one purchase, it fits better than Book Studio, which has no word processor. It exports EPUB, print PDF and DOCX. It works offline after login but needs a connection to log in and export. Sources: [atticus.io](https://www.atticus.io/) and [Kindlepreneur's review](https://kindlepreneur.com/atticus-review/).
+Atticus is a writing tool as well as a formatter. It has a built-in editor and templates, and it works on Windows, Mac, Linux and Chromebook. If you want to write and format in one place, with one purchase, it fits better than Book Studio, whose chapter editor is much simpler. It exports EPUB, print PDF and DOCX. It works offline after login but needs a connection to log in and export. Sources: [atticus.io](https://www.atticus.io/) and [Kindlepreneur's review](https://kindlepreneur.com/atticus-review/).
 
 ## Where Kindle Create is better
 
@@ -46,7 +46,7 @@ Kindle Create is free from Amazon and has a direct path to KDP. You import a DOC
 
 ## Book Studio's limits
 
-- No built-in word processor. You write in Obsidian or another Markdown editor.
+- No full word processor. The web app has a simple chapter editor (no comments, no track changes, no tables); you can also write in Obsidian or another Markdown editor, or import a Word file.
 - No cover designer in the free plan. It reports the spine width for your designer.
 - Fewer themes than Vellum.
 - The free plan prints three trims (6 × 9, 5 × 8, 5.5 × 8.5); Book Studio supports 12 of KDP's 16. Book Studio Pro adds the other nine, more themes, a full cover, an index, box sets and the accessible-EPUB pack (one-time purchase): [see Pro](pro:).
@@ -54,7 +54,7 @@ Kindle Create is free from Amazon and has a direct path to KDP. You import a DOC
 
 ## Which one to use
 
-Use Vellum if you have a Mac and care most about design. Use Atticus if you want an editor and formatter together. Use Kindle Create if you write in Word and publish only on KDP. Use Book Studio if you write in Markdown, want PDF and EPUB at no cost, or work on Windows or Linux.
+Use Vellum if you have a Mac and care most about design. Use Atticus if you want an editor and formatter together. Use Kindle Create if you write in Word and publish only on KDP. Use Book Studio if you write in Markdown or Word, want PDF and EPUB at no cost, or work on Windows or Linux.
 
 See the output yourself: [download the Oz sample PDF](download:oz/pdf), then read [the free KDP book formatter overview](guide:free-kdp-book-formatter) or [how to format a book for KDP](guide:format-a-book-for-kdp).
 

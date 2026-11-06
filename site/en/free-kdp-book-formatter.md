@@ -46,7 +46,7 @@ The EPUB 3 uses semantic XHTML, a navigable table of contents, landmarks, embedd
 
 ## How you write the book
 
-You write in any Markdown editor. Obsidian works well. One "book note" lists your chapters as links, and the app does the rest. [From Markdown to a book](guide:markdown-to-book) shows the format. If you want the whole path in order, follow [how to format a book for KDP](guide:format-a-book-for-kdp).
+You write in any Markdown editor. Obsidian works well. One "book note" lists your chapters as links, and the app does the rest. [From Markdown to a book](guide:markdown-to-book) shows the format. In the web app you can also write the chapters right in your browser, or import a Word (.docx), Markdown or text file; tables, text boxes and comments are left out, and a report says what. If you want the whole path in order, follow [how to format a book for KDP](guide:format-a-book-for-kdp).
 
 ## Check the output before you trust it
 
@@ -56,7 +56,7 @@ In the app, a live paged preview shows facing pages and zoom. A Problems tab lis
 
 ## What it does not do
 
-There is no built-in word processor. You write elsewhere. The free plan has no cover designer, only the spine width. It prints three trims. And it is a young project by one developer. If you are comparing tools, [Book Studio against Vellum, Atticus and Kindle Create](guide:vellum-atticus-kindle-create) is an honest side-by-side.
+There is no full word processor: the web app has a simple chapter editor, with no comments or track changes, and you can import a Word file. The free plan has no cover designer, only the spine width. It prints three trims. And it is a young project by one developer. If you are comparing tools, [Book Studio against Vellum, Atticus and Kindle Create](guide:vellum-atticus-kindle-create) is an honest side-by-side.
 
 ## Pro
 
