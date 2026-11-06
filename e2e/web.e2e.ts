@@ -1,6 +1,12 @@
 /// <reference types="node" />
 import { AxeBuilder } from "@axe-core/playwright";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { deflateSync, crc32 } from "node:zlib";
+import JSZip from "jszip";
 import { chromium, type Browser, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { trimById } from "../src/engine/trims";
@@ -324,9 +330,11 @@ describe("web app, writing", () => {
     await page.getByRole("tab", { name: /^Problems/ }).click();
     const item = page.locator(".bs-panel-problems li", { hasText: "Raw HTML block" });
     await item.waitFor({ timeout: 10_000 });
-    // A problem in the book's own note cannot be edited yet, and says so.
+    // A problem in the book's own note opens the book details form.
     await page.locator(".bs-panel-problems li", { hasText: "No author" }).locator(".bs-link").click();
-    await page.getByText("book's own note").waitFor();
+    await page.getByRole("heading", { name: "Book details" }).waitFor();
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe("dt-heading");
+    await page.getByRole("button", { name: "Chapter One", exact: true }).click();
     await item.locator(".bs-link").click();
     expect(await page.evaluate(() => document.activeElement?.id)).toBe("ed-text");
     const caret = await page.locator("#ed-text").evaluate((el: HTMLTextAreaElement) => el.value.slice(0, el.selectionStart).split("\n").length);
@@ -403,4 +411,219 @@ describe("web app, writing", () => {
       await context.close();
     });
   }
+});
+
+/** A plain-colour PNG of this size (a real, valid file, small once compressed). */
+function makePng(width: number, height: number): Buffer {
+  const chunk = (type: string, data: Buffer) => {
+    const head = Buffer.alloc(8);
+    head.writeUInt32BE(data.length, 0);
+    head.write(type, 4, "ascii");
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), data])), 0);
+    return Buffer.concat([head, data, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr.set([8, 2, 0, 0, 0], 8);
+  const row = Buffer.alloc(1 + width * 3, 0x7a);
+  row[0] = 0;
+  const raw = Buffer.concat(Array.from({ length: height }, () => row));
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
+}
+
+/** Run W3C EPUBCheck on a file, with warnings counting as failures. Returns null when Java or the jar is missing. */
+async function epubcheck(file: string): Promise<{ ok: boolean; log: string } | null> {
+  const jar = process.env.EPUBCHECK_JAR || "out/epubcheck-5.2.1/epubcheck.jar";
+  if (!existsSync(jar)) return null;
+  return new Promise((resolve) => {
+    execFile("java", ["-jar", jar, "--failonwarnings", file], { timeout: 120_000 }, (err, stdout, stderr) => {
+      if (err && (err as { code?: string }).code === "ENOENT") resolve(null);
+      else resolve({ ok: !err, log: `${stdout}\n${stderr}` });
+    });
+  });
+}
+
+describe("web app, book details and cover", () => {
+  async function startBook(page: Page, name: string): Promise<void> {
+    await page.goto(`${base}?sample=oz`);
+    await page.getByRole("button", { name: "Export print PDF" }).waitFor();
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByLabel("Book name").fill(name);
+    await page.getByRole("button", { name: "Create book" }).click();
+    await page.locator("#ed-text").waitFor();
+    if ((page.viewportSize()?.width ?? 1280) > 900) await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+  }
+  const openDetails = async (page: Page) => {
+    await page.getByRole("button", { name: "Edit the book's details and cover" }).click();
+    await page.getByRole("heading", { name: "Book details" }).waitFor();
+  };
+  // The "Saved" note belongs to the chapter editor, which is hidden while the form is open.
+  const saved = (page: Page) => page.locator(".ed-status", { hasText: "Saved" }).waitFor({ state: "attached" });
+  const field = (page: Page, label: string) => page.locator(".dt").getByLabel(label, { exact: true });
+
+  const DATA: Record<string, string> = {
+    Title: "El faro: una historia",
+    Subtitle: "Novela de mar",
+    "Author": "Ana María",
+    Publisher: "Ediciones Faro",
+    "ISBN of the paperback": "978-84-376-0494-7",
+    "ISBN of the ebook": "9780306406157",
+    "Copyright line": "© 2026 Ana María. Todos los derechos reservados.",
+    Dedication: "Para quien lo leyó primero.",
+    Epigraph: "Mar adentro.",
+    Description: "Una historia de faros.",
+    Keywords: "mar, faro, novela",
+    Series: "Costa Norte",
+  };
+
+  it("keeps the details after a reload, checks the ISBN and the keywords, and exports a PDF that passes the KDP check", async () => {
+    const context = await browser.newContext({ acceptDownloads: true, locale: "en-US" });
+    const page = await context.newPage();
+    await startBook(page, "Details test");
+    await openDetails(page);
+    for (const [label, value] of Object.entries(DATA)) await field(page, label).fill(value);
+    await field(page, "Language").selectOption("es");
+
+    // A wrong ISBN is flagged for screen readers and the message is linked to the field.
+    const isbn = field(page, "ISBN of the paperback");
+    await isbn.fill("9780306406158");
+    expect(await isbn.getAttribute("aria-invalid")).toBe("true");
+    expect(await isbn.getAttribute("aria-describedby")).toContain("dt-isbnPrint-err");
+    expect(await page.locator("#dt-isbnPrint-err").textContent()).toContain("last digit");
+    await isbn.fill(DATA["ISBN of the paperback"]);
+    expect(await isbn.getAttribute("aria-invalid")).toBeNull();
+    expect(await page.locator("#dt-isbnPrint-err").textContent()).toBe("");
+
+    // More than seven keywords: only seven are kept, and the field says so.
+    const keywords = field(page, "Keywords");
+    await keywords.fill("a, b, c, d, e, f, g, h");
+    expect(await keywords.getAttribute("aria-invalid")).toBe("true");
+    expect(await page.locator("#dt-keywords-err").textContent()).toContain("only the first 7");
+    await keywords.fill(DATA.Keywords);
+
+    // Pro themes show as disabled with the Pro label; a free trim is allowed.
+    const elegant = page.locator("#dt-theme option[value=elegant]");
+    expect(await elegant.isDisabled()).toBe(true);
+    expect(await elegant.textContent()).toContain("Pro");
+    expect(await page.locator("#dt-theme option[value=modern]").isDisabled()).toBe(false);
+    await field(page, "Trim size").selectOption("5x8");
+    await saved(page);
+
+    await page.goto(base);
+    await page.getByRole("button", { name: "Open Details test" }).click();
+    await page.locator("#ed-text").waitFor();
+    await openDetails(page);
+    for (const [label, value] of Object.entries(DATA)) expect(await field(page, label).inputValue(), label).toBe(value);
+    expect(await field(page, "Language").inputValue()).toBe("es");
+    expect(await field(page, "Trim size").inputValue()).toBe("5x8");
+
+    // The preview uses the details, and the PDF passes the KDP check at the chosen trim.
+    await page.locator(".bs-status", { hasText: "El faro: una historia" }).waitFor({ timeout: 60_000 });
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    const [download] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export print PDF" }).click()]);
+    const bytes = new Uint8Array(await readFile(await download.path()));
+    const r = await checkKdpPdf(bytes, trimById("5x8")!, { bleed: false });
+    expect(r.errors).toEqual([]);
+    await context.close();
+  });
+
+  it("uploads a cover, exports an EPUB that has it as the cover image, and EPUBCheck passes", async () => {
+    const context = await browser.newContext({ acceptDownloads: true, locale: "en-US" });
+    const page = await context.newPage();
+    await startBook(page, "Cover test");
+    await openDetails(page);
+    await field(page, "Author").fill("Ana María");
+
+    // Wrong files are refused with a message.
+    await page.locator("#dt-cover-file").setInputFiles({ name: "notes.png", mimeType: "image/png", buffer: Buffer.from("not a picture") });
+    await page.getByText("not a JPG or PNG").waitFor();
+    await page.locator("#dt-cover-file").setInputFiles({ name: "huge.jpg", mimeType: "image/jpeg", buffer: Buffer.alloc(11 * 1024 * 1024, 0xff) });
+    await page.getByText("the limit is 10 MB").waitFor();
+
+    const png = makePng(600, 900);
+    await page.locator("#dt-cover-file").setInputFiles({ name: "my cover.png", mimeType: "image/png", buffer: png });
+    const thumb = page.getByRole("img", { name: "Cover of Cover test" });
+    await thumb.waitFor();
+    // Too small for print: the warning says which size is needed (6 x 9 with bleed at 300 ppi).
+    await page.getByText("smaller than the 1838 × 2775").waitFor();
+    expect(await page.getByText("needs at least 1838 × 2775 pixels").count()).toBe(1);
+    await saved(page);
+
+    await page.goto(base);
+    await page.getByRole("button", { name: "Open Cover test" }).click();
+    await page.locator("#ed-text").waitFor();
+    await openDetails(page);
+    await page.getByRole("img", { name: "Cover of Cover test" }).waitFor();
+
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    const [download] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export EPUB" }).click()]);
+    const epub = await readFile(await download.path());
+    const zip = await JSZip.loadAsync(epub);
+    const opf = await zip.file(/\.opf$/)[0].async("string");
+    const item = /<item [^>]*properties="cover-image"[^>]*>/.exec(opf)?.[0];
+    expect(item, "an item with properties=cover-image").toBeTruthy();
+    expect(item).toContain('media-type="image/png"');
+    const href = /href="([^"]+)"/.exec(item!)![1];
+    const opfDir = zip.file(/\.opf$/)[0].name.replace(/[^/]*$/, "");
+    const inZip = zip.file(opfDir + href);
+    expect(inZip, "the cover file in the zip").toBeTruthy();
+    expect(Buffer.from(await inZip!.async("uint8array")).equals(png)).toBe(true);
+
+    const dir = await mkdtemp(join(tmpdir(), "bs-epub-"));
+    const file = join(dir, download.suggestedFilename());
+    await writeFile(file, epub);
+    const check = await epubcheck(file);
+    if (!check) console.warn("EPUBCheck did NOT run: Java or out/epubcheck-5.2.1/epubcheck.jar is missing (npm run epubcheck downloads it).");
+    else expect(check.ok, check.log).toBe(true);
+
+    // Removing the cover takes it out of the next EPUB.
+    await openDetails(page);
+    await page.getByRole("button", { name: "Remove the cover image" }).click();
+    await page.getByText("No cover image yet.").waitFor();
+    await saved(page);
+    await context.close();
+  });
+
+  for (const [label, viewport] of [["desktop", { width: 1280, height: 800 }], ["mobile 390 px", { width: 390, height: 844 }]] as const) {
+    it(`has no serious accessibility violations with the details form open, ${label}`, async () => {
+      const context = await browser.newContext({ viewport, locale: "en-US" });
+      const page = await context.newPage();
+      await startBook(page, "Axe details");
+      if (label !== "desktop") await page.getByRole("tab", { name: "Chapters" }).click();
+      await openDetails(page);
+      await field(page, "ISBN of the paperback").fill("123");
+      await page.locator("#dt-cover-file").setInputFiles({ name: "c.png", mimeType: "image/png", buffer: makePng(100, 150) });
+      await page.getByRole("img", { name: "Cover of Axe details" }).waitFor();
+      const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+      expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes.length} node(s)`)).toEqual([]);
+      // Every control is at least 24 px tall and wide.
+      const small = await page.evaluate(() =>
+        Array.from(document.querySelectorAll<HTMLElement>(".dt input, .dt select, .dt textarea, .dt button, .ws-details-btn"))
+          .map((el) => ({ id: el.id || el.textContent, r: el.getBoundingClientRect() }))
+          .filter((x) => x.r.width > 0 && (x.r.height < 24 || x.r.width < 24))
+          .map((x) => x.id),
+      );
+      expect(small).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await context.close();
+    });
+  }
+
+  it("shows the form in Spanish for an es-ES browser", async () => {
+    const context = await browser.newContext({ locale: "es-ES" });
+    const page = await context.newPage();
+    await page.goto(`${base}?sample=oz`);
+    await page.getByRole("button", { name: "Exportar PDF de impresión" }).waitFor();
+    await page.getByRole("button", { name: "Mis libros" }).click();
+    await page.getByLabel("Nombre del libro").fill("Libro de datos");
+    await page.getByRole("button", { name: "Crear libro" }).click();
+    await page.locator("#ed-text").waitFor();
+    await page.getByRole("button", { name: "Editar los datos y la portada del libro" }).click();
+    await page.getByRole("heading", { name: "Datos del libro" }).waitFor();
+    for (const label of ["Título", "Subtítulo", "Editorial", "Palabras clave", "Serie", "Tamaño de corte"]) expect(await field(page, label).count(), label).toBe(1);
+    expect(await page.getByText("Imagen de portada frontal").count()).toBe(1);
+    await context.close();
+  });
 });
