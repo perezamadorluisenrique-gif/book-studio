@@ -762,3 +762,14 @@ button.mod-cta {
 .ws-details[hidden] {
   display: none;
 }
+
+.app-update {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--app-line);
+  background: var(--app-surface);
+}

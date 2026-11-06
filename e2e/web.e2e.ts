@@ -803,3 +803,49 @@ describe("web app, import a manuscript", () => {
     await context.close();
   });
 });
+
+describe("web app, offline", () => {
+  it("writes a service worker that saves the app and the fonts, and a manifest that can be installed", async () => {
+    const sw = await readFile("dist/web/sw.js", "utf8");
+    expect(sw).not.toContain("__BUILD__");
+    expect(sw).not.toContain("__FILES__");
+    expect(sw).toMatch(/const BUILD = "[0-9a-f]{12}"/);
+    const files = JSON.parse(/const FILES = (\[.*\]);/.exec(sw)?.[1] ?? "[]") as string[];
+    for (const f of ["./", "index.html", "app.js", "app.css", "studio.css", "app.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "fonts/EBGaramond-Regular.ttf"]) expect(files, f).toContain(f);
+    expect(files.some((f) => f.startsWith("sample/") || f.startsWith("en/") || f.startsWith("es/"))).toBe(false);
+    const res = await fetch(`${base}app.webmanifest`);
+    expect(((await res.json()) as { name: string }).name).toBe("Book Studio");
+    expect((await fetch(`${base}icons/icon-512.png`)).status).toBe(200);
+  });
+
+  it("opens, lets you write a book and exports a PDF that passes the KDP check with no network", async () => {
+    const context = await browser.newContext({ acceptDownloads: true, locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(`${base}?sample=leyendas`);
+    await page.getByRole("button", { name: "Export print PDF" }).waitFor();
+    // Wait until the worker controls the page and has saved the app.
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) await new Promise((ok) => navigator.serviceWorker.addEventListener("controllerchange", ok, { once: true }));
+    });
+    const saved = await page.evaluate(async () => (await (await caches.open((await caches.keys()).find((k) => k.startsWith("bs-core-")) ?? "")).keys()).map((r) => new URL(r.url).pathname.replace(/^\//, "")));
+    expect(saved).toContain("app.js");
+    expect(saved.some((p) => p.startsWith("fonts/"))).toBe(true);
+
+    await context.setOffline(true);
+    await page.goto(base);
+    await page.getByRole("heading", { name: "My books" }).or(page.getByRole("button", { name: "Export print PDF" })).first().waitFor({ timeout: 30_000 });
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByLabel("Book name").fill("Offline book");
+    await page.getByLabel("The Starter Book template").check();
+    await page.getByRole("button", { name: "Create book" }).click();
+    await page.locator("#ed-text").waitFor();
+    await page.locator("#ed-text").fill("Written with no network at all.");
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    const [download] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export print PDF" }).click()]);
+    const r = await checkKdpPdf(new Uint8Array(await readFile(await download.path())), trimById("6x9")!, { bleed: false });
+    expect(r.errors).toEqual([]);
+    expect(r.pages).toBeGreaterThan(0);
+    await context.close();
+  });
+});

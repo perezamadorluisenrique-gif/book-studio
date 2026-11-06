@@ -11,6 +11,7 @@ import { vaultToProjects, type ImportFiles, type ImportResult } from "../project
 import { createProject, renameProject } from "../project/ops";
 import { exportZip, importZip, zipName } from "../project/zip";
 import { projectFromText } from "../project/import-text";
+import { registerPwa } from "./pwa";
 import { Workspace } from "./workspace";
 import { projectToVault, type ProjectVault } from "../project/to-vault";
 import type { Project } from "../project/model";
@@ -536,6 +537,21 @@ $("reopen-folder").addEventListener("click", () => {
     const granted = (await dir.queryPermission?.({ mode: "read" })) === "granted" || (await dir.requestPermission?.({ mode: "read" })) === "granted";
     if (granted) await open(await folderFromHandle(dir));
   })();
+});
+
+// Offline: save the app on the device, and offer a new version without reloading under the person's hands.
+registerPwa({
+  ready: () => toast(t("pwa.ready")),
+  update: (apply) => {
+    if (doc.getElementById("update-bar")) return;
+    const bar = h(
+      "div",
+      { cls: "app-update", attr: { id: "update-bar", role: "status" } },
+      h("span", { text: t("pwa.update") }),
+      h("button", { cls: "mod-cta", text: t("pwa.reload"), attr: { type: "button" }, on: { click: () => void workspace.flush().finally(apply) } }),
+    );
+    doc.body.insertBefore(bar, doc.body.firstChild);
+  },
 });
 
 void (async () => {
