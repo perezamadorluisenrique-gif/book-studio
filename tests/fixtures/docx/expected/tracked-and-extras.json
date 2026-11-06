@@ -1,0 +1,57 @@
+{
+  "sections": [
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c1",
+        "c2"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "Part A",
+      "body": "Kept inserted words end."
+    },
+    {
+      "title": "Part B",
+      "body": "Second part."
+    }
+  ],
+  "assets": [],
+  "report": {
+    "items": [
+      {
+        "code": "textBoxes",
+        "count": 1
+      },
+      {
+        "code": "equations",
+        "count": 1
+      },
+      {
+        "code": "comments",
+        "count": 1
+      },
+      {
+        "code": "deletions",
+        "count": 1
+      },
+      {
+        "code": "insertions",
+        "count": 1
+      },
+      {
+        "code": "toc",
+        "count": 1
+      },
+      {
+        "code": "oldPictures",
+        "count": 1
+      }
+    ],
+    "chapters": 2,
+    "images": 0,
+    "footnotes": 0
+  }
+}

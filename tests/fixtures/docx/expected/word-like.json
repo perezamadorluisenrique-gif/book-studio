@@ -1,0 +1,64 @@
+{
+  "title": "The Lighthouse",
+  "author": "Ana Costa",
+  "language": "en",
+  "sections": [
+    {
+      "kind": "front",
+      "chapterIds": [
+        "c1"
+      ]
+    },
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c2",
+        "c3"
+      ]
+    },
+    {
+      "kind": "back",
+      "chapterIds": [
+        "c4"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "Dedication",
+      "kind": "dedication",
+      "body": "For everyone who kept a light on."
+    },
+    {
+      "title": "The storm",
+      "body": "It was a **very dark** night, and the *sea* was ***furious***.\n\n* * *\n\nA \\*star\\* and a\\_b and \\[link\\] and \\<tag\\> stay literal.\n\n## Second thoughts\n\n- First point\n- Second point\n\n1. Step one\n1. Step two\n\n> The sea does not forgive."
+    },
+    {
+      "title": "The morning",
+      "body": "![A small purple square](<docx-image-1.png>)\n\nPhoto without a description:\n\n![](<docx-image-1.png>)"
+    },
+    {
+      "title": "About the author",
+      "kind": "about-the-author",
+      "body": "Ana writes by the sea."
+    }
+  ],
+  "assets": [
+    "docx-image-1.png image/png bytes"
+  ],
+  "report": {
+    "items": [
+      {
+        "code": "tables",
+        "count": 1
+      },
+      {
+        "code": "imagesNoAlt",
+        "count": 1
+      }
+    ],
+    "chapters": 4,
+    "images": 1,
+    "footnotes": 0
+  }
+}

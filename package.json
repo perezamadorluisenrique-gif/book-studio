@@ -23,6 +23,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
     "@types/node": "^26.6.5",
+    "@xmldom/xmldom": "^0.9.12",
     "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-plugin-obsidianmd": "^0.4.2",

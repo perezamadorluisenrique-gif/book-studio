@@ -344,8 +344,18 @@ async function showProjects(focus?: string): Promise<void> {
         await putProject(p);
         return p;
       },
-      importText: async (text, fileName, name) => {
-        const { project, imported } = projectFromText(text, { id: crypto.randomUUID(), now: Date.now(), name, fileName, language: locale });
+      importManuscript: async ({ text, bytes, fileName, name }) => {
+        const opts = { id: crypto.randomUUID(), now: Date.now(), name, fileName, language: locale };
+        if (bytes) {
+          // The Word reader is loaded only when someone imports a .docx.
+          const { importDocx } = await import("../project/import-docx");
+          const { projectFromImport } = await import("../project/import-text");
+          const imported = await importDocx(bytes, (xml) => new DOMParser().parseFromString(xml, "application/xml"), fileName);
+          const project = projectFromImport(imported, opts);
+          await putProject(project);
+          return { project, notes: imported.notes, report: imported.report };
+        }
+        const { project, imported } = projectFromText(text ?? "", opts);
         await putProject(project);
         return { project, notes: imported.notes };
       },

@@ -672,6 +672,47 @@ describe("web app, import a manuscript", () => {
     await context.close();
   });
 
+  it("imports a Word file with a report, keeps the picture, and exports a PDF and an EPUB", async () => {
+    const context = await browser.newContext({ acceptDownloads: true, locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByLabel("Text file").setInputFiles(new URL("../tests/fixtures/docx/word-like.docx", import.meta.url).pathname);
+    await page.getByRole("button", { name: "Import as a new book" }).click();
+    // The report lists what was kept and what was left out.
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor();
+    expect(await dialog.textContent()).toContain("1 table was left out");
+    expect(await dialog.textContent()).toContain("1 picture has no description");
+    await page.getByRole("button", { name: "Open the book" }).click();
+    await page.locator("#ed-text").waitFor();
+    expect(await page.locator(".ch-pick").allTextContents()).toEqual(["Dedication", "The storm", "The morning", "About the author"]);
+
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    const [pdf] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export print PDF" }).click()]);
+    const r = await checkKdpPdf(new Uint8Array(await readFile(await pdf.path())), trimById("6x9")!, { bleed: false });
+    expect(r.errors).toEqual([]);
+
+    const [epub] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export EPUB" }).click()]);
+    const path = await epub.path();
+    const zip = await JSZip.loadAsync(await readFile(path));
+    expect(Object.keys(zip.files).some((f) => /docx-image-1\.png$/.test(f))).toBe(true);
+    const check = await epubcheck(path);
+    if (check) expect(check.ok, check.log).toBe(true);
+    await context.close();
+  });
+
+  it("says so when the file is not a Word document", async () => {
+    const context = await browser.newContext({ locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByLabel("Text file").setInputFiles({ name: "broken.docx", mimeType: "application/octet-stream", buffer: Buffer.from("not a zip") });
+    await page.getByRole("button", { name: "Import as a new book" }).click();
+    await page.getByText("This file is not a Word .docx document.").waitFor();
+    await context.close();
+  });
+
   it("has no serious accessibility violations on the books screen with the import form", async () => {
     const context = await browser.newContext({ locale: "en-US" });
     const page = await context.newPage();
