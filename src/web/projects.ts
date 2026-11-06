@@ -9,6 +9,8 @@ import type { Project } from "../project/model";
 export interface ProjectsDeps {
   list(): Promise<Project[]>;
   create(name: string, template: boolean): Promise<Project>;
+  /** Make a book from a manuscript's text; `fileName` is empty when the text was pasted. */
+  importText(text: string, fileName: string, name: string): Promise<{ project: Project; notes: string[] }>;
   rename(p: Project, name: string): Promise<void>;
   remove(p: Project): Promise<void>;
   open(p: Project): void;
@@ -60,6 +62,47 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
     nameInput,
     h("fieldset", null, h("legend", { text: t("proj.startFrom") }), radio("blank", t("proj.blank"), true), radio("template", t("proj.template"), false)),
     h("button", { cls: "mod-cta", text: t("proj.create"), attr: { type: "submit" } }),
+  );
+
+  const pasteBox = h("textarea", { attr: { id: "imp-text", rows: "6", "aria-describedby": "imp-hint" } });
+  const fileInput = h("input", { attr: { type: "file", id: "imp-file", accept: ".md,.markdown,.txt,text/plain,text/markdown", "aria-describedby": "imp-hint" } });
+  const importName = h("input", { attr: { type: "text", id: "imp-name", autocomplete: "off", value: "" } });
+  const importForm = h(
+    "form",
+    {
+      cls: "proj-new proj-import",
+      attr: { "aria-labelledby": "imp-title" },
+      on: {
+        submit: (ev: Event) => {
+          ev.preventDefault();
+          void (async () => {
+            try {
+              const file = fileInput.files?.[0];
+              const text = file ? await file.text() : pasteBox.value;
+              if (!text.trim()) {
+                deps.notify(t("imp.empty"));
+                return;
+              }
+              const { project, notes } = await deps.importText(text, file?.name ?? "", importName.value.trim());
+              const extra = notes.includes("intro") ? ` ${t("imp.intro")}` : "";
+              deps.notify(`${tn("imp.done", project.chapters.length, { name: project.name })}${extra}`);
+              deps.open(project);
+            } catch (e) {
+              fail(deps, e);
+            }
+          })();
+        },
+      },
+    },
+    h("h3", { text: t("imp.title"), attr: { id: "imp-title" } }),
+    h("p", { cls: "proj-hint", text: t("imp.hint"), attr: { id: "imp-hint" } }),
+    h("label", { attr: { for: "imp-file" }, text: t("imp.file") }),
+    fileInput,
+    h("label", { attr: { for: "imp-text" }, text: t("imp.paste") }),
+    pasteBox,
+    h("label", { attr: { for: "imp-name" }, text: t("imp.name") }),
+    importName,
+    h("button", { cls: "mod-cta", text: t("imp.go"), attr: { type: "submit" } }),
   );
 
   const date = new Intl.DateTimeFormat(getLocale(), { dateStyle: "medium" });
@@ -139,6 +182,7 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
     h("h2", { text: t("proj.title"), attr: { id: "proj-title", tabindex: "-1" } }),
     h("p", { cls: "proj-intro", text: t("proj.intro") }),
     form,
+    importForm,
     projects.length ? list : h("p", { cls: "proj-none", text: t("proj.none") }),
   );
 
