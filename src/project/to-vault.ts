@@ -31,6 +31,8 @@ export interface ProjectVault extends VaultSource {
   bookTitle: string;
   /** Every file in the vault. */
   paths: string[];
+  /** The path of each chapter's note, by chapter id. */
+  chapterPaths: Record<string, string>;
 }
 
 const SECTION_HEADING: Record<SectionKind, string> = { front: "Front matter", body: "Chapters", back: "Back matter" };
@@ -40,8 +42,14 @@ export function chapterNote(c: ProjectChapter): string {
   return `${head}# ${c.title}\n${c.body.trim() ? `\n${c.body.replace(/\s+$/, "")}\n` : ""}`;
 }
 
+/** The line (from 1) of a chapter note where its text starts, after the optional section header and the title. */
+export function bodyStartLine(c: ProjectChapter): number {
+  return (c.kind ? 3 : 0) + 3;
+}
+
 export function projectToVault(p: Project): ProjectVault {
   const files = new Map<string, string | Uint8Array>();
+  const chapterPaths: Record<string, string> = {};
   // Notes are linked by name, so every name in the book must be different.
   const used = new Set<string>();
   const unique = (base: string): string => {
@@ -68,6 +76,7 @@ export function projectToVault(p: Project): ProjectVault {
       const dir = section.kind === "body" ? "Chapters/" : "";
       const name = unique(safeName(c.title, "Chapter"));
       files.set(`${dir}${name}.md`, chapterNote(c));
+      chapterPaths[c.id] = `${dir}${name}.md`;
       lines.push(section.kind === "body" ? `${i + 1}. [[${name}]]` : `[[${name}]]`);
     });
     lines.push("");
@@ -86,6 +95,7 @@ export function projectToVault(p: Project): ProjectVault {
     bookPath,
     bookTitle: title,
     paths,
+    chapterPaths,
     resolve: createResolver(paths),
     read: async (path) => {
       const v = get(path);

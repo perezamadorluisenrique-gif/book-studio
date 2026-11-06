@@ -2,7 +2,7 @@
 // Each one returns a new project and leaves the old one untouched. The id and the time
 // are passed in, so these functions always give the same result for the same input.
 
-import type { Project, ProjectChapter, ProjectSection, SectionKind } from "./model";
+import { SECTION_ORDER, type Project, type ProjectChapter, type ProjectSection, type SectionKind } from "./model";
 import { starterBook } from "./starter";
 
 export interface NewProject {
@@ -60,11 +60,9 @@ export function addChapter(p: Project, kind: SectionKind, title: string, now: nu
   const has = p.sections.some((s) => s.kind === kind);
   const sections: ProjectSection[] = has
     ? p.sections.map((s) => (s.kind === kind ? { ...s, chapterIds: [...s.chapterIds, chapter.id] } : s))
-    : [...p.sections, { kind, chapterIds: [chapter.id] }].sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind));
+    : [...p.sections, { kind, chapterIds: [chapter.id] }].sort((a, b) => SECTION_ORDER.indexOf(a.kind) - SECTION_ORDER.indexOf(b.kind));
   return touch({ ...p, chapters: [...p.chapters, chapter], sections }, now);
 }
-
-const ORDER: SectionKind[] = ["front", "body", "back"];
 
 export function renameChapter(p: Project, id: string, title: string, now: number): Project {
   const next = title.trim();
@@ -85,4 +83,52 @@ export function removeChapter(p: Project, id: string, now: number): Project {
     },
     now,
   );
+}
+
+// ── Order of the chapters ──
+
+/** Where a chapter is now: its section and its place (from 0) in that section. */
+export function locate(p: Project, id: string): { kind: SectionKind; index: number } | null {
+  for (const s of p.sections) {
+    const index = s.chapterIds.indexOf(id);
+    if (index >= 0) return { kind: s.kind, index };
+  }
+  return null;
+}
+
+/** The chapter ids of one section, in order (empty when the book has no such section). */
+export function sectionIds(p: Project, kind: SectionKind): string[] {
+  return p.sections.filter((s) => s.kind === kind).flatMap((s) => s.chapterIds);
+}
+
+/** Every chapter id in the order they appear in the book. */
+export function bookOrder(p: Project): string[] {
+  return SECTION_ORDER.flatMap((k) => sectionIds(p, k));
+}
+
+/**
+ * Put a chapter in a section at a place (from 0, counted after the chapter is taken out of
+ * where it was; too big a number means the end). Gives back the same project when nothing changes.
+ */
+export function reorder(p: Project, id: string, kind: SectionKind, index: number, now: number): Project {
+  if (!locate(p, id)) return p;
+  const lists = new Map<SectionKind, string[]>();
+  for (const k of SECTION_ORDER) lists.set(k, sectionIds(p, k).filter((c) => c !== id));
+  const target = lists.get(kind) ?? [];
+  target.splice(Math.max(0, Math.min(index, target.length)), 0, id);
+  const sections: ProjectSection[] = SECTION_ORDER.filter((k) => lists.get(k)?.length).map((k) => ({ kind: k, chapterIds: lists.get(k) ?? [] }));
+  const same = sections.length === p.sections.length && sections.every((s, i) => s.kind === p.sections[i].kind && s.chapterIds.join("\n") === p.sections[i].chapterIds.join("\n"));
+  return same ? p : touch({ ...p, sections }, now);
+}
+
+/** Move a chapter one place up (-1) or down (1). At the end of a section it goes into the next one. */
+export function move(p: Project, id: string, delta: -1 | 1, now: number): Project {
+  const at = locate(p, id);
+  if (!at) return p;
+  const size = sectionIds(p, at.kind).length;
+  const inside = at.index + delta;
+  if (inside >= 0 && inside < size) return reorder(p, id, at.kind, inside, now);
+  const other = SECTION_ORDER[SECTION_ORDER.indexOf(at.kind) + delta];
+  if (!other) return p;
+  return reorder(p, id, other, delta < 0 ? Number.MAX_SAFE_INTEGER : 0, now);
 }
