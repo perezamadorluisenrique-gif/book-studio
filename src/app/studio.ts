@@ -794,6 +794,23 @@ export class Studio {
     this.tabs.accessibility.textContent = audit && pro && !audit.passed ? t("tab.accessibilityFix") : pro || FREE_EDITION ? t("tab.accessibility") : t("tab.accessibilityPro");
   }
 
+  /** What the publishing checklist needs from the built book; null before the first build. */
+  publishFacts(): { problems: number; missingAlt: number; pages: number; spine: number } | null {
+    if (!this.built) return null;
+    const { book, layout, audit } = this.built;
+    return {
+      problems: this.problems().filter((p) => p.severity !== "info").length,
+      missingAlt: audit.images.filter((i) => !i.ok).length,
+      pages: layout.pages.length,
+      spine: spineWidth(layout.pages.length, book.settings.paper),
+    };
+  }
+
+  /** Show the Problems tab. */
+  showProblems(): void {
+    this.showTab("problems");
+  }
+
   private showTab(tab: Tab): void {
     for (const t of Object.keys(this.tabs) as Tab[]) {
       const on = t === tab;

@@ -24,6 +24,8 @@ export interface WorkspaceDeps {
   plan(): Plan;
   /** The book form changed the theme or trim: forget a choice made in the preview bar, so the form wins. */
   layoutChanged(p: Project, keys: string[]): void;
+  /** The "Publish checklist" button was pressed. */
+  publish(): void;
   /** Download a copy of the book as a .zip. */
   backup(p: Project): Promise<void>;
 }
@@ -49,6 +51,7 @@ export class Workspace {
   private panels = {} as Record<Tab, HTMLElement>;
   private listBox = h("div", { cls: "ws-list" });
   private detailsButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-details-btn" }, on: { click: () => this.openDetails() } });
+  private publishButton = h("button", { cls: "ws-details-btn ws-publish-btn", attr: { type: "button", id: "ws-publish-btn" }, on: { click: () => this.deps.publish() } });
   private backupButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-backup-btn" }, on: { click: () => void this.backup() } });
   private listInner = h("div");
   private editorBox = h("div", { cls: "ws-editor" });
@@ -72,7 +75,7 @@ export class Workspace {
       this.panels[id] = h("section", { cls: `ws-col ws-col-${id}`, attr: { id: `ws-panel-${id}` } });
     }
     this.panels.chapters.appendChild(this.listBox);
-    this.listBox.append(this.detailsButton, this.backupButton, this.listInner);
+    this.listBox.append(this.detailsButton, this.publishButton, this.backupButton, this.listInner);
     this.panels.write.append(this.editorBox, this.detailsBox);
     this.panels.book.appendChild(this.bookSlot);
     this.tabsEl.append(...TABS.map((id) => this.tabButtons[id]));
@@ -117,6 +120,8 @@ export class Workspace {
       },
       notify: (m) => this.deps.notify(m),
     });
+    this.publishButton.textContent = t("pub.open");
+    this.publishButton.setAttribute("aria-label", t("pub.openLabel"));
     this.backupButton.textContent = t("proj.backup");
     this.detailsButton.textContent = t("dt.open");
     this.detailsButton.setAttribute("aria-label", t("dt.openLabel"));
@@ -184,6 +189,17 @@ export class Workspace {
     this.applyView();
     if (this.media.matches) this.setTab("write");
     this.details.focus();
+  }
+
+  /** Take the person to one of the three places: the book form, the chapter list or the book column (Problems). */
+  reveal(place: "details" | "chapters" | "book"): void {
+    if (!this.project) return;
+    if (place === "details") this.openDetails();
+    else if (place === "chapters") {
+      this.showChapters();
+      this.setTab("chapters");
+      this.listBox.querySelector<HTMLElement>(".ch-pick")?.focus();
+    } else this.setTab("book");
   }
 
   private showChapters(): void {

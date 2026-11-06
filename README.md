@@ -11,7 +11,7 @@ No Pandoc, no LaTeX, nothing else to install, and it works on Obsidian mobile to
 Book Studio comes in two forms that share one engine and one interface:
 
 - **An Obsidian plugin.** It works on the vault you write in, rebuilds the preview as you type and saves exports to a vault folder.
-- **A web app.** Open a folder of Markdown files, such as your vault, in the browser. Nothing is uploaded.
+- **A web app.** Open a folder of Markdown files, such as your vault, in the browser, or write a book right there: it has a chapter editor, a book-details form, a cover image, and a **Publish checklist** of what KDP still needs. You can also import a Word (`.docx`), Markdown or text manuscript. Books you write in the web app are kept in your browser only. Nothing is uploaded.
 
 Book Studio is free: unlimited books, the Classic and Modern themes, the 6" × 9", 5" × 8" and 5.5" × 8.5" trims, and EPUB 3. **Book Studio Pro** (a one-time license key) adds the other themes and trims, large print, a KDP preflight, a full wraparound cover, footnotes at the page foot, a back-of-book index, one-click editions and a KDP details sheet. See [Book Studio Pro](#book-studio-pro).
 
@@ -112,6 +112,10 @@ Chapter notes are ordinary Markdown:
 | `scene-break` | Glyph to use for scene breaks, such as `❦` |
 
 The studio's toolbar can override the theme and trim for a single export without editing the note.
+
+## Importing a manuscript (web app)
+
+In **My books**, choose *Import a manuscript* and pick a Word (`.docx`), `.md` or `.txt` file, or paste the text. It becomes a new book; every `# Heading`, "Chapter 3" or "Capítulo 3" line starts a chapter. From Word it keeps headings, bold and italic, lists, quotes, footnotes, links, page breaks and PNG or JPG pictures with their alt text. It leaves out tables, text boxes, equations, comments and the table of contents, and a report lists what was left out. Old `.doc` files are not read: save them as `.docx` first.
 
 ## Book Studio Pro
 
