@@ -30,7 +30,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["*.mjs", "tools/**", "tests/**"],
+    files: ["*.mjs", "tools/**", "tests/**", "e2e/**"],
     languageOptions: { globals: { process: "readonly", console: "readonly", Buffer: "readonly" } },
   },
   {
@@ -39,7 +39,7 @@ export default defineConfig([
     rules: { "no-undef": "off" },
   },
   {
-    files: ["src/web/**", "tests/**", "tools/**", "*.mjs"],
+    files: ["src/web/**", "tests/**", "tools/**", "e2e/**", "*.mjs"],
     rules: {
       "obsidianmd/prefer-create-el": "off",
       "obsidianmd/prefer-active-doc": "off",

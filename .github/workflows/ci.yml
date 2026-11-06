@@ -27,3 +27,7 @@ jobs:
       # The build script runs `tsc -noEmit` before bundling with esbuild.
       - run: npm run build
       - run: npm test
+      # Browser tests over the built web app: export PDF and EPUB, KDP check, axe.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:web
+      - run: npm run e2e
