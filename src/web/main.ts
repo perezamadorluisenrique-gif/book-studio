@@ -6,7 +6,12 @@ import { append, clear, h, setElementFactory } from "../app/dom";
 import type { BookChoice, Dialog, OutputFile, Store, StudioHost } from "../app/host";
 import { renderLicensePanel } from "../app/license-panel";
 import { LicenseManager } from "../app/license-manager";
+import { createProject, renameProject } from "../project/ops";
+import { projectToVault, type ProjectVault } from "../project/to-vault";
+import type { Project } from "../project/model";
 import { fetchPost } from "./post";
+import { renderProjects } from "./projects";
+import { deleteProject, getHandle, listProjects, putProject, setHandle } from "./store";
 import { Studio } from "../app/studio";
 import { detectLocale, setLocale, t, type Locale } from "../app/ui-i18n";
 import type { VaultSource } from "../engine/book";
@@ -125,44 +130,6 @@ async function findBooks(folder: Folder): Promise<BookChoice[]> {
   return books.sort((a, b) => a.title.localeCompare(b.title));
 }
 
-// ── Remembering the folder (IndexedDB holds the handle; permission is asked again) ──
-
-function idb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open("book-studio", 1);
-    req.onupgradeneeded = () => req.result.createObjectStore("handles");
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error ?? new Error("IndexedDB unavailable"));
-  });
-}
-
-async function idbGet<T>(key: string): Promise<T | undefined> {
-  try {
-    const db = await idb();
-    return await new Promise<T | undefined>((resolve) => {
-      const req = db.transaction("handles").objectStore("handles").get(key);
-      req.onsuccess = () => resolve(req.result as T | undefined);
-      req.onerror = () => resolve(undefined);
-    });
-  } catch {
-    return undefined;
-  }
-}
-
-async function idbSet(key: string, value: unknown): Promise<void> {
-  try {
-    const db = await idb();
-    await new Promise<void>((resolve) => {
-      const tx = db.transaction("handles", "readwrite");
-      tx.objectStore("handles").put(value, key);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-    });
-  } catch {
-    // Private windows may have no IndexedDB; the folder just isn't remembered.
-  }
-}
-
 // ── Settings ──
 
 function localStore(): Store {
@@ -228,6 +195,8 @@ function download(file: OutputFile): void {
 // ── App ──
 
 let folder: Folder | null = null;
+// The book project that is open, if any (then `folder` is null): its notes are generated in memory.
+let current: { project: Project; vault: ProjectVault } | null = null;
 const store = localStore();
 
 // The language: the saved choice, otherwise the browser's.
@@ -239,8 +208,8 @@ setLocale(locale);
 
 const host: StudioHost = {
   kind: "web",
-  source: () => (folder ? vaultFor(folder) : null),
-  listBooks: () => (folder ? findBooks(folder) : Promise.resolve([])),
+  source: () => (current ? current.vault : folder ? vaultFor(folder) : null),
+  listBooks: () => (current ? Promise.resolve([{ path: current.vault.bookPath, title: current.vault.bookTitle }]) : folder ? findBooks(folder) : Promise.resolve([])),
   loadFont: async (f: FontFile) => {
     const res = await fetch(new URL(`fonts/${f}.ttf`, doc.baseURI));
     if (!res.ok) throw new Error(t("web.fontFailed", { font: f }));
@@ -265,7 +234,7 @@ const host: StudioHost = {
     renderLicensePanel(box, license, host, fetchPost);
     void showDialog("Book Studio Pro", [box], [{ label: t("web.done"), value: "ok", primary: true }]);
   },
-  bookKey: (path) => `${folder?.name ?? ""}/${path}`,
+  bookKey: (path) => (current ? `project:${current.project.id}/${path}` : `${folder?.name ?? ""}/${path}`),
   renderEmpty: (box) => {
     append(
       box,
@@ -284,9 +253,50 @@ const PAGE_TITLE_EN = doc.title;
 const pageTitle = () => (locale === "en" ? PAGE_TITLE_EN : t("web.title"));
 
 async function open(next: Folder): Promise<void> {
+  current = null;
   folder = next;
+  showStudio();
   doc.title = next.sample ? pageTitle() : t("web.pageTitle", { name: next.name });
   await studio.refresh();
+}
+
+// ── My books ──
+
+function showStudio(): void {
+  $("projects").hidden = true;
+  $("studio").hidden = false;
+}
+
+/** Open a saved book: the studio reads the notes generated from it. */
+async function openProject(project: Project): Promise<void> {
+  folder = null;
+  current = { project, vault: projectToVault(project) };
+  doc.title = t("web.pageTitle", { name: project.name });
+  showStudio();
+  await studio.refresh();
+}
+
+async function showProjects(focus?: string): Promise<void> {
+  $("studio").hidden = true;
+  const box = $("projects");
+  box.hidden = false;
+  await renderProjects(
+    box,
+    {
+      list: listProjects,
+      create: async (name, template) => {
+        const p = createProject({ id: crypto.randomUUID(), name, now: Date.now(), template, language: locale, firstChapterTitle: t("proj.firstChapter") });
+        await putProject(p);
+        return p;
+      },
+      rename: async (p, name) => putProject(renameProject(p, name, Date.now())),
+      remove: async (p) => deleteProject(p.id),
+      open: (p) => void openProject(p),
+      ask: (d) => host.ask(d),
+      notify: toast,
+    },
+    focus ?? "title",
+  );
 }
 
 async function openSample(): Promise<void> {
@@ -305,7 +315,7 @@ async function pickFolder(): Promise<void> {
   }
   try {
     const dir = await picker({ id: "book-studio", mode: "read" });
-    await idbSet("folder", dir);
+    await setHandle("folder", dir);
     await open(await folderFromHandle(dir));
     updateReopen(dir);
   } catch (e) {
@@ -337,8 +347,9 @@ function applyPageText(): void {
   // The first guides link goes to the English pages; say so for screen readers when the app is in Spanish.
   if (locale === "es") $("guides-en").setAttribute("lang", "en");
   else $("guides-en").removeAttribute("lang");
-  doc.title = folder && !folder.sample ? t("web.pageTitle", { name: folder.name }) : pageTitle();
+  doc.title = current ? t("web.pageTitle", { name: current.project.name }) : folder && !folder.sample ? t("web.pageTitle", { name: folder.name }) : pageTitle();
   updateReopen(reopenDir);
+  if (!$("projects").hidden) void showProjects();
 }
 
 /** Switch language and draw the studio again; the open folder and book stay as they are. */
@@ -361,6 +372,7 @@ langSelect.addEventListener("change", () => void changeLocale(langSelect.value =
 
 $("open-folder").addEventListener("click", () => void pickFolder());
 $("open-sample").addEventListener("click", () => void openSample());
+$("open-projects").addEventListener("click", () => void showProjects());
 $<HTMLInputElement>("folder-input").addEventListener("change", (e) => {
   const input = e.target as HTMLInputElement;
   if (input.files?.length) void open(folderFromFiles(input.files));
@@ -368,7 +380,7 @@ $<HTMLInputElement>("folder-input").addEventListener("change", (e) => {
 });
 $("reopen-folder").addEventListener("click", () => {
   void (async () => {
-    const dir = await idbGet<DirHandle>("folder");
+    const dir = await getHandle<DirHandle>("folder");
     if (!dir) return;
     const granted = (await dir.queryPermission?.({ mode: "read" })) === "granted" || (await dir.requestPermission?.({ mode: "read" })) === "granted";
     if (granted) await open(await folderFromHandle(dir));
@@ -377,7 +389,10 @@ $("reopen-folder").addEventListener("click", () => {
 
 void (async () => {
   applyPageText();
-  updateReopen(await idbGet<DirHandle>("folder"));
-  // First thing a visitor sees: the sample book, typeset.
-  await openSample();
+  updateReopen(await getHandle<DirHandle>("folder"));
+  // First thing a visitor sees: their own books if they have any, otherwise the sample book, typeset.
+  // A link that names a sample (the guides use them) always opens that sample.
+  const hasBooks = new URLSearchParams(location.search).has("sample") ? false : (await listProjects().catch(() => [])).length > 0;
+  if (hasBooks) await showProjects();
+  else await openSample();
 })();

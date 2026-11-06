@@ -144,6 +144,10 @@ button.mod-cta {
   color: var(--app-accent);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .app-main {
   flex: 1;
   min-height: 0;
@@ -218,4 +222,119 @@ button.mod-cta {
 
 .app-lang select {
   min-height: 32px;
+}
+
+/* My books */
+.app-projects {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  width: min(46rem, 100%);
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.app-projects h2 {
+  margin: 0 0 8px;
+}
+
+.proj-intro {
+  color: var(--app-muted);
+}
+
+.proj-new {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 24px;
+  padding: 16px;
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  background: var(--app-surface);
+}
+
+.proj-new h3 {
+  margin: 0;
+}
+
+.proj-new input[type="text"],
+.proj-rename input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--app-line);
+  border-radius: 6px;
+  background: var(--app-bg);
+}
+
+.proj-new fieldset {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.proj-new legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.proj-radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.proj-new button[type="submit"] {
+  justify-self: start;
+}
+
+.proj-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.proj-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  background: var(--app-surface);
+}
+
+.proj-info {
+  display: grid;
+  min-width: 0;
+}
+
+.proj-name {
+  overflow-wrap: anywhere;
+}
+
+.proj-sub {
+  color: var(--app-muted);
+  font-size: 0.9em;
+}
+
+.proj-actions,
+.proj-rename {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.proj-rename {
+  flex: 1;
+}
+
+.proj-rename input[type="text"] {
+  flex: 1 1 12em;
+  width: auto;
 }
