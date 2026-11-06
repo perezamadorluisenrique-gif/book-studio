@@ -263,6 +263,15 @@ const workspace = new Workspace($("workspace"), {
   },
   ask: (d) => host.ask(d),
   notify: toast,
+  plan: () => license.plan(),
+  // The preview bar remembers theme and trim per book; a choice made in the book form must not be hidden by an older one.
+  layoutChanged: (project, keys) => {
+    const key = `settings:project:${project.id}/${projectToVault(project).bookPath}`;
+    const saved = store.get<Record<string, unknown>>(key);
+    if (!saved) return;
+    const rest = Object.fromEntries(Object.entries(saved).filter(([k]) => !keys.includes(k)));
+    store.set(key, Object.keys(rest).length ? rest : undefined);
+  },
 });
 const studioParent = $("studio").parentElement as HTMLElement;
 const studioNext = $("studio").nextSibling;

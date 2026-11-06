@@ -5,11 +5,13 @@
 import { clear, h } from "../app/dom";
 import type { Dialog } from "../app/host";
 import { t } from "../app/ui-i18n";
+import type { Plan } from "../engine/entitlements";
 import type { SourceRef } from "../engine/model";
 import { chapterById, type Project, type SectionKind } from "../project/model";
 import { addChapter, bookOrder, locate, move, removeChapter, renameChapter, reorder, sectionIds, setChapterBody } from "../project/ops";
 import { bodyStartLine, projectToVault } from "../project/to-vault";
 import { ChapterList, sectionLabel, type ListFocus } from "./chapters";
+import { DetailsForm } from "./details";
 import { ChapterEditor } from "./editor";
 
 export interface WorkspaceDeps {
@@ -19,6 +21,9 @@ export interface WorkspaceDeps {
   changed(p: Project, saved: boolean): void;
   ask(d: Dialog): Promise<"ok" | "cancel" | "extra">;
   notify(message: string): void;
+  plan(): Plan;
+  /** The book form changed the theme or trim: forget a choice made in the preview bar, so the form wins. */
+  layoutChanged(p: Project, keys: string[]): void;
 }
 
 type Tab = "chapters" | "write" | "book";
@@ -41,9 +46,14 @@ export class Workspace {
   private tabButtons = {} as Record<Tab, HTMLButtonElement>;
   private panels = {} as Record<Tab, HTMLElement>;
   private listBox = h("div", { cls: "ws-list" });
+  private detailsButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-details-btn" }, on: { click: () => this.openDetails() } });
+  private listInner = h("div");
   private editorBox = h("div", { cls: "ws-editor" });
+  private detailsBox = h("div", { cls: "ws-details" });
+  private view: "chapter" | "details" = "chapter";
   private list!: ChapterList;
   private editor!: ChapterEditor;
+  private details!: DetailsForm;
   private media = window.matchMedia(NARROW);
 
   constructor(
@@ -59,7 +69,8 @@ export class Workspace {
       this.panels[id] = h("section", { cls: `ws-col ws-col-${id}`, attr: { id: `ws-panel-${id}` } });
     }
     this.panels.chapters.appendChild(this.listBox);
-    this.panels.write.appendChild(this.editorBox);
+    this.listBox.append(this.detailsButton, this.listInner);
+    this.panels.write.append(this.editorBox, this.detailsBox);
     this.panels.book.appendChild(this.bookSlot);
     this.tabsEl.append(...TABS.map((id) => this.tabButtons[id]));
     root.append(this.tabsEl, ...TABS.map((id) => this.panels[id]));
@@ -71,9 +82,11 @@ export class Workspace {
 
   /** (Re)make the list and the editor and put every text in the current language. */
   private build(): void {
-    clear(this.listBox);
+    clear(this.listInner);
     clear(this.editorBox);
-    this.list = new ChapterList(this.listBox, {
+    clear(this.detailsBox);
+    this.details?.release();
+    this.list = new ChapterList(this.listInner, {
       pick: (id) => this.pick(id),
       add: (kind) => this.add(kind),
       startRename: (id) => {
@@ -91,6 +104,18 @@ export class Workspace {
       ask: (d) => this.deps.ask(d),
     });
     this.editor = new ChapterEditor(this.editorBox, { input: (body) => this.typed(body) });
+    this.details = new DetailsForm(this.detailsBox, {
+      plan: () => this.deps.plan(),
+      current: () => this.project,
+      change: (next, layout) => {
+        this.project = next;
+        if (layout) this.deps.layoutChanged(next, layout);
+        this.markDirty(false);
+      },
+      notify: (m) => this.deps.notify(m),
+    });
+    this.detailsButton.textContent = t("dt.open");
+    this.detailsButton.setAttribute("aria-label", t("dt.openLabel"));
     this.tabsEl.setAttribute("aria-label", t("ws.tabs"));
     for (const id of TABS) this.tabButtons[id].textContent = t(id === "chapters" ? "ws.tabChapters" : id === "write" ? "ws.tabWrite" : "ws.tabBook");
     this.panels.chapters.setAttribute("aria-label", t("ws.panelChapters"));
@@ -101,7 +126,9 @@ export class Workspace {
     if (this.project) {
       this.renderList();
       this.showActive();
+      if (this.view === "details") this.details.show();
     }
+    this.applyView();
   }
 
   /** Draw the screen again after the language changed. */
@@ -125,6 +152,30 @@ export class Workspace {
         p.setAttribute("aria-label", t(id === "chapters" ? "ws.panelChapters" : id === "write" ? "ws.panelWrite" : "ws.panelBook"));
       }
     }
+  }
+
+  /** Show the chapter editor or the book details form in the middle column. */
+  private applyView(): void {
+    const details = this.view === "details";
+    this.editorBox.hidden = details;
+    this.detailsBox.hidden = !details;
+    this.detailsButton.setAttribute("aria-pressed", String(details));
+  }
+
+  private openDetails(): void {
+    if (!this.project) return;
+    this.view = "details";
+    this.details.show();
+    this.applyView();
+    if (this.media.matches) this.setTab("write");
+    this.details.focus();
+  }
+
+  private showChapters(): void {
+    if (this.view === "chapter") return;
+    this.view = "chapter";
+    this.details.release();
+    this.applyView();
   }
 
   private setTab(tab: Tab, focus = false): void {
@@ -167,6 +218,8 @@ export class Workspace {
     this.renaming = null;
     this.dirty = false;
     this.tab = "write";
+    this.view = "chapter";
+    this.applyView();
     this.root.hidden = false;
     this.applyTab();
     this.renderList();
@@ -188,12 +241,18 @@ export class Workspace {
   /** Open the chapter that owns a note path at a line of that note (used by the Problems tab). */
   openSource(src: SourceRef): void {
     if (!this.project) return;
-    const found = Object.entries(projectToVault(this.project).chapterPaths).find(([, path]) => path === src.file);
+    const vault = projectToVault(this.project);
+    if (src.file === vault.bookPath) {
+      this.openDetails();
+      return;
+    }
+    const found = Object.entries(vault.chapterPaths).find(([, path]) => path === src.file);
     const c = found && chapterById(this.project, found[0]);
     if (!c) {
       this.deps.notify(t("ws.notEditable"));
       return;
     }
+    this.showChapters();
     this.active = c.id;
     this.renaming = null;
     this.renderList();
@@ -234,7 +293,9 @@ export class Workspace {
           this.deps.changed(this.project, true);
         } catch (e) {
           this.dirty = true;
-          this.editor.setStatus("error", e instanceof Error ? e.message : String(e));
+          const error = e instanceof Error ? e.message : String(e);
+          this.editor.setStatus("error", error);
+          if (this.view === "details") this.deps.notify(t("ed.saveFailed", { error }));
         }
       });
     }
@@ -251,6 +312,7 @@ export class Workspace {
 
   private pick(id: string): void {
     if (!this.project || !chapterById(this.project, id)) return;
+    this.showChapters();
     this.active = id;
     this.renaming = null;
     this.renderList({ id, part: "pick" });
@@ -263,6 +325,7 @@ export class Workspace {
 
   private add(kind: SectionKind): void {
     if (!this.project) return;
+    this.showChapters();
     const next = addChapter(this.project, kind, t("ch.defaultTitle"), Date.now());
     const id = next.chapters[next.chapters.length - 1].id;
     this.active = id;
