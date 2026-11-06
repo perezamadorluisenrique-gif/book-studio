@@ -4,13 +4,22 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
+# A newer push to the same ref replaces the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moving to a new image breaks Playwright's system deps.
+    runs-on: ubuntu-24.04
+    # A normal run takes ~3 min. On 2026-11-06 one hung for ~54 min on a bad
+    # runner (Playwright install 8 min, then e2e never ended) and mailed a failure.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 

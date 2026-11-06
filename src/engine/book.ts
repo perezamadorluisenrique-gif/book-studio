@@ -30,6 +30,8 @@ const SECTION_TYPES: [RegExp, SectionType][] = [
   [/^colophon$/i, "colophon"],
 ];
 
+const SECTION_NAMES = new Set<string>(["chapter", "part", "prologue", "epilogue", "foreword", "preface", "introduction", "acknowledgments", "afterword", "appendix", "glossary", "bibliography", "colophon", "other"]);
+
 function sectionTypeFor(title: string): SectionType | null {
   const t = title.trim();
   for (const [re, type] of SECTION_TYPES) if (re.test(t)) return type;
@@ -237,7 +239,9 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
       title = [{ kind: "text", text: smart(t) ?? t, style: {} }];
     }
     const titleText = inlineText(title).trim();
-    const explicitType = fmString(parsed.frontmatter, "section", "epub-type") as SectionType | undefined;
+    // A `section:` value that is not a known type (such as "dedication" from the Starter Book) is ignored, not trusted.
+    const asked = fmString(parsed.frontmatter, "section", "epub-type")?.trim().toLowerCase();
+    const explicitType = SECTION_NAMES.has(asked ?? "") ? (asked as SectionType) : undefined;
     const type: SectionType = explicitType ?? sectionTypeFor(titleText) ?? (entry.matter === "body" ? "chapter" : "other");
     const numberedFm = fmGet(parsed.frontmatter, "numbered");
     const numbered = entry.matter === "body" && type === "chapter" && !entry.unnumbered && numberedFm !== false && numberedFm !== "false";
