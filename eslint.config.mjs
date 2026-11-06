@@ -7,7 +7,7 @@ import { DEFAULT_ACRONYMS } from "eslint-plugin-obsidianmd/dist/lib/rules/ui/acr
 import { DEFAULT_BRANDS } from "eslint-plugin-obsidianmd/dist/lib/rules/ui/brands.js";
 
 export default defineConfig([
-  { ignores: ["node_modules/", "dist/", "main.js", "out/", "fonts/", "sample/", ".github/", "version-bump.mjs"] },
+  { ignores: ["node_modules/", "dist/", "main.js", "out/", "fonts/", "sample/", ".github/", "version-bump.mjs", "src/web/sw.js"] },
   ...obsidianmd.configs.recommended,
   {
     languageOptions: {

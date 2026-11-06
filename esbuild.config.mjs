@@ -1,5 +1,6 @@
 import esbuild from "esbuild";
 import { builtinModules } from "node:module";
+import { createHash } from "node:crypto";
 import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
@@ -96,6 +97,8 @@ function copyWebStatic() {
   cpSync("src/web/index.html", "dist/web/index.html");
   cpSync("src/web/app.css", "dist/web/app.css");
   cpSync("src/app/studio.css", "dist/web/studio.css");
+  cpSync("src/web/app.webmanifest", "dist/web/app.webmanifest");
+  cpSync("src/web/icons", "dist/web/icons", { recursive: true, filter: (src) => !src.endsWith(".svg") });
   cpSync("sample", "dist/web/sample", { recursive: true });
   // The browser can't list a folder over HTTP, so the sample ships its file list.
   for (const book of readdirSync("sample")) {
@@ -104,6 +107,17 @@ function copyWebStatic() {
   }
   // The web app fetches fonts on demand instead of inlining them like the plugin does.
   cpSync("fonts", "dist/web/fonts", { recursive: true, filter: (src) => !src.endsWith(".txt") || src.endsWith("OFL.txt") });
+}
+
+// The offline copy: the page, the app, its styles, its icons and the fonts. The cache name carries a hash of
+// those files, so each build replaces the old copy. The guides and the sample books are not part of it.
+function writeServiceWorker() {
+  const files = ["app.js", "app.css", "studio.css", "app.webmanifest", ...listFiles("dist/web/icons").map((f) => `icons/${f}`), ...listFiles("dist/web/fonts").filter((f) => f.endsWith(".ttf")).map((f) => `fonts/${f}`)].sort();
+  const hash = createHash("sha256");
+  for (const f of ["index.html", ...files]) hash.update(f).update(readFileSync(join("dist/web", f)));
+  const list = ["./", "index.html", ...files];
+  const sw = readFileSync("src/web/sw.js", "utf8").replace("__BUILD__", hash.digest("hex").slice(0, 12)).replace("__FILES__", JSON.stringify(list));
+  writeFileSync("dist/web/sw.js", sw);
 }
 
 // Obsidian loads a plugin's styles from styles.css next to main.js.
@@ -120,7 +134,10 @@ if (!only || only === "web") {
 
 if (production) {
   await Promise.all(targets.map((t) => esbuild.build(t)));
-  if (!only || only === "web") copyWebStatic();
+  if (!only || only === "web") {
+    copyWebStatic();
+    writeServiceWorker();
+  }
   if (!only || only === "plugin") copyPluginStatic();
 } else {
   if (!only || only === "web") copyWebStatic();

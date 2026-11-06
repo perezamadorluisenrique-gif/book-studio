@@ -6,7 +6,7 @@ import { extname, join, normalize } from "node:path";
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json",
   ".md": "text/markdown; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml",
-  ".woff2": "font/woff2", ".ttf": "font/ttf", ".woff": "font/woff", ".txt": "text/plain",
+  ".woff2": "font/woff2", ".ttf": "font/ttf", ".woff": "font/woff", ".txt": "text/plain", ".webmanifest": "application/manifest+json",
 };
 
 /** Serves a folder on a free local port; resolves with the server and its base URL. */

@@ -41,6 +41,19 @@ describe("EPUB container", () => {
     expect(opf).toContain('<dc:language>en</dc:language>');
   });
 
+  it("builds an EPUB when a note's section: line names something the engine has no type for", async () => {
+    const vault = memVault({
+      "Book.md": "---\nbook: true\ntitle: B\nauthor: A\n---\n## Front matter\n- [[Dedication]]\n## Chapters\n1. [[One]]\n## Back matter\n- [[About]]\n",
+      "Dedication.md": "---\nsection: dedication\n---\n# Dedication\n\nFor you.\n",
+      "One.md": "# One\n\nText.\n",
+      "About.md": "---\nsection: About-The-Author\n---\n# About the author\n\nBio.\n",
+    });
+    const book = await loadBook(vault, "Book.md");
+    expect(book.chapters.map((c) => c.type)).toEqual(["other", "chapter", "other"]);
+    const { zip } = await unzip(await writeEpub(book, { accessiblePack: false }));
+    expect(Object.keys(zip.files).filter((n) => n.endsWith(".xhtml")).length).toBeGreaterThanOrEqual(3);
+  });
+
   it("never writes characters XML forbids", async () => {
     const vault = memVault({ ...files, "Two.md": "# Two\n\nBroken \uD800 surrogate and a \uFFFE noncharacter, \uD83D\uDE00 kept." });
     const book = await loadBook(vault, "Book.md");
