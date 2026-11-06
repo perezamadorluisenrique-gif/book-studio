@@ -8,6 +8,7 @@ import { renderLicensePanel } from "../app/license-panel";
 import { LicenseManager } from "../app/license-manager";
 import { fetchPost } from "./post";
 import { Studio } from "../app/studio";
+import { detectLocale, setLocale, t, type Locale } from "../app/ui-i18n";
 import type { VaultSource } from "../engine/book";
 import type { FontFile } from "../engine/fonts";
 import { fmString, isManifestFrontmatter } from "../engine/manifest";
@@ -84,7 +85,7 @@ function sampleName(): string {
 async function sampleFolder(): Promise<Folder> {
   const base = new URL(`sample/${sampleName()}/`, doc.baseURI);
   const res = await fetch(new URL("files.json", base));
-  if (!res.ok) throw new Error("The sample book couldn't be loaded.");
+  if (!res.ok) throw new Error(t("web.sampleFailed"));
   const paths = (await res.json()) as string[];
   return {
     name: "Sample",
@@ -92,14 +93,14 @@ async function sampleFolder(): Promise<Folder> {
     paths,
     file: async (p) => {
       const r = await fetch(new URL(p.split("/").map(encodeURIComponent).join("/"), base));
-      if (!r.ok) throw new Error(`Missing sample file ${p}`);
+      if (!r.ok) throw new Error(t("web.missingSample", { path: p }));
       return r.blob();
     },
   };
 }
 
 function need<T>(v: T | undefined, path: string): T {
-  if (v === undefined) throw new Error(`File not found: ${path}`);
+  if (v === undefined) throw new Error(t("web.notFound", { path }));
   return v;
 }
 
@@ -229,22 +230,29 @@ function download(file: OutputFile): void {
 let folder: Folder | null = null;
 const store = localStore();
 
+// The language: the saved choice, otherwise the browser's.
+let locale: Locale = ((): Locale => {
+  const saved = store.get<string>("lang");
+  return saved === "en" || saved === "es" ? saved : detectLocale(navigator.language);
+})();
+setLocale(locale);
+
 const host: StudioHost = {
   kind: "web",
   source: () => (folder ? vaultFor(folder) : null),
   listBooks: () => (folder ? findBooks(folder) : Promise.resolve([])),
   loadFont: async (f: FontFile) => {
     const res = await fetch(new URL(`fonts/${f}.ttf`, doc.baseURI));
-    if (!res.ok) throw new Error(`Couldn't load the font ${f}.`);
+    if (!res.ok) throw new Error(t("web.fontFailed", { font: f }));
     return new Uint8Array(await res.arrayBuffer());
   },
   save: async (file) => {
     download(file);
-    return `Downloaded ${file.name}`;
+    return t("web.downloaded", { name: file.name });
   },
   store,
   ask: async (d: Dialog) => {
-    const buttons = [{ label: d.cancel ?? "Cancel", value: "cancel" }];
+    const buttons = [{ label: d.cancel ?? t("web.cancel"), value: "cancel" }];
     if (d.extra) buttons.push({ label: d.extra, value: "extra" });
     buttons.push({ label: d.ok, value: "ok", primary: true } as (typeof buttons)[number]);
     const r = await showDialog(d.title, d.message.split("\n\n").map((p) => h("p", { text: p })), buttons);
@@ -255,28 +263,29 @@ const host: StudioHost = {
   openLicense: () => {
     const box = h("div");
     renderLicensePanel(box, license, host, fetchPost);
-    void showDialog("Book Studio Pro", [box], [{ label: "Done", value: "ok", primary: true }]);
+    void showDialog("Book Studio Pro", [box], [{ label: t("web.done"), value: "ok", primary: true }]);
   },
   bookKey: (path) => `${folder?.name ?? ""}/${path}`,
   renderEmpty: (box) => {
     append(
       box,
-      h("h2", { text: "Open a folder of notes" }),
-      h("p", { text: "Choose the folder that holds your book note and its chapters, such as an Obsidian vault. Book Studio reads it in this browser; nothing is uploaded." }),
-      h("div", { cls: "app-empty-actions" }, h("button", { cls: "mod-cta", text: "Open a folder", on: { click: () => void pickFolder() } }), h("button", { text: "Try the sample book", on: { click: () => void openSample() } })),
+      h("h2", { text: t("web.emptyTitle") }),
+      h("p", { text: t("web.emptyHelp") }),
+      h("div", { cls: "app-empty-actions" }, h("button", { cls: "mod-cta", text: t("web.openFolder"), on: { click: () => void pickFolder() } }), h("button", { text: t("web.trySample"), on: { click: () => void openSample() } })),
     );
   },
 };
 
 const license = new LicenseManager(host);
-const studio = new Studio(host, $("studio"), license);
+let studio = new Studio(host, $("studio"), license);
 
 // The page's own title (what search results show) stays while the sample is open.
-const PAGE_TITLE = doc.title;
+const PAGE_TITLE_EN = doc.title;
+const pageTitle = () => (locale === "en" ? PAGE_TITLE_EN : t("web.title"));
 
 async function open(next: Folder): Promise<void> {
   folder = next;
-  doc.title = next.sample ? PAGE_TITLE : `${next.name} · Book Studio`;
+  doc.title = next.sample ? pageTitle() : t("web.pageTitle", { name: next.name });
   await studio.refresh();
 }
 
@@ -305,11 +314,50 @@ async function pickFolder(): Promise<void> {
   }
 }
 
+let reopenDir: DirHandle | undefined;
+
 function updateReopen(dir: DirHandle | undefined): void {
+  reopenDir = dir;
   const btn = $<HTMLButtonElement>("reopen-folder");
   btn.hidden = !dir;
-  if (dir) btn.textContent = `Reopen “${dir.name}”`;
+  if (dir) btn.textContent = t("web.reopen", { name: dir.name });
 }
+
+// ── Language ──
+
+/** Put the page's own texts (header, buttons, title) in the chosen language. */
+function applyPageText(): void {
+  doc.documentElement.lang = locale;
+  for (const el of Array.from(doc.querySelectorAll<HTMLElement>("[data-i18n]"))) el.textContent = t(el.dataset.i18n as Parameters<typeof t>[0]);
+  $("nav-source").setAttribute("aria-label", t("web.bookSource"));
+  $("nav-guides").setAttribute("aria-label", t("web.guidesNav"));
+  $("lang").setAttribute("aria-label", t("web.language"));
+  $("noscript").textContent = t("web.noscript");
+  doc.querySelector("#meta-description")?.setAttribute("content", t("web.description"));
+  // The first guides link goes to the English pages; say so for screen readers when the app is in Spanish.
+  if (locale === "es") $("guides-en").setAttribute("lang", "en");
+  else $("guides-en").removeAttribute("lang");
+  doc.title = folder && !folder.sample ? t("web.pageTitle", { name: folder.name }) : pageTitle();
+  updateReopen(reopenDir);
+}
+
+/** Switch language and draw the studio again; the open folder and book stay as they are. */
+async function changeLocale(next: Locale): Promise<void> {
+  if (next === locale) return;
+  locale = next;
+  store.set("lang", next);
+  setLocale(next);
+  applyPageText();
+  const book = studio.bookPath;
+  if (book) store.set("lastBook", book);
+  studio.dispose();
+  studio = new Studio(host, $("studio"), license);
+  await studio.refresh();
+}
+
+const langSelect = $<HTMLSelectElement>("lang");
+langSelect.value = locale;
+langSelect.addEventListener("change", () => void changeLocale(langSelect.value === "es" ? "es" : "en"));
 
 $("open-folder").addEventListener("click", () => void pickFolder());
 $("open-sample").addEventListener("click", () => void openSample());
@@ -328,6 +376,7 @@ $("reopen-folder").addEventListener("click", () => {
 });
 
 void (async () => {
+  applyPageText();
   updateReopen(await idbGet<DirHandle>("folder"));
   // First thing a visitor sees: the sample book, typeset.
   await openSample();

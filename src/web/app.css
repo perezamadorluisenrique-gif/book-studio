@@ -215,3 +215,7 @@ button.mod-cta {
     display: none;
   }
 }
+
+.app-lang select {
+  min-height: 32px;
+}
