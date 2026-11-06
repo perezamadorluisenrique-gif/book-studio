@@ -694,10 +694,12 @@ describe("web app, import a manuscript", () => {
     expect(r.errors).toEqual([]);
 
     const [epub] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export EPUB" }).click()]);
-    const path = await epub.path();
-    const zip = await JSZip.loadAsync(await readFile(path));
+    const bytes = await readFile(await epub.path());
+    const zip = await JSZip.loadAsync(bytes);
     expect(Object.keys(zip.files).some((f) => /docx-image-1\.png$/.test(f))).toBe(true);
-    const check = await epubcheck(path);
+    const file = join(await mkdtemp(join(tmpdir(), "bs-epub-")), epub.suggestedFilename());
+    await writeFile(file, bytes);
+    const check = await epubcheck(file);
     if (check) expect(check.ok, check.log).toBe(true);
     await context.close();
   });
