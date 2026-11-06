@@ -7,6 +7,7 @@ import type { BookChoice, Dialog, OutputFile, Store, StudioHost } from "../app/h
 import { renderLicensePanel } from "../app/license-panel";
 import { LicenseManager } from "../app/license-manager";
 import { createProject, renameProject } from "../project/ops";
+import { Workspace } from "./workspace";
 import { projectToVault, type ProjectVault } from "../project/to-vault";
 import type { Project } from "../project/model";
 import { fetchPost } from "./post";
@@ -15,6 +16,7 @@ import { deleteProject, getHandle, listProjects, putProject, setHandle } from ".
 import { Studio } from "../app/studio";
 import { detectLocale, setLocale, t, type Locale } from "../app/ui-i18n";
 import type { VaultSource } from "../engine/book";
+import type { SourceRef } from "../engine/model";
 import type { FontFile } from "../engine/fonts";
 import { fmString, isManifestFrontmatter } from "../engine/manifest";
 import { splitFrontmatter } from "../engine/markdown";
@@ -229,6 +231,10 @@ const host: StudioHost = {
   },
   notify: toast,
   openUrl: (url) => void window.open(url, "_blank", "noopener"),
+  // Only a book project can be edited, so only then do the Problems list links.
+  get openSource() {
+    return current ? (src: SourceRef) => workspace.openSource(src) : undefined;
+  },
   openLicense: () => {
     const box = h("div");
     renderLicensePanel(box, license, host, fetchPost);
@@ -248,16 +254,49 @@ const host: StudioHost = {
 const license = new LicenseManager(host);
 let studio = new Studio(host, $("studio"), license);
 
+// The writing screen for book projects. The studio moves into its third column while a project is open.
+const workspace = new Workspace($("workspace"), {
+  save: putProject,
+  changed: (project, saved) => {
+    current = { project, vault: projectToVault(project) };
+    studio.scheduleBuild(saved ? 200 : 900);
+  },
+  ask: (d) => host.ask(d),
+  notify: toast,
+});
+const studioParent = $("studio").parentElement as HTMLElement;
+const studioNext = $("studio").nextSibling;
+
+// Studio.refresh() reads the book source again when it resumes from listing the books. So a second book must not
+// be opened while a refresh is still running, or the old refresh would build the old path from the new source.
+let refreshing: Promise<void> = Promise.resolve();
+
+function refreshStudio(): Promise<void> {
+  refreshing = refreshing.then(() => studio.refresh());
+  refreshing = refreshing.catch(() => undefined);
+  return refreshing;
+}
+
+/** Put the studio in the writing screen (a project is open) or back in the page (a folder or the sample). */
+function placeStudio(inWorkspace: boolean): void {
+  const el = $("studio");
+  if (inWorkspace) workspace.bookSlot.appendChild(el);
+  else studioParent.insertBefore(el, studioNext);
+}
+
 // The page's own title (what search results show) stays while the sample is open.
 const PAGE_TITLE_EN = doc.title;
 const pageTitle = () => (locale === "en" ? PAGE_TITLE_EN : t("web.title"));
 
 async function open(next: Folder): Promise<void> {
+  await workspace.close();
+  await refreshing;
+  placeStudio(false);
   current = null;
   folder = next;
   showStudio();
   doc.title = next.sample ? pageTitle() : t("web.pageTitle", { name: next.name });
-  await studio.refresh();
+  await refreshStudio();
 }
 
 // ── My books ──
@@ -269,14 +308,20 @@ function showStudio(): void {
 
 /** Open a saved book: the studio reads the notes generated from it. */
 async function openProject(project: Project): Promise<void> {
+  await workspace.close();
+  await refreshing;
   folder = null;
   current = { project, vault: projectToVault(project) };
   doc.title = t("web.pageTitle", { name: project.name });
+  placeStudio(true);
   showStudio();
-  await studio.refresh();
+  workspace.open(project);
+  await refreshStudio();
 }
 
 async function showProjects(focus?: string): Promise<void> {
+  await workspace.close();
+  placeStudio(false);
   $("studio").hidden = true;
   const box = $("projects");
   box.hidden = false;
@@ -349,6 +394,7 @@ function applyPageText(): void {
   else $("guides-en").removeAttribute("lang");
   doc.title = current ? t("web.pageTitle", { name: current.project.name }) : folder && !folder.sample ? t("web.pageTitle", { name: folder.name }) : pageTitle();
   updateReopen(reopenDir);
+  workspace.rerender();
   if (!$("projects").hidden) void showProjects();
 }
 
@@ -363,8 +409,11 @@ async function changeLocale(next: Locale): Promise<void> {
   if (book) store.set("lastBook", book);
   studio.dispose();
   studio = new Studio(host, $("studio"), license);
-  await studio.refresh();
+  await refreshStudio();
 }
+
+// Best effort: keep the last words if the page is closed while a save is waiting.
+window.addEventListener("pagehide", () => void workspace.flush());
 
 const langSelect = $<HTMLSelectElement>("lang");
 langSelect.value = locale;

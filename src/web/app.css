@@ -338,3 +338,279 @@ button.mod-cta {
   flex: 1 1 12em;
   width: auto;
 }
+
+/* Text for screen readers only. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Writing screen: chapters | editor | book on a wide screen, three tabs on a phone */
+.ws {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(13rem, 18rem) minmax(0, 1fr) minmax(0, 1.2fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.ws-tabs {
+  display: none;
+}
+
+.ws-col {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border-right: 1px solid var(--app-line);
+}
+
+.ws-col-book {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 0;
+}
+
+.ws-slot {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ws-slot > .app-main {
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 900px) {
+  .ws {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .ws-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--app-line);
+    background: var(--app-surface);
+  }
+
+  .ws-tab {
+    flex: 1;
+    min-height: 44px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .ws-tab[aria-selected="true"] {
+    border-bottom-color: var(--app-accent);
+    font-weight: 600;
+  }
+
+  .ws-col {
+    border-right: 0;
+  }
+
+  .ws[data-tab="chapters"] .ws-col:not(.ws-col-chapters),
+  .ws[data-tab="write"] .ws-col:not(.ws-col-write),
+  .ws[data-tab="book"] .ws-col:not(.ws-col-book) {
+    display: none;
+  }
+}
+
+/* Chapter list */
+.ws-list {
+  padding: 12px;
+}
+
+.ch-title {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+}
+
+.ch-hint {
+  margin: 0 0 12px;
+  color: var(--app-muted);
+  font-size: 0.85em;
+}
+
+.ch-group {
+  margin-bottom: 16px;
+}
+
+.ch-group-title {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+}
+
+.ch-items {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.ch-item {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  background: var(--app-surface);
+}
+
+.ch-item.is-active {
+  border-color: var(--app-accent);
+  box-shadow: inset 3px 0 0 var(--app-accent);
+}
+
+.ch-item.is-dragging {
+  opacity: 0.5;
+}
+
+.ch-item.is-over {
+  border-style: dashed;
+  border-color: var(--app-accent);
+}
+
+.ch-pick {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.ch-item.is-active .ch-pick {
+  font-weight: 600;
+}
+
+.ch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ch-actions button {
+  min-width: 32px;
+  padding: 2px 8px;
+  font-size: 0.85em;
+}
+
+.ch-rename {
+  display: grid;
+  gap: 4px;
+}
+
+.ch-rename input[type="text"] {
+  width: 100%;
+}
+
+.ch-rename button {
+  justify-self: start;
+}
+
+.ch-empty {
+  margin: 0 0 6px;
+  color: var(--app-muted);
+  font-size: 0.9em;
+}
+
+.ch-drop {
+  min-height: 12px;
+}
+
+.ch-add {
+  width: 100%;
+}
+
+/* Chapter editor */
+.ws-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px;
+}
+
+.ed-heading {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.ed-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ed-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ed-tool {
+  min-width: 32px;
+  padding: 2px 10px;
+}
+
+.ed-tool.is-bold {
+  font-weight: 700;
+}
+
+.ed-tool.is-italic {
+  font-style: italic;
+}
+
+.ed-text {
+  flex: 1;
+  min-height: 12rem;
+  width: 100%;
+  padding: 10px 12px;
+  resize: none;
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  background: var(--app-surface);
+  color: var(--app-fg);
+  font: 1rem/1.6 Georgia, "Times New Roman", serif;
+}
+
+.ed-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--app-muted);
+  font-size: 0.9em;
+}
+
+.ed-status.is-error {
+  color: #b3261e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ed-status.is-error {
+    color: #ff8a80;
+  }
+}
+
+.ed-none {
+  color: var(--app-muted);
+}

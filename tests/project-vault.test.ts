@@ -5,7 +5,7 @@ import { loadBook } from "../src/engine/book";
 import { splitFrontmatter } from "../src/engine/markdown";
 import { isManifestFrontmatter } from "../src/engine/manifest";
 import { createProject, addChapter, setChapterBody } from "../src/project/ops";
-import { projectToVault, safeName } from "../src/project/to-vault";
+import { bodyStartLine, projectToVault, safeName } from "../src/project/to-vault";
 import { fsVault } from "./helpers/fsVault";
 import { layoutBook } from "../src/engine/layout/index";
 import { testFonts } from "./helpers/fonts";
@@ -106,5 +106,18 @@ describe("Starter Book template equivalence", () => {
     const pagesB = layoutBook(b, fonts).pages.length;
     expect(pagesB).toBe(pagesA);
     expect(pagesA).toBeGreaterThan(0);
+  });
+});
+
+describe("chapter places", () => {
+  it("tells where each chapter note is and on which line its text starts", async () => {
+    const p = mk({ template: true });
+    const v = projectToVault(p);
+    expect(v.chapterPaths.one).toBe("Chapters/Chapter One.md");
+    expect(v.chapterPaths.dedication).toBe("Dedication.md");
+    for (const c of p.chapters) {
+      const lines = (await v.read(v.chapterPaths[c.id])).split("\n");
+      expect(lines[bodyStartLine(c) - 1]).toBe(c.body.split("\n")[0]);
+    }
   });
 });
