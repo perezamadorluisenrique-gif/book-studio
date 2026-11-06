@@ -15,16 +15,19 @@
     "sample": "esbuild tools/render-sample.ts --bundle --platform=node --format=esm --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\" --outfile=out/render-sample.mjs --log-level=warning && node out/render-sample.mjs",
     "downloads": "esbuild tools/downloads.ts --bundle --platform=node --format=esm --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\" --outfile=out/downloads.mjs --log-level=warning && node out/downloads.mjs",
     "epubcheck": "bash tools/epubcheck.sh",
-    "version": "node version-bump.mjs && git add manifest.json versions.json CHANGELOG.md"
+    "version": "node version-bump.mjs && git add manifest.json versions.json CHANGELOG.md",
+    "e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "author": "Siulved54",
   "license": "MIT",
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@types/node": "^26.6.5",
     "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-plugin-obsidianmd": "^0.4.2",
     "obsidian": "^1.14.4",
+    "playwright": "1.65.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.71.2",
     "vitest": "^5.0.5"
