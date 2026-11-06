@@ -10,6 +10,7 @@ import { backupDue } from "../project/backup";
 import { vaultToProjects, type ImportFiles, type ImportResult } from "../project/from-vault";
 import { createProject, renameProject } from "../project/ops";
 import { exportZip, importZip, zipName } from "../project/zip";
+import { projectFromText } from "../project/import-text";
 import { Workspace } from "./workspace";
 import { projectToVault, type ProjectVault } from "../project/to-vault";
 import type { Project } from "../project/model";
@@ -404,6 +405,11 @@ async function showProjects(focus?: string): Promise<void> {
         const p = createProject({ id: crypto.randomUUID(), name, now: Date.now(), template, language: locale, firstChapterTitle: t("proj.firstChapter") });
         await putProject(p);
         return p;
+      },
+      importText: async (text, fileName, name) => {
+        const { project, imported } = projectFromText(text, { id: crypto.randomUUID(), now: Date.now(), name, fileName, language: locale });
+        await putProject(project);
+        return { project, notes: imported.notes };
       },
       rename: async (p, name) => putProject(renameProject(p, name, Date.now())),
       remove: async (p) => deleteProject(p.id),

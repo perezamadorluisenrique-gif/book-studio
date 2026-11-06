@@ -252,12 +252,11 @@ button.mod-cta {
   background: var(--app-surface);
 }
 
-.proj-new h3,
-.proj-import h3 {
+.proj-new h3 {
   margin: 0;
 }
 
-.proj-import {
+.proj-bring {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -269,13 +268,13 @@ button.mod-cta {
   background: var(--app-surface);
 }
 
-.proj-import h3,
-.proj-import p {
+.proj-bring h3,
+.proj-bring p {
   flex: 1 0 100%;
   margin: 0;
 }
 
-.proj-import p {
+.proj-bring p {
   color: var(--app-muted);
 }
 

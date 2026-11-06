@@ -9,6 +9,8 @@ import type { Project } from "../project/model";
 export interface ProjectsDeps {
   list(): Promise<Project[]>;
   create(name: string, template: boolean): Promise<Project>;
+  /** Make a book from a manuscript's text; `fileName` is empty when the text was pasted. */
+  importText(text: string, fileName: string, name: string): Promise<{ project: Project; notes: string[] }>;
   rename(p: Project, name: string): Promise<void>;
   remove(p: Project): Promise<void>;
   open(p: Project): void;
@@ -91,12 +93,52 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
   });
   const importBox = h(
     "div",
-    { cls: "proj-import", attr: { role: "group", "aria-labelledby": "proj-import-title" } },
+    { cls: "proj-bring", attr: { role: "group", "aria-labelledby": "proj-import-title" } },
     h("h3", { text: t("proj.importTitle"), attr: { id: "proj-import-title" } }),
     h("p", { text: t("proj.importHelp") }),
     h("button", { text: t("proj.importZip"), attr: { type: "button", id: "proj-import-zip" }, on: { click: () => zipInput.click() } }),
     h("button", { text: t("proj.importFolder"), attr: { type: "button", id: "proj-import-folder" }, on: { click: () => void deps.importFolder().then(() => again("title"), (e: unknown) => fail(deps, e)) } }),
     zipInput,
+  );
+  const pasteBox = h("textarea", { attr: { id: "imp-text", rows: "6", "aria-describedby": "imp-hint" } });
+  const fileInput = h("input", { attr: { type: "file", id: "imp-file", accept: ".md,.markdown,.txt,text/plain,text/markdown", "aria-describedby": "imp-hint" } });
+  const importName = h("input", { attr: { type: "text", id: "imp-name", autocomplete: "off", value: "" } });
+  const importForm = h(
+    "form",
+    {
+      cls: "proj-new proj-import",
+      attr: { "aria-labelledby": "imp-title" },
+      on: {
+        submit: (ev: Event) => {
+          ev.preventDefault();
+          void (async () => {
+            try {
+              const file = fileInput.files?.[0];
+              const text = file ? await file.text() : pasteBox.value;
+              if (!text.trim()) {
+                deps.notify(t("imp.empty"));
+                return;
+              }
+              const { project, notes } = await deps.importText(text, file?.name ?? "", importName.value.trim());
+              const extra = notes.includes("intro") ? ` ${t("imp.intro")}` : "";
+              deps.notify(`${tn("imp.done", project.chapters.length, { name: project.name })}${extra}`);
+              deps.open(project);
+            } catch (e) {
+              fail(deps, e);
+            }
+          })();
+        },
+      },
+    },
+    h("h3", { text: t("imp.title"), attr: { id: "imp-title" } }),
+    h("p", { cls: "proj-hint", text: t("imp.hint"), attr: { id: "imp-hint" } }),
+    h("label", { attr: { for: "imp-file" }, text: t("imp.file") }),
+    fileInput,
+    h("label", { attr: { for: "imp-text" }, text: t("imp.paste") }),
+    pasteBox,
+    h("label", { attr: { for: "imp-name" }, text: t("imp.name") }),
+    importName,
+    h("button", { cls: "mod-cta", text: t("imp.go"), attr: { type: "submit" } }),
   );
 
   const date = new Intl.DateTimeFormat(getLocale(), { dateStyle: "medium" });
@@ -185,6 +227,7 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
     note,
     form,
     importBox,
+    importForm,
     projects.length ? list : h("p", { cls: "proj-none", text: t("proj.none") }),
   );
 

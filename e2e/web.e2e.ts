@@ -704,3 +704,59 @@ describe("web app, copies and folders", () => {
     await context.close();
   });
 });
+
+describe("web app, import a manuscript", () => {
+  const MANUSCRIPT = "# La casa\n\nLa casa estaba vacía.\n\n# El jardín\n\nCrecían flores.\n\n# Sobre el autor\n\nNació en el sur.\n";
+
+  it("turns a pasted text into chapters that survive a reload and export a PDF that passes the KDP check", async () => {
+    const context = await browser.newContext({ acceptDownloads: true, locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByRole("heading", { name: "Import a manuscript" }).waitFor();
+    // Nothing happens (and a message says why) when there is nothing to import.
+    await page.getByRole("button", { name: "Import as a new book" }).click();
+    await page.getByText("Choose a file or paste some text first.").waitFor();
+
+    await page.getByLabel("Or paste the text").fill(MANUSCRIPT);
+    await page.getByLabel("Title of the new book (optional)").fill("Casa vieja");
+    await page.getByRole("button", { name: "Import as a new book" }).click();
+    await page.locator("#ed-text").waitFor();
+    expect(await page.locator(".ch-pick").allTextContents()).toEqual(["La casa", "El jardín", "Sobre el autor"]);
+
+    await page.goto(base);
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByRole("button", { name: "Open Casa vieja" }).click();
+    await page.locator("#ed-text").waitFor();
+    expect(await page.locator(".ch-pick").count()).toBe(3);
+
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    const [download] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export print PDF" }).click()]);
+    const r = await checkKdpPdf(new Uint8Array(await readFile(await download.path())), trimById("6x9")!, { bleed: false });
+    expect(r.errors).toEqual([]);
+    await context.close();
+  });
+
+  it("imports a .md file chosen from disk", async () => {
+    const context = await browser.newContext({ locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByLabel("Text file").setInputFiles({ name: "diario.md", mimeType: "text/markdown", buffer: Buffer.from("# Uno\n\na\n\n# Dos\n\nb\n") });
+    await page.getByRole("button", { name: "Import as a new book" }).click();
+    await page.locator("#ed-text").waitFor();
+    expect(await page.locator(".ch-pick").allTextContents()).toEqual(["Uno", "Dos"]);
+    await context.close();
+  });
+
+  it("has no serious accessibility violations on the books screen with the import form", async () => {
+    const context = await browser.newContext({ locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByRole("heading", { name: "Import a manuscript" }).waitFor();
+    const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(r.violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual([]);
+    await context.close();
+  });
+});

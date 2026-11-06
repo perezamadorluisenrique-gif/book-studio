@@ -80,6 +80,13 @@ export interface LoadOptions {
   boxSets?: boolean;
 }
 
+/** The copyright line printed when the book gives none, in the book's language (Spanish or English). */
+export function defaultCopyright(language: string, year: string, authors: string[]): string {
+  const es = /^es(\b|-|_)/i.test(language);
+  const who = authors.join(es ? " y " : " and ") || (es ? "el autor" : "the author");
+  return es ? `Copyright © ${year} ${who}. Todos los derechos reservados.` : `Copyright © ${year} ${who}. All rights reserved.`;
+}
+
 export async function loadBook(source: VaultSource, manifestPath: string, overrides: Partial<BookSettings> = {}, opts: LoadOptions = {}): Promise<Book> {
   const manifestText = await source.read(manifestPath);
   const manifest = parseManifest(manifestText);
@@ -100,7 +107,7 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
     isbnPrint: fmString(fm, "isbn", "isbn-print", "paperback-isbn", "print-isbn"),
     isbnEbook: fmString(fm, "ebook-isbn", "isbn-ebook", "epub-isbn"),
     description: smart(fmString(fm, "description", "blurb")),
-    copyright: smart(fmString(fm, "copyright")) ?? `Copyright © ${year} ${authors.join(" and ") || "the author"}. All rights reserved.`,
+    copyright: smart(fmString(fm, "copyright")) ?? defaultCopyright(language, year, authors),
     edition: fmString(fm, "edition"),
     year,
     dedication: smart(fmString(fm, "dedication")),
