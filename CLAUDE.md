@@ -11,3 +11,4 @@ When compacting, keep the list of modified files, the test commands run and thei
 - Gates live in `src/engine/entitlements.ts`. Build flags (`esbuild.config.mjs`): `BOOK_STUDIO_EDITION=community` strips Pro, `BOOK_STUDIO_PRO_PREVIEW=1` unlocks it for demos.
 - Merging a change to `manifest.json` publishes a release (`release.yml`). Pro stays unreleased: do not bump the version.
 - KDP numbers (spine rate, barcode margin, spine text from 79 pages) are unverified against official templates.
+- Web projects (A3): `src/project/` is pure (model, `projectToVault`, ops; `starter.ts` copies `templates/starter-book` and a test keeps them equal). `src/web/store.ts` is IndexedDB v2 (`handles`, `projects`); `src/web/projects.ts` is the "My books" screen.

@@ -17,6 +17,7 @@
       <h1 class="app-title">Book Studio</h1>
       <p class="app-tagline" data-i18n="web.tagline">Markdown notes in, a paperback PDF and an accessible EPUB out. Nothing leaves your browser.</p>
       <nav class="app-actions" id="nav-source" aria-label="Book source">
+        <button type="button" id="open-projects" data-i18n="web.myBooks">My books</button>
         <button type="button" id="open-folder" data-i18n="web.openFolder">Open a folder</button>
         <button type="button" id="reopen-folder" hidden>Reopen</button>
         <button type="button" id="open-sample" data-i18n="web.sample">Sample book</button>
@@ -33,6 +34,7 @@
         </select>
       </div>
     </header>
+    <section id="projects" class="app-projects" aria-labelledby="proj-title" hidden></section>
     <main id="studio" class="app-main"></main>
     <div id="toasts" class="app-toasts" role="status" aria-live="polite"></div>
     <dialog id="dialog" class="app-dialog" aria-labelledby="dialog-title">
