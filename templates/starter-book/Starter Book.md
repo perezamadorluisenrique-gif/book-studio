@@ -15,7 +15,7 @@ Replace the properties above, then write. Each link below is a chapter note; reo
 
 ## Front matter
 
-[[Dedication]]
+- [[Dedication]]
 
 ## Chapters
 
@@ -25,4 +25,4 @@ Replace the properties above, then write. Each link below is a chapter note; reo
 
 ## Back matter
 
-[[About the author]]
+- [[About the author]]
