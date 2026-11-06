@@ -256,6 +256,35 @@ button.mod-cta {
   margin: 0;
 }
 
+.proj-bring {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 24px;
+  padding: 16px;
+  border: 1px solid var(--app-line);
+  border-radius: 10px;
+  background: var(--app-surface);
+}
+
+.proj-bring h3,
+.proj-bring p {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+.proj-bring p {
+  color: var(--app-muted);
+}
+
+.proj-note p {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--app-line);
+  background: var(--app-surface);
+}
+
 .proj-new input[type="text"],
 .proj-rename input[type="text"] {
   width: 100%;

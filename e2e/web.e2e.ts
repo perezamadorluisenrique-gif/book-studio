@@ -266,14 +266,14 @@ describe("web app, writing", () => {
     const page = await context.newPage();
     await startBook(page, "Order test", true);
     expect(await chapterNames(page)).toEqual(["Dedication", "Chapter One", "Chapter Two", "Chapter Three", "About the author"]);
-    expect((await tocOrder(page)).slice(0, 3)).toEqual(["Chapter One", "Chapter Two", "Chapter Three"]);
+    expect((await tocOrder(page)).filter((n) => n.startsWith("Chapter")).slice(0, 3)).toEqual(["Chapter One", "Chapter Two", "Chapter Three"]);
     const two = page.getByRole("button", { name: "Chapter Two", exact: true });
     await two.focus();
     await page.keyboard.press("Alt+ArrowUp");
     expect(await chapterNames(page)).toEqual(["Dedication", "Chapter Two", "Chapter One", "Chapter Three", "About the author"]);
     // The focus stays on the chapter that moved.
     expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Chapter Two");
-    await vi.waitFor(async () => expect((await tocOrder(page)).slice(0, 3)).toEqual(["Chapter Two", "Chapter One", "Chapter Three"]), { timeout: 10_000, interval: 200 });
+    await vi.waitFor(async () => expect((await tocOrder(page)).filter((n) => n.startsWith("Chapter")).slice(0, 3)).toEqual(["Chapter Two", "Chapter One", "Chapter Three"]), { timeout: 10_000, interval: 200 });
     await page.keyboard.press("Alt+ArrowDown");
     await page.keyboard.press("Alt+ArrowDown");
     expect(await chapterNames(page)).toEqual(["Dedication", "Chapter One", "Chapter Three", "Chapter Two", "About the author"]);
@@ -624,6 +624,83 @@ describe("web app, book details and cover", () => {
     await page.getByRole("heading", { name: "Datos del libro" }).waitFor();
     for (const label of ["Título", "Subtítulo", "Editorial", "Palabras clave", "Serie", "Tamaño de corte"]) expect(await field(page, label).count(), label).toBe(1);
     expect(await page.getByText("Imagen de portada frontal").count()).toBe(1);
+    await context.close();
+  });
+});
+
+describe("web app, copies and folders", () => {
+  const OZ = join(process.cwd(), "sample", "oz");
+
+  /** A page without the folder picker, so "Import a folder" falls back to the plain file chooser that tests can drive. */
+  async function plainPage(locale = "en-US") {
+    const context = await browser.newContext({ acceptDownloads: true, locale });
+    await context.addInitScript(() => {
+      delete (window as unknown as Record<string, unknown>).showDirectoryPicker;
+    });
+    const page = await context.newPage();
+    await page.goto(`${base}?sample=leyendas`);
+    await page.getByRole("button", { name: /Export print PDF|Exportar PDF/ }).waitFor();
+    return { context, page };
+  }
+
+  async function exportPdfPages(page: Page): Promise<number> {
+    await page.locator(".bs-page, canvas, svg").first().waitFor({ timeout: 60_000 });
+    const [download] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export print PDF" }).click()]);
+    const r = await checkKdpPdf(new Uint8Array(await readFile((await download.path()))), trimById("6x9")!, { bleed: false });
+    expect(r.errors).toEqual([]);
+    return r.pages;
+  }
+
+  it("turns the sample/oz folder into a book that exports a PDF with the same number of pages as opening the folder", async () => {
+    const { context, page } = await plainPage();
+    // Opening the folder directly (the old way).
+    await page.locator("#folder-input").setInputFiles(OZ);
+    await page.waitForFunction(() => document.title.includes("oz"));
+    await page.locator("option", { hasText: "Wonderful Wizard of Oz" }).first().waitFor({ state: "attached", timeout: 60_000 });
+    const direct = await exportPdfPages(page);
+
+    // Importing it as a book.
+    await page.getByRole("button", { name: "My books" }).click();
+    const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Import a folder" }).click()]);
+    await chooser.setFiles(OZ);
+    await page.getByRole("button", { name: /^Open The Wonderful Wizard of Oz/ }).click();
+    const imported = await exportPdfPages(page);
+    expect(imported).toBe(direct);
+    expect(imported).toBeGreaterThan(24);
+    await context.close();
+  });
+
+  it("downloads a copy as a zip and opens it again as a second book", async () => {
+    const { context, page } = await plainPage();
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByLabel("Book name").fill("Copy me");
+    await page.getByLabel("The Starter Book template").check();
+    await page.getByRole("button", { name: "Create book" }).click();
+    await page.locator("#ed-text").waitFor();
+    await page.locator("#ed-text").fill("Words that must survive the copy.");
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByRole("button", { name: "Open Copy me" }).waitFor();
+    expect(await page.getByText("No copy yet").count()).toBe(1);
+
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download a copy of Copy me as a zip" }).click()]);
+    expect(download.suggestedFilename()).toBe("Copy me.zip");
+    const path = await download.path();
+    const zip = await JSZip.loadAsync(await readFile(path));
+    expect(Object.keys(zip.files)).toContain("Copy me.md");
+    expect(await page.getByText("No copy yet").count()).toBe(0);
+
+    const input = page.locator("#proj-import-zip + button + input[type=file]");
+    await input.setInputFiles(path);
+    await page.getByText("Imported “Copy me”.").waitFor();
+    expect(await page.getByRole("button", { name: /^Open Copy me/ }).count()).toBe(2);
+    await context.close();
+  });
+
+  it("shows the import box and the copy buttons in Spanish", async () => {
+    const { context, page } = await plainPage("es-ES");
+    await page.getByRole("button", { name: "Mis libros" }).click();
+    await page.getByRole("heading", { name: "Traer un libro" }).waitFor();
+    for (const name of ["Importar una copia (.zip)", "Importar una carpeta"]) expect(await page.getByRole("button", { name }).count(), name).toBe(1);
     await context.close();
   });
 });

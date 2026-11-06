@@ -6,7 +6,10 @@ import { append, clear, h, setElementFactory } from "../app/dom";
 import type { BookChoice, Dialog, OutputFile, Store, StudioHost } from "../app/host";
 import { renderLicensePanel } from "../app/license-panel";
 import { LicenseManager } from "../app/license-manager";
+import { backupDue } from "../project/backup";
+import { vaultToProjects, type ImportFiles, type ImportResult } from "../project/from-vault";
 import { createProject, renameProject } from "../project/ops";
+import { exportZip, importZip, zipName } from "../project/zip";
 import { projectFromText } from "../project/import-text";
 import { Workspace } from "./workspace";
 import { projectToVault, type ProjectVault } from "../project/to-vault";
@@ -265,6 +268,7 @@ const workspace = new Workspace($("workspace"), {
   ask: (d) => host.ask(d),
   notify: toast,
   plan: () => license.plan(),
+  backup: (p) => backupProject(p),
   // The preview bar remembers theme and trim per book; a choice made in the book form must not be hidden by an older one.
   layoutChanged: (project, keys) => {
     const key = `settings:project:${project.id}/${projectToVault(project).bookPath}`;
@@ -329,6 +333,64 @@ async function openProject(project: Project): Promise<void> {
   await refreshStudio();
 }
 
+// ── Copies and imports ──
+
+/** Download a copy of a book as a zip and remember when. */
+async function backupProject(p: Project): Promise<void> {
+  const data = await exportZip(p);
+  download({ name: zipName(p), data, mime: "application/zip" });
+  store.set(`backup:${p.id}`, Date.now());
+  toast(t("proj.backupDone", { name: p.name }));
+}
+
+const newId = () => crypto.randomUUID();
+
+/** Save what an import found and say what happened. */
+async function saveImported(r: ImportResult): Promise<void> {
+  if (!r.projects.length) {
+    toast(t("proj.importedNone"));
+    return;
+  }
+  for (const p of r.projects) await putProject(p);
+  toast(r.projects.length === 1 ? t("proj.importedOne", { name: r.projects[0].name }) : t("proj.importedMany", { n: r.projects.length }));
+  if (r.missing.length) toast(t("proj.importMissing", { n: r.missing.length }));
+  if (r.skipped.length) toast(t("proj.importSkipped", { keys: [...new Set(r.skipped)].join(", ") }));
+}
+
+function filesOf(f: Folder): ImportFiles {
+  return { paths: f.paths, text: async (p) => (await f.file(p)).text(), bytes: async (p) => new Uint8Array(await (await f.file(p)).arrayBuffer()) };
+}
+
+/** Ask for a folder without opening it in the studio. */
+function chooseFolder(): Promise<Folder | null> {
+  const picker = (window as PickerWindow).showDirectoryPicker;
+  if (picker) {
+    return picker({ id: "book-studio", mode: "read" }).then(
+      (dir) => folderFromHandle(dir),
+      (e: unknown) => {
+        if (e instanceof DOMException && e.name === "AbortError") return null;
+        throw e;
+      },
+    );
+  }
+  return new Promise((resolve) => {
+    const input = h("input", { attr: { type: "file", webkitdirectory: "", multiple: "", hidden: "" } });
+    input.addEventListener("change", () => resolve(input.files?.length ? folderFromFiles(input.files) : null), { once: true });
+    input.addEventListener("cancel", () => resolve(null), { once: true });
+    input.click();
+  });
+}
+
+/** Seen-first-time stamp, so a brand-new book is not nagged about at once. */
+function firstSeen(p: Project): number {
+  const key = `seen:${p.id}`;
+  const known = store.get<number>(key);
+  if (known) return known;
+  const now = Date.now();
+  store.set(key, now);
+  return now;
+}
+
 async function showProjects(focus?: string): Promise<void> {
   await workspace.close();
   placeStudio(false);
@@ -364,6 +426,21 @@ async function showProjects(focus?: string): Promise<void> {
       open: (p) => void openProject(p),
       ask: (d) => host.ask(d),
       notify: toast,
+      backup: backupProject,
+      lastBackup: (p) => store.get<number>(`backup:${p.id}`),
+      backupDue: (p) => backupDue(Date.now(), { lastBackup: store.get<number>(`backup:${p.id}`), firstSeen: firstSeen(p), updatedAt: p.updatedAt }),
+      importZip: async (file) => saveImported(await importZip(file, { now: Date.now(), newId })),
+      importFolder: async () => {
+        const f = await chooseFolder();
+        if (f) await saveImported(await vaultToProjects(filesOf(f), { now: Date.now(), newId }));
+      },
+      persisted: async () => {
+        try {
+          return (await navigator.storage?.persisted?.()) || (await navigator.storage?.persist?.()) || false;
+        } catch {
+          return false;
+        }
+      },
     },
     focus ?? "title",
   );

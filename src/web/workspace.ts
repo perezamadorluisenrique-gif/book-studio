@@ -24,6 +24,8 @@ export interface WorkspaceDeps {
   plan(): Plan;
   /** The book form changed the theme or trim: forget a choice made in the preview bar, so the form wins. */
   layoutChanged(p: Project, keys: string[]): void;
+  /** Download a copy of the book as a .zip. */
+  backup(p: Project): Promise<void>;
 }
 
 type Tab = "chapters" | "write" | "book";
@@ -47,6 +49,7 @@ export class Workspace {
   private panels = {} as Record<Tab, HTMLElement>;
   private listBox = h("div", { cls: "ws-list" });
   private detailsButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-details-btn" }, on: { click: () => this.openDetails() } });
+  private backupButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-backup-btn" }, on: { click: () => void this.backup() } });
   private listInner = h("div");
   private editorBox = h("div", { cls: "ws-editor" });
   private detailsBox = h("div", { cls: "ws-details" });
@@ -69,7 +72,7 @@ export class Workspace {
       this.panels[id] = h("section", { cls: `ws-col ws-col-${id}`, attr: { id: `ws-panel-${id}` } });
     }
     this.panels.chapters.appendChild(this.listBox);
-    this.listBox.append(this.detailsButton, this.listInner);
+    this.listBox.append(this.detailsButton, this.backupButton, this.listInner);
     this.panels.write.append(this.editorBox, this.detailsBox);
     this.panels.book.appendChild(this.bookSlot);
     this.tabsEl.append(...TABS.map((id) => this.tabButtons[id]));
@@ -114,6 +117,7 @@ export class Workspace {
       },
       notify: (m) => this.deps.notify(m),
     });
+    this.backupButton.textContent = t("proj.backup");
     this.detailsButton.textContent = t("dt.open");
     this.detailsButton.setAttribute("aria-label", t("dt.openLabel"));
     this.tabsEl.setAttribute("aria-label", t("ws.tabs"));
@@ -129,6 +133,17 @@ export class Workspace {
       if (this.view === "details") this.details.show();
     }
     this.applyView();
+  }
+
+  /** Save the latest words, then download a copy of the book. */
+  private async backup(): Promise<void> {
+    if (!this.project) return;
+    await this.flush();
+    try {
+      await this.deps.backup(this.project);
+    } catch (e) {
+      this.deps.notify(t("proj.failed", { error: e instanceof Error ? e.message : String(e) }));
+    }
   }
 
   /** Draw the screen again after the language changed. */

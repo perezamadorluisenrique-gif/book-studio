@@ -20,9 +20,9 @@ describe("projectToVault", () => {
     const { frontmatter } = splitFrontmatter(text);
     expect(isManifestFrontmatter(frontmatter)).toBe(true);
     expect(frontmatter.title).toBe("Starter Book");
-    expect(text).toMatch(/## Front matter\n\n\[\[Dedication\]\]/);
+    expect(text).toMatch(/## Front matter\n\n- \[\[Dedication\]\]/);
     expect(text).toMatch(/## Chapters\n\n1\. \[\[Chapter One\]\]\n2\. \[\[Chapter Two\]\]\n3\. \[\[Chapter Three\]\]/);
-    expect(text).toMatch(/## Back matter\n\n\[\[About the author\]\]/);
+    expect(text).toMatch(/## Back matter\n\n- \[\[About the author\]\]/);
     expect(v.paths.sort()).toEqual(["About the author.md", "Chapters/Chapter One.md", "Chapters/Chapter Three.md", "Chapters/Chapter Two.md", "Dedication.md", "Starter Book.md"]);
   });
 

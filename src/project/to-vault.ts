@@ -77,7 +77,7 @@ export function projectToVault(p: Project): ProjectVault {
       const name = unique(safeName(c.title, "Chapter"));
       files.set(`${dir}${name}.md`, chapterNote(c));
       chapterPaths[c.id] = `${dir}${name}.md`;
-      lines.push(section.kind === "body" ? `${i + 1}. [[${name}]]` : `[[${name}]]`);
+      lines.push(section.kind === "body" ? `${i + 1}. [[${name}]]` : `- [[${name}]]`);
     });
     lines.push("");
   }
