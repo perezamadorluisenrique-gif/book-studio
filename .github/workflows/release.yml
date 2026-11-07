@@ -134,7 +134,7 @@ jobs:
           cat > .review-lint.config.mjs <<'EOF'
           import obsidianmd from 'eslint-plugin-obsidianmd';
           export default [
-            { ignores: ['main.js', 'node_modules/**', 'tests/**', '**/*.mjs', '**/*.cjs', '**/*.test.*', '**/*.spec.*'] },
+            { ignores: ['main.js', 'node_modules/**', 'tests/**', '**/*.mjs', '**/*.cjs', '**/*.test.*', '**/*.spec.*', 'src/web/sw.js'] },
             ...obsidianmd.configs.recommended,
             { languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: process.cwd() } } },
           ];
