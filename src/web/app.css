@@ -22,7 +22,8 @@
     --app-danger: #ff8a80;
   }
 
-  .bs-studio {
+  /* studio.css loads later and sets the same variables on .bs-studio; the extra class wins by specificity, not by order. */
+  .bs-studio.bs-studio {
     --bs-bg: #222226;
     --bs-bg-alt: #2b2b30;
     --bs-fg: #ececf0;
