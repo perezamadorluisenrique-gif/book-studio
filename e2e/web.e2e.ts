@@ -184,6 +184,35 @@ describe("web app, my books", () => {
       await context.close();
     });
   }
+
+  for (const scheme of ["light", "dark"] as const) {
+    it(`keeps the text of the studio's buttons and menus readable in ${scheme} mode`, async () => {
+      const context = await browser.newContext({ colorScheme: scheme, locale: "en-US", viewport: { width: 1280, height: 800 } });
+      const page = await context.newPage();
+      await page.goto(`${base}?sample=oz`);
+      await page.getByRole("button", { name: "Export print PDF" }).waitFor();
+      // Contrast of each control's text against the color it is drawn on (WCAG ratio; 4.5 is the AA floor for text).
+      const faint = await page.evaluate(() => {
+        const lum = (rgb: string) => {
+          const [r, g, b] = (rgb.match(/[\d.]+/g) ?? ["0", "0", "0"]).slice(0, 3).map((v) => { const c = Number(v) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        };
+        const ratios: [string, number][] = [];
+        for (const el of Array.from(document.querySelectorAll<HTMLElement>(".bs-studio button, .bs-studio select"))) {
+          if (!el.offsetParent) continue;
+          const s = getComputedStyle(el);
+          // Transparent controls (the tabs) sit on whatever the nearest opaque ancestor paints.
+          let bgEl: HTMLElement | null = el;
+          while (bgEl && /rgba\(.*, 0\)|transparent/.test(getComputedStyle(bgEl).backgroundColor)) bgEl = bgEl.parentElement;
+          const a = lum(s.color), b = lum(bgEl ? getComputedStyle(bgEl).backgroundColor : "rgb(255, 255, 255)");
+          ratios.push([(el.textContent ?? "").trim().slice(0, 30), (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)]);
+        }
+        return ratios.filter(([, r]) => r < 4.5);
+      });
+      expect(faint, "controls with text too faint for their background").toEqual([]);
+      await context.close();
+    });
+  }
 });
 
 describe("web app, writing", () => {
