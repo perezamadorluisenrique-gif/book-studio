@@ -1,0 +1,41 @@
+{
+  "sections": [
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c1"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "Formatting",
+      "body": "A centered line {.center}\n\nSigned, on the right {.right}\n\nWater is H<sub>2</sub>O, the 21<sup>st</sup> century, ~~struck~~ and <span class=\"sc\">small caps</span>.\n\n| Name | Pipe \\| and more | Notes |\n| --- | --- | --- |\n| Wide cell | Wide cell | Tall |\n| One | Two | Tall |\n\nText next to the box.\n\n> Boxed aside, first paragraph.\n\n> Boxed aside, second paragraph."
+    }
+  ],
+  "assets": [],
+  "report": {
+    "items": [
+      {
+        "code": "tables",
+        "count": 1
+      },
+      {
+        "code": "mergedCells",
+        "count": 3
+      },
+      {
+        "code": "textBoxes",
+        "count": 1
+      }
+    ],
+    "chapters": 1,
+    "images": 0,
+    "footnotes": 0,
+    "words": {
+      "source": 41,
+      "book": 44,
+      "missing": []
+    }
+  }
+}

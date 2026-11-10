@@ -13,7 +13,7 @@ import type { ProjectAsset } from "./model";
 export type ParseXml = (xml: string) => Document;
 
 /** What was left out or worth a look. Codes are turned into sentences by the screen. */
-export type ReportCode = "tables" | "textBoxes" | "equations" | "comments" | "deletions" | "insertions" | "toc" | "oldPictures" | "unsupportedImages" | "imagesNoAlt";
+export type ReportCode = "mergedCells" | "tables" | "textBoxes" | "equations" | "comments" | "deletions" | "insertions" | "toc" | "oldPictures" | "unsupportedImages" | "imagesNoAlt";
 
 export interface DocxReport {
   /** Each code with how many times it happened (only those that did). */
@@ -60,6 +60,8 @@ interface Seg {
   text: string;
   b: boolean;
   i: boolean;
+  /** Extra looks: s strike-through, c small caps, u superscript, d subscript. */
+  x?: string;
 }
 
 interface Ctx {
@@ -166,18 +168,22 @@ function runSegments(c: Ctx, p: El, out: Seg[], fmt = { b: false, i: false }): v
       const rpr = child(node, "rPr");
       const b = fmt.b || on(child(rpr, "b"));
       const i = fmt.i || on(child(rpr, "i"));
+      const va = attr(child(rpr, "vertAlign"), "val");
+      const x = (on(child(rpr, "strike")) || on(child(rpr, "dstrike")) ? "s" : "") + (on(child(rpr, "smallCaps")) ? "c" : "") + (va === "superscript" ? "u" : va === "subscript" ? "d" : "");
       for (const part of kids(node)) {
         const k = part.localName;
-        if (k === "t") out.push({ text: part.textContent ?? "", b, i });
-        else if (k === "tab") out.push({ text: " ", b, i });
-        else if (k === "noBreakHyphen") out.push({ text: "-", b, i });
+        if (k === "t") out.push({ text: part.textContent ?? "", b, i, x });
+        else if (k === "tab") out.push({ text: " ", b, i, x });
+        else if (k === "noBreakHyphen") out.push({ text: "-", b, i, x });
         else if (k === "sym") out.push({ text: "", b, i });
         else if (k === "br") {
           const type = attr(part, "type");
           if (type === "page") out.push({ text: `\uE000PB`, b: false, i: false });
           else if (!type || type === "textWrapping") out.push({ text: "\uE000BR", b: false, i: false });
         } else if (k === "drawing") out.push({ text: `\uE000RAW${imageFor(c, part)}\uE000`, b: false, i: false });
-        else if (k === "pict" || k === "object") bump(c, "oldPictures");
+        else if (k === "pict" || k === "object") {
+          if (!part.getElementsByTagNameNS(W, "txbxContent").length) bump(c, "oldPictures");
+        }
         else if (k === "footnoteReference" || k === "endnoteReference") {
           const id = attr(part, "id") ?? "";
           const note = c.footnotes.get(`${k}:${id}`);
@@ -230,7 +236,7 @@ function render(c: Ctx, segs: Seg[]): string {
   for (const s of segs) {
     if (!s.text) continue;
     const last = merged[merged.length - 1];
-    if (last && last.b === s.b && last.i === s.i && !s.text.startsWith("\uE000") && !last.text.endsWith("\uE000")) last.text += s.text;
+    if (last && last.b === s.b && last.i === s.i && (last.x ?? "") === (s.x ?? "") && !s.text.startsWith("\uE000") && !last.text.endsWith("\uE000")) last.text += s.text;
     else merged.push({ ...s });
   }
   let out = "";
@@ -252,7 +258,14 @@ function render(c: Ctx, segs: Seg[]): string {
     const tail = s.text.length > lead.length ? (/\s*$/.exec(s.text)?.[0] ?? "") : "";
     const core = s.text.slice(lead.length, s.text.length - tail.length);
     const mark = s.b && s.i ? "***" : s.b ? "**" : s.i ? "*" : "";
-    out += core ? `${lead}${mark}${escapeText(core)}${mark}${tail}` : lead + tail;
+    let body = core ? `${mark}${escapeText(core)}${mark}` : "";
+    if (core && s.x) {
+      if (s.x.includes("s")) body = `~~${body}~~`;
+      if (s.x.includes("c")) body = `<span class="sc">${body}</span>`;
+      if (s.x.includes("u")) body = `<sup>${body}</sup>`;
+      if (s.x.includes("d")) body = `<sub>${body}</sub>`;
+    }
+    out += core ? `${lead}${body}${tail}` : lead + tail;
   }
   return out.replace(/ {3,}\n/g, "  \n");
 }
@@ -261,7 +274,7 @@ const SCENE = /^\s*(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,}|#|[⁂❦])\s*$/;
 const LEADING = /^(\s*)(#{1,6}\s|[-+]\s|\d+[.)]\s|>)/;
 
 interface Block {
-  kind: "heading" | "paragraph" | "quote" | "list" | "pageBreak" | "skip";
+  kind: "heading" | "paragraph" | "quote" | "list" | "pageBreak" | "skip" | "table";
   level?: number;
   text: string;
   ordered?: boolean;
@@ -269,6 +282,9 @@ interface Block {
   title?: boolean;
   subtitle?: boolean;
   author?: boolean;
+  align?: "center" | "right";
+  /** Markdown lines of a table. */
+  rows?: string[];
 }
 
 function paragraphBlock(c: Ctx, p: El): Block[] {
@@ -315,7 +331,9 @@ function paragraphBlock(c: Ctx, p: El): Block[] {
       return void blocks.push({ kind: "list", text, ordered, depth: Number(ilvl) || 0 });
     }
     if (/quote|cita|block text|texto en bloque/i.test(style)) return void blocks.push({ kind: "quote", text });
-    blocks.push({ kind: "paragraph", text });
+    const jc = attr(child(ppr, "jc"), "val");
+    const align = jc === "center" ? "center" : jc === "right" || jc === "end" ? "right" : undefined;
+    blocks.push({ kind: "paragraph", text, ...(align ? { align } : {}) });
   });
   void breaks;
   return blocks;
@@ -403,6 +421,10 @@ function plainWords(markdown: string): string {
     .replace(/!\[(?:\\.|[^\]\\])*\]\(<[^>]*>\)/g, "")
     .replace(/\[((?:\\.|[^\]\\])*)\]\(<[^>]*>\)/g, "$1")
     .replace(/\[\^\d+\]:?/g, "")
+    .replace(/(?<!\\)<\/?(?:sup|sub|span|br)[^>]*>/g, (m) => (m.startsWith("<br") ? "\n\n" : ""))
+    .replace(/\{\.(?:center|right)\}/g, "")
+    .replace(/\\\|/g, " ")
+    .replace(/\|/g, "\n\n")
     .replace(/^[ \t]*(?:\d+\.|-|>)[ \t]/gm, "");
 }
 
@@ -427,6 +449,46 @@ function checkWords(source: SourcePara[], markdown: string, extra: string[]): Wo
     missing.push({ texto: para.text.length > 80 ? `${para.text.slice(0, 77)}…` : para.text, lugar: para.place });
   }
   return { source: sourceWords, book: countWords(plain) + extra.reduce((n, e) => n + countWords(e), 0), missing };
+}
+
+function insideTextBox(tb: El, root: El): boolean {
+  for (let a = tb.parentNode as El | null; a && a !== root; a = a.parentNode as El | null) if (a.localName === "txbxContent") return true;
+  return false;
+}
+
+/** A Word table as Markdown rows. A merged cell is repeated in every cell it covers. */
+function tableRows(c: Ctx, tbl: El): string[] {
+  const grid: string[][] = [];
+  const above: string[] = [];
+  let merged = 0;
+  for (const tr of kids(tbl).filter((k) => k.localName === "tr")) {
+    const row: string[] = [];
+    for (const tc of kids(tr).filter((k) => k.localName === "tc")) {
+      const tcPr = child(tc, "tcPr");
+      const span = Math.max(1, Number(attr(child(tcPr, "gridSpan"), "val")) || 1);
+      const vm = child(tcPr, "vMerge");
+      const continued = !!vm && (attr(vm, "val") ?? "continue") !== "restart";
+      const text = continued
+        ? (above[row.length] ?? "")
+        : kids(tc)
+            .filter((k) => k.localName === "p")
+            .map((p) => render(c, paragraphSegs(c, p)).replace(/ {2}\n/g, " ").trim())
+            .filter(Boolean)
+            .join("<br>")
+            .replace(/\|/g, "\\|");
+      if (span > 1 || vm) merged++;
+      for (let k = 0; k < span; k++) {
+        above[row.length] = text;
+        row.push(text);
+      }
+    }
+    if (row.length) grid.push(row);
+  }
+  if (merged) bump(c, "mergedCells", merged);
+  if (!grid.length) return [];
+  const cols = Math.max(...grid.map((r) => r.length));
+  const line = (r: string[]): string => `| ${Array.from({ length: cols }, (_, k) => r[k] ?? "").join(" | ")} |`;
+  return [line(grid[0]), `|${" --- |".repeat(cols)}`, ...grid.slice(1).map(line)];
 }
 
 /** Read the .docx and give back chapters, pictures and a report. */
@@ -479,8 +541,21 @@ export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = 
         const found = paragraphBlock(c, node);
         blocks.push(...found);
         if (c.pendingNotes.length && found.length) notesAfter.set(blocks.length - 1, [...c.pendingNotes]);
-        if (node.getElementsByTagNameNS(W, "txbxContent").length) bump(c, "textBoxes");
-      } else if (n === "tbl") bump(c, "tables");
+        for (const tb of Array.from(node.getElementsByTagNameNS(W, "txbxContent"))) {
+          if (ignoredParagraph(tb, node) || insideTextBox(tb, node)) continue;
+          bump(c, "textBoxes");
+          for (const tp of kids(tb).filter((k) => k.localName === "p")) {
+            const text = render(c, paragraphSegs(c, tp)).trim();
+            if (text) blocks.push({ kind: "quote", text });
+          }
+        }
+      } else if (n === "tbl") {
+        const rows = tableRows(c, node);
+        if (rows.length) {
+          bump(c, "tables");
+          blocks.push({ kind: "table", text: "", rows });
+        }
+      }
       else if (n === "sdt") walk(child(node, "sdtContent") ?? node);
       else if (n === "customXml" || n === "ins") walk(node);
     }
@@ -516,7 +591,11 @@ export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = 
       lines.push(`${"    ".repeat(Math.min(b.depth ?? 0, 4))}${b.ordered ? "1." : "-"} ${b.text.replace(/ {2}\n/g, " ")}`);
       const next = blocks.slice(idx + 1).find((x) => x.kind !== "skip");
       if (next?.kind !== "list" || next.ordered !== b.ordered) lines.push("");
-    } else lines.push(...(b.text.split("  \n").length > 1 ? [b.text] : [lineSafe(b.text)]), "");
+    } else if (b.kind === "table") lines.push(...(b.rows ?? []), "");
+    else {
+      const safe = b.text.split("  \n").length > 1 ? b.text : lineSafe(b.text);
+      lines.push(b.align && safe !== "* * *" ? `${safe} {.${b.align}}` : safe, "");
+    }
     if (extra) {
       for (const e of extra) {
         const [num, text] = e.split("\uE000");
@@ -549,7 +628,7 @@ export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = 
   }
   void subtitle;
   const langCode = lang ? /^[a-z]{2,3}/i.exec(lang)?.[0]?.toLowerCase() : undefined;
-  const items = (["tables", "textBoxes", "equations", "comments", "deletions", "insertions", "toc", "oldPictures", "unsupportedImages", "imagesNoAlt"] as ReportCode[])
+  const items = (["tables", "mergedCells", "textBoxes", "equations", "comments", "deletions", "insertions", "toc", "oldPictures", "unsupportedImages", "imagesNoAlt"] as ReportCode[])
     .map((code) => ({ code, count: c.counts.get(code) ?? 0 }))
     .filter((i) => i.count > 0);
   return {

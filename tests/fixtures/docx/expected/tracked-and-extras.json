@@ -11,7 +11,7 @@
   "chapters": [
     {
       "title": "Part A",
-      "body": "Kept inserted words end."
+      "body": "Kept inserted words end.\n\n> boxed"
     },
     {
       "title": "Part B",
@@ -44,10 +44,6 @@
       {
         "code": "toc",
         "count": 1
-      },
-      {
-        "code": "oldPictures",
-        "count": 1
       }
     ],
     "chapters": 2,
@@ -55,14 +51,10 @@
     "footnotes": 0,
     "words": {
       "source": 13,
-      "book": 10,
+      "book": 11,
       "missing": [
         {
           "texto": "x=1",
-          "lugar": "Part A"
-        },
-        {
-          "texto": "boxed",
           "lugar": "Part A"
         }
       ]

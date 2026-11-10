@@ -273,21 +273,21 @@ export class FlowBuilder {
       switch (b.kind) {
         case "paragraph": {
           if (theme.body.blockParagraphs && idx > 0) items.push({ type: "space", height: L * 0.5 });
-          const indent = theme.body.blockParagraphs || state.noIndent ? 0 : theme.body.indent * this.env.bodySize;
+          const indent = theme.body.blockParagraphs || state.noIndent || b.align ? 0 : theme.body.indent * this.env.bodySize;
           const setOpts: SetOptions = {
             width: frame.width,
-            align: theme.body.justify ? "justify" : "left",
+            align: b.align ?? (theme.body.justify ? "justify" : "left"),
             indent,
             hyphenate: this.env.hyphenate && theme.body.hyphenate,
-            dropCap: state.dropCap && !frame.nested ? { lines: theme.firstParagraph.dropCap, family: theme.firstParagraph.dropCapFamily ?? theme.body.family, leading: L } : undefined,
+            dropCap: state.dropCap && !frame.nested && !b.align ? { lines: theme.firstParagraph.dropCap, family: theme.firstParagraph.dropCapFamily ?? theme.body.family, leading: L } : undefined,
             leadInWords: frame.nested ? 0 : state.leadIn,
             noteNumber: this.env.noteNumber,
-            micro: theme.body.justify,
+            micro: theme.body.justify && !b.align,
           };
           const set = this.env.setter.set(b.inlines, frame.base, setOpts);
           const lineOpts = { left: frame.left, blockId: b.id, src: b.src, body: true };
           const boxes = this.lineBoxes(set, lineOpts);
-          if (theme.body.justify && boxes.length) {
+          if (theme.body.justify && !b.align && boxes.length) {
             // The page builder may ask for this paragraph in one line more or less to fill a page.
             const cache = new Map<number, VBox[] | null>();
             const variant = this.env.setter.variants(b.inlines, frame.base, setOpts);

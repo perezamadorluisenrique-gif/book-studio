@@ -299,7 +299,8 @@ function renderBlocks(ctx: WriterCtx, blocks: Block[], state: ParaState, nested:
       case "paragraph": {
         const cls: string[] = [];
         if (state.noIndent && !theme.body.blockParagraphs) cls.push("noindent");
-        if (state.dropCap && !nested) cls.push("opening");
+        if (b.align) cls.push(b.align);
+        else if (state.dropCap && !nested) cls.push("opening");
         const inlines = !nested && state.leadIn > 0 ? markLeadIn(b.inlines, state.leadIn) : b.inlines;
         out += `<p${cls.length ? ` class="${cls.join(" ")}"` : ""}>${renderInlines(ctx, inlines, markers.take(b.id))}</p>\n`;
         state.noIndent = !!state.flat;
@@ -484,6 +485,7 @@ function bookCss(book: Book, theme: Theme, faces: { family: Family; file: FontFi
   if (theme.body.blockParagraphs) css.push("p + p { margin-top: 0.6em; }");
   if (!theme.body.hyphenate || !book.settings.hyphenate) css.push("p { -webkit-hyphens: manual; -epub-hyphens: manual; hyphens: manual; }");
   css.push("p.noindent { text-indent: 0; }");
+  css.push("p.center { text-align: center; text-indent: 0; }", "p.right { text-align: right; text-indent: 0; }");
   css.push(".lead { font-variant: small-caps; letter-spacing: 0.03em; }");
   css.push(".sc { font-variant: small-caps; }");
   const drop = theme.firstParagraph.dropCap;

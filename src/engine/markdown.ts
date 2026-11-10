@@ -417,7 +417,14 @@ async function convertBlock(t: Token, ctx: ParseContext, src: SourceRef, blocks:
       }
       const inlines = inlinesOf(p.tokens);
       if (!plain(inlines).trim() && !inlines.some((i) => i.kind === "noteRef")) return;
-      blocks.push({ kind: "paragraph", id: ctx.nextId(), inlines, src });
+      // `{.center}` or `{.right}` at the very end sets the alignment and is not printed.
+      const align = /\{\.(center|right)\}$/.exec(raw)?.[1] as "center" | "right" | undefined;
+      if (align) {
+        const last = inlines[inlines.length - 1];
+        if (last?.kind === "text") inlines[inlines.length - 1] = { ...last, text: last.text.replace(/\s*\{\.(center|right)\}$/, "") };
+        if (!plain(inlines).trim()) return;
+      }
+      blocks.push({ kind: "paragraph", id: ctx.nextId(), inlines, src, ...(align ? { align } : {}) });
       return;
     }
     default:
