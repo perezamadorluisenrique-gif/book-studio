@@ -1,6 +1,7 @@
 // The other way round from to-vault.ts: read a folder of Markdown notes (a book note plus its chapters and
 // images) and make book projects from it. Used to open a backup zip and to turn an Obsidian folder into a project.
 
+import { parseCoverDesign, type CoverDesign } from "../engine/cover/design";
 import { fmString, isManifestFrontmatter, parseManifest } from "../engine/manifest";
 import { splitFrontmatter } from "../engine/markdown";
 import { createResolver } from "../engine/resolve";
@@ -30,7 +31,7 @@ const SETTING_KEYS = new Set(
   ["theme", "trim", "trim-size", "paper", "paper-color", "footnotes", "note-placement", "bleed", "chapter-start", "running-heads", "toc", "table-of-contents", "half-title", "hyphenate", "hyphenation", "font-size", "smart-quotes", "smart-typography", "scene-break"].map((k) => k.replace(/[\s_-]/g, "")),
 );
 const isSetting = (k: string) => SETTING_KEYS.has(k.toLowerCase().replace(/[\s_-]/g, ""));
-const SKIPPED_KEYS = new Set(["book", "type"]);
+const SKIPPED_KEYS = new Set(["book", "type", "cover-design", "cover-layout"]);
 
 /** A front matter value as the plain text the project keeps, or null when it has no plain form. */
 function plain(v: unknown): string | null {
@@ -114,11 +115,22 @@ export async function vaultToProjects(files: ImportFiles, opts: { now: number; n
       lists[e.matter].push(id);
     }
 
+    let coverDesign: CoverDesign | undefined;
+    const layoutTarget = manifest.frontmatter["cover-design"] ?? manifest.frontmatter["cover-layout"];
+    const layoutPath = typeof layoutTarget === "string" ? resolve(layoutTarget.replace(/^!?\[\[|\]\]$/g, ""), bookPath) : null;
+    if (layoutPath) {
+      try {
+        coverDesign = parseCoverDesign(JSON.parse(await files.text(layoutPath))).design;
+      } catch {
+        result.skipped.push("cover-design");
+      }
+    }
+
     const title = (meta.title ?? "").trim() || baseName(bookPath);
     meta.title = title;
     const sections = (["front", "body", "back"] as SectionKind[]).filter((k) => lists[k].length).map((kind) => ({ kind, chapterIds: lists[kind] }));
     // Only the cover is a picture the book needs by name; the rest travel along so `![[image]]` links keep working.
-    result.projects.push({ id: opts.newId(), name: title, meta, settings, sections, chapters, assets, updatedAt: opts.now });
+    result.projects.push({ id: opts.newId(), name: title, meta, settings, sections, chapters, assets, updatedAt: opts.now, ...(coverDesign ? { coverDesign } : {}) });
   }
   return result;
 }

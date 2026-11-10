@@ -2,6 +2,8 @@
 // its settings and its chapters. Plain data only (no screen code), so it is easy to test.
 // A project is turned into Markdown notes by to-vault.ts; the book engine reads those.
 
+import type { CoverDesign } from "../engine/cover/design";
+
 /** Where a chapter sits in the book. */
 export type SectionKind = "front" | "body" | "back";
 
@@ -45,6 +47,8 @@ export interface Project {
   updatedAt: number;
   /** The step of the first-book guide this book is at. Absent in books saved before the guide existed: they are "done". */
   onboarding?: Onboarding;
+  /** The cover built in the cover editor, as layers. Absent: the cover is typeset from the details (or the cover picture). */
+  coverDesign?: CoverDesign;
 }
 
 /** The guide step of a project; books without one (older books, copies, imports from a folder) have no guide. */

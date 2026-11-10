@@ -4,6 +4,7 @@
 
 import type { VaultSource } from "../engine/book";
 import { createResolver } from "../engine/resolve";
+import { serializeCoverDesign } from "../engine/cover/design";
 import { chapterById, type Project, type ProjectChapter, type SectionKind } from "./model";
 
 const BAD_NAME_CHARS = /[\\/:*?"<>|#^[\]]/g;
@@ -15,6 +16,9 @@ export function safeName(title: string, fallback: string): string {
 }
 
 /** A value for a front matter line: plain when that is safe, otherwise in double quotes. */
+/** The file that holds a book's layered cover in its folder. */
+export const COVER_DESIGN_FILE = "Cover design.json";
+
 function yamlValue(v: string): string {
   const plain = /^[\p{L}][\p{L}\p{N} .,'’()/-]*$/u.test(v) && !/^(true|false|yes|no|on|off|null|y|n)$/i.test(v) && !/\s$/.test(v);
   return plain ? v : JSON.stringify(v);
@@ -66,6 +70,7 @@ export function projectToVault(p: Project): ProjectVault {
   const lines: string[] = ["---", "book: true"];
   for (const [k, v] of Object.entries({ ...p.meta, title })) if (v.trim()) lines.push(`${yamlKey(k)}: ${yamlValue(v)}`);
   for (const [k, v] of Object.entries(p.settings)) if (v.trim()) lines.push(`${yamlKey(k)}: ${yamlValue(v)}`);
+  if (p.coverDesign) lines.push(`cover-design: ${yamlValue(COVER_DESIGN_FILE)}`);
   lines.push("---", "");
 
   for (const section of p.sections) {
@@ -90,6 +95,7 @@ export function projectToVault(p: Project): ProjectVault {
   }
   files.set(bookPath, lines.join("\n"));
 
+  if (p.coverDesign) files.set(COVER_DESIGN_FILE, serializeCoverDesign(p.coverDesign));
   for (const a of p.assets) files.set(`Images/${safeName(a.name, "image")}`, a.data);
 
   const paths = [...files.keys()];
