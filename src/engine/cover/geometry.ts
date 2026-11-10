@@ -2,9 +2,18 @@
 // cover side by side, with bleed all round. Everything here is in inches and
 // pure, so the numbers can be tested against KDP's published formula.
 //
-// Source: KDP "Paperback cover" help (spine width per page by paper, bleed of
-// 0.125", barcode box of 2" × 1.2" at the lower right of the back cover, and
-// text kept 0.25" inside the trim and 0.0625" off the spine folds).
+// Checked on 2026-11-10 against KDP's "Paperback cover" help page
+// (kdp.amazon.com/en_US/help/topic/G201953020):
+//   - spine per page: 0.002252 in black-and-white on white paper and standard colour,
+//     0.0025 in on cream, 0.002347 in on premium colour (`color` here is premium);
+//   - bleed 0.125 in on the top, bottom and outside edges;
+//   - spine text only from 79 pages (80 in KDP's own Cover Creator), and kept
+//     0.0625 in from the spine edge;
+//   - KDP asks for text at least 0.125 in inside the trim and borders at least
+//     0.25 in; we keep text 0.25 in inside, the stricter of the two.
+// NOT on that page: the barcode size. 2 in × 1.2 in at the lower right of the back
+// cover, 0.25 in from the trim, is the size of KDP's downloadable cover template and
+// calculator layout, not something the help text states; it is unchanged and unverified.
 
 import type { Paper } from "../model";
 import { BLEED, type Trim } from "../trims";

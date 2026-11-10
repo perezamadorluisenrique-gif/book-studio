@@ -5,15 +5,19 @@
 
 import type { FontSet } from "../fonts";
 import { fromTextStyle, Styler, type RunStyle } from "../layout/style";
+import { contrastInk, fitSize, hexToRgb, Painter, pt } from "./paint";
 import { emptyStats } from "../layout/paginate";
 import type { Draw, Layout, Rgb } from "../layout/types";
 import type { Book } from "../model";
 import { themeById, type TextStyle } from "../themes";
+import { renderDesign } from "./render-design";
 import { checkIsbn, displayIsbn, ean13Modules } from "./isbn";
 import { DEFAULT_TRIM, trimById } from "../trims";
 import { coverGeometry, PAPER_LABEL, SAFE, SPINE_SAFE, SPINE_TEXT_MIN_PAGES, type Box, type CoverGeometry } from "./geometry";
 
 const PT = 72;
+
+export { contrastInk, hexToRgb, luminance } from "./paint";
 
 export interface CoverFinding {
   severity: "error" | "warning" | "info";
@@ -33,79 +37,8 @@ export interface Cover {
   barcode?: string;
 }
 
-export function hexToRgb(hex: string): Rgb {
-  const h = hex.replace("#", "");
-  const n = h.length === 3 ? [...h].map((c) => c + c).join("") : h;
-  return [parseInt(n.slice(0, 2), 16) / 255, parseInt(n.slice(2, 4), 16) / 255, parseInt(n.slice(4, 6), 16) / 255];
-}
-
-/** Relative luminance from 0 (black) to 1 (white). */
-export function luminance([r, g, b]: Rgb): number {
-  const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-}
-
-/** Black or white, whichever reads better on `bg`. */
-export function contrastInk(bg: Rgb): Rgb {
-  return luminance(bg) > 0.35 ? [0.07, 0.07, 0.07] : [1, 1, 1];
-}
-
-const pt = (inches: number) => inches * PT;
-
-class Painter {
-  readonly draws: Draw[] = [];
-
-  constructor(
-    readonly styler: Styler,
-    readonly ink: Rgb,
-  ) {}
-
-  width(text: string, rs: RunStyle): number {
-    return this.styler.width(text, rs);
-  }
-
-  /** Wrap `text` to `max` points; words longer than a line stay whole. */
-  wrap(text: string, rs: RunStyle, max: number): string[] {
-    const lines: string[] = [];
-    let line = "";
-    for (const word of text.split(/\s+/).filter(Boolean)) {
-      const next = line ? `${line} ${word}` : word;
-      if (line && this.width(next, rs) > max) {
-        lines.push(line);
-        line = word;
-      } else line = next;
-    }
-    if (line) lines.push(line);
-    return lines;
-  }
-
-  /** Draw one line with its left end at (x, baseline y), turned `angle` degrees counter-clockwise. */
-  line(text: string, rs: RunStyle, x: number, y: number, color: Rgb = this.ink, angle = 0): number {
-    const r = (angle * Math.PI) / 180;
-    const dx = Math.cos(r);
-    const dy = -Math.sin(r);
-    let off = 0;
-    for (const p of this.styler.parts(text, rs)) {
-      this.draws.push({ kind: "text", x: x + dx * off, y: y + dy * off, text: p.text, face: p.face, size: p.size, tracking: p.tracking || undefined, color, angle: angle || undefined });
-      off += this.styler.partWidth(p);
-    }
-    return off;
-  }
-
-  /** A centred line inside [left, left + boxWidth]. */
-  centered(text: string, rs: RunStyle, left: number, boxWidth: number, y: number, color?: Rgb): void {
-    this.line(text, rs, left + (boxWidth - this.width(text, rs)) / 2, y, color);
-  }
-}
-
 function rs(ts: TextStyle, oldstyle: boolean, size = ts.size): RunStyle {
   return { ...fromTextStyle(ts, oldstyle), size, tracking: ((ts.tracking ?? 0) * size) };
-}
-
-/** Largest size from `max` down to `min` at which `fits` holds, or `min`. */
-function fitSize(max: number, min: number, fits: (size: number) => boolean): { size: number; fits: boolean } {
-  for (let size = max; size >= min; size -= 0.5) if (fits(size)) return { size, fits: true };
-  return { size: min, fits: fits(min) };
 }
 
 export function composeCover(book: Book, fonts: FontSet, pages: number, opts: CoverOptions = {}): Cover {
@@ -122,30 +55,37 @@ export function composeCover(book: Book, fonts: FontSet, pages: number, opts: Co
   const W = pt(g.width);
   const H = pt(g.height);
 
-  draws.push({ kind: "rect", x: 0, y: 0, w: W, h: H, fill: bg });
-
-  // ── Front ──
-  const coverImage = meta.cover && book.images.get(meta.cover.path);
-  if (coverImage) {
-    const box = { x: pt(g.frontBleed.x), y: pt(g.frontBleed.y), w: pt(g.frontBleed.w), h: pt(g.frontBleed.h) };
-    const scale = Math.max(box.w / coverImage.width, box.h / coverImage.height);
-    const w = coverImage.width * scale;
-    const h = coverImage.height * scale;
-    draws.push({ kind: "image", x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w, h, path: coverImage.path, alt: meta.cover?.alt ?? "", clip: box });
-    const ppi = PT / scale;
-    if (ppi < 300) findings.push({ severity: "warning", message: `The cover image prints at ${Math.round(ppi)} ppi on the front cover; KDP asks for 300 ppi. Use an image at least ${Math.ceil(g.frontBleed.w * 300)} × ${Math.ceil(g.frontBleed.h * 300)} pixels.` });
-    const fit = coverImage.width / coverImage.height / (box.w / box.h);
-    if (Math.abs(fit - 1) > 0.04) findings.push({ severity: "info", message: `The cover image is not the shape of the front cover, so it is scaled to fill it and the ${fit > 1 ? "sides" : "top and bottom"} are cropped.` });
+  if (meta.coverLayout) {
+    // A layered design replaces the typeset cover; the barcode box below is still ours.
+    const done = renderDesign(meta.coverLayout, { geometry: g, images: book.images, styler: painter.styler }, painter);
+    findings.push(...done.findings);
   } else {
-    if (meta.cover) findings.push({ severity: "warning", message: `The cover image ${meta.cover.target} could not be read, so the front cover is typeset from the title.` });
-    typographicFront(painter, g, book, theme.titlePage, old, findings);
+    draws.push({ kind: "rect", x: 0, y: 0, w: W, h: H, fill: bg });
+
+    // ── Front ──
+    const coverImage = meta.cover && book.images.get(meta.cover.path);
+    if (coverImage) {
+      const box = { x: pt(g.frontBleed.x), y: pt(g.frontBleed.y), w: pt(g.frontBleed.w), h: pt(g.frontBleed.h) };
+      const scale = Math.max(box.w / coverImage.width, box.h / coverImage.height);
+      const w = coverImage.width * scale;
+      const h = coverImage.height * scale;
+      draws.push({ kind: "image", x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w, h, path: coverImage.path, alt: meta.cover?.alt ?? "", clip: box });
+      const ppi = PT / scale;
+      if (ppi < 300) findings.push({ severity: "warning", message: `The cover image prints at ${Math.round(ppi)} ppi on the front cover; KDP asks for 300 ppi. Use an image at least ${Math.ceil(g.frontBleed.w * 300)} × ${Math.ceil(g.frontBleed.h * 300)} pixels.` });
+      const fit = coverImage.width / coverImage.height / (box.w / box.h);
+      if (Math.abs(fit - 1) > 0.04) findings.push({ severity: "info", message: `The cover image is not the shape of the front cover, so it is scaled to fill it and the ${fit > 1 ? "sides" : "top and bottom"} are cropped.` });
+    } else {
+      if (meta.cover) findings.push({ severity: "warning", message: `The cover image ${meta.cover.target} could not be read, so the front cover is typeset from the title.` });
+      typographicFront(painter, g, book, theme.titlePage, old, findings);
+    }
+
+    // ── Back ──
+    backCover(painter, g, book, bg, old, findings);
+
+    // ── Spine ──
+    spine(painter, g, book, old, findings);
+
   }
-
-  // ── Back ──
-  backCover(painter, g, book, bg, old, findings);
-
-  // ── Spine ──
-  spine(painter, g, book, old, findings);
 
   // ── Barcode box ──
   const isbn = meta.isbnPrint ? checkIsbn(meta.isbnPrint) : null;

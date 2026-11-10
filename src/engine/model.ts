@@ -1,5 +1,7 @@
 // The book model every output (print PDF, EPUB, preview, audit) is built from.
 
+import type { CoverDesign } from "./cover/design";
+
 export interface SourceRef {
   file: string;
   line: number; // 1-based
@@ -116,10 +118,13 @@ export interface BookMeta {
   /** Index terms from the manifest, one per entry; see index-terms.ts for the syntax. */
   indexTerms: string[];
   /** What the full paperback cover needs beyond the front image. */
-  coverDesign: CoverDesign;
+  coverDesign: CoverTexts;
+  /** The cover as layers, from the file named by `cover-design:`. When present it replaces the typeset cover. */
+  coverLayout?: CoverDesign;
 }
 
-export interface CoverDesign {
+/** The texts and colours the typeset cover is made from. */
+export interface CoverTexts {
   /** Paragraphs for the back cover, from `back-blurb` or a note it links to. */
   blurb: string[];
   /** Short line above the blurb (`tagline`). */

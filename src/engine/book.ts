@@ -6,6 +6,7 @@ import { inlineText } from "./model";
 import { fmGet, fmList, fmString, isManifestFrontmatter, parseManifest, type Manifest, type ManifestEntry } from "./manifest";
 import { parseMarkdown, parseNoteText, splitFrontmatter, type NoteDef, type ParseContext } from "./markdown";
 import { imageInfo } from "./images";
+import { parseCoverDesign } from "./cover/design";
 import { smartenText } from "./typography";
 import { stripPartPrefix } from "./i18n";
 
@@ -149,6 +150,31 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
     design.photo = { path, target, alt: `Photo of ${authors[0] ?? "the author"}`, decorative: false };
   }
 
+  const layoutTarget = fmGet(fm, "cover-design", "cover-layout");
+  const layoutImages: ImageRef[] = [];
+  if (typeof layoutTarget === "string" && layoutTarget.trim()) {
+    const target = layoutTarget.replace(/^!?\[\[|\]\]$/g, "").split("|")[0].trim();
+    const path = source.resolve(target, manifestPath);
+    if (!path) warnings.push({ message: `Cover design not found: ${target}`, src: { file: manifestPath, line: 1 } });
+    else {
+      try {
+        const parsed = parseCoverDesign(JSON.parse(await source.read(path)));
+        for (const problem of parsed.problems) warnings.push({ message: `${target}: ${problem}`, src: { file: path, line: 1 } });
+        const resolveImage = (t: string, alt: string): string => {
+          const found = source.resolve(t, manifestPath) ?? "";
+          if (!found) warnings.push({ message: `Cover design picture not found: ${t}`, src: { file: path, line: 1 } });
+          else layoutImages.push({ path: found, target: t, alt, decorative: false });
+          return found;
+        };
+        if (parsed.design.background.kind === "image") parsed.design.background.path = resolveImage(parsed.design.background.target, parsed.design.background.alt);
+        for (const l of parsed.design.layers) if (l.kind === "image") l.path = resolveImage(l.target, l.alt);
+        meta.coverLayout = parsed.design;
+      } catch {
+        warnings.push({ message: `The cover design ${target} is not valid JSON, so the typeset cover is used.`, src: { file: path, line: 1 } });
+      }
+    }
+  }
+
   let blockCounter = 0;
   const embeds = new Set<string>();
   const ctxFor = (file: string): ParseContext => ({
@@ -274,6 +300,7 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
   }
   if (meta.cover) refs.push(meta.cover);
   if (design.photo) refs.push(design.photo);
+  refs.push(...layoutImages);
   const images = new Map<string, ImageAsset>();
   for (const ref of refs) {
     if (!ref.path || images.has(ref.path)) continue;
