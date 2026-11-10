@@ -38,3 +38,17 @@ describe("scene and page breaks", () => {
     expect(blocks[0]).toMatchObject({ kind: "heading", level: 1 });
   });
 });
+
+describe("callouts", () => {
+  it("drops the marker, keeps the title bold and marks the block as a callout", async () => {
+    const { blocks } = await parseMarkdown("> [!quote] Title\n> Body one\n>\n> Body two", ctx());
+    const bq = blocks[0] as Extract<(typeof blocks)[number], { kind: "blockquote" }>;
+    expect(bq).toMatchObject({ kind: "blockquote", callout: true });
+    expect(bq.blocks).toHaveLength(3);
+  });
+
+  it("does not mark an ordinary quote as a callout", async () => {
+    const { blocks } = await parseMarkdown("> Just a quote", ctx());
+    expect(blocks[0]).not.toHaveProperty("callout");
+  });
+});

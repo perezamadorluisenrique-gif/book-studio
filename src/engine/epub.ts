@@ -158,6 +158,7 @@ interface ParaState {
   noIndent: boolean;
   leadIn: number;
   dropCap: boolean;
+  flat?: boolean;
 }
 
 /** Mark the first `words` words of a paragraph for the lead-in. */
@@ -301,7 +302,7 @@ function renderBlocks(ctx: WriterCtx, blocks: Block[], state: ParaState, nested:
         if (state.dropCap && !nested) cls.push("opening");
         const inlines = !nested && state.leadIn > 0 ? markLeadIn(b.inlines, state.leadIn) : b.inlines;
         out += `<p${cls.length ? ` class="${cls.join(" ")}"` : ""}>${renderInlines(ctx, inlines, markers.take(b.id))}</p>\n`;
-        state.noIndent = false;
+        state.noIndent = !!state.flat;
         state.leadIn = 0;
         state.dropCap = false;
         break;
@@ -323,7 +324,7 @@ function renderBlocks(ctx: WriterCtx, blocks: Block[], state: ParaState, nested:
         state.noIndent = true;
         break;
       case "blockquote":
-        out += `${markers.before(b.id)}<blockquote>\n${renderBlocks(ctx, b.blocks, { noIndent: true, leadIn: 0, dropCap: false }, true)}</blockquote>\n`;
+        out += `${markers.before(b.id)}<blockquote>\n${renderBlocks(ctx, b.blocks, { noIndent: true, leadIn: 0, dropCap: false, flat: b.callout }, true)}</blockquote>\n`;
         state.noIndent = true;
         break;
       case "list": {

@@ -37,7 +37,7 @@ export type Block =
   | { kind: "heading"; id: string; level: number; inlines: Inline[]; src: SourceRef }
   | { kind: "sceneBreak"; id: string; src: SourceRef }
   | { kind: "pageBreak"; id: string; src: SourceRef }
-  | { kind: "blockquote"; id: string; blocks: Block[]; src: SourceRef }
+  | { kind: "blockquote"; id: string; blocks: Block[]; src: SourceRef; /** An Obsidian callout: every paragraph is set flush left, with no first-line indent. */ callout?: boolean }
   | { kind: "list"; id: string; ordered: boolean; start: number; items: Block[][]; src: SourceRef }
   | { kind: "code"; id: string; text: string; src: SourceRef }
   | { kind: "image"; id: string; image: ImageRef; src: SourceRef }
@@ -143,6 +143,8 @@ export interface ImageAsset {
   height: number;
   /** A PNG with an alpha channel; printers flatten transparency, which can change how it looks. */
   alpha?: boolean;
+  /** EXIF orientation (2–8) of a JPEG whose stored pixels are turned; width and height are already the displayed ones. */
+  orientation?: number;
 }
 
 export interface Book {

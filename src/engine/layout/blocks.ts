@@ -31,6 +31,8 @@ interface ParaState {
   noIndent: boolean;
   leadIn: number;
   dropCap: boolean;
+  /** Callouts: later paragraphs stay flush left too. */
+  flat?: boolean;
 }
 
 interface Frame {
@@ -303,7 +305,7 @@ export class FlowBuilder {
             };
           }
           items.push(...boxes);
-          state.noIndent = false;
+          state.noIndent = !!state.flat;
           state.leadIn = 0;
           state.dropCap = false;
           break;
@@ -337,7 +339,7 @@ export class FlowBuilder {
           const indent = theme.blockquote.indent * this.env.bodySize;
           items.push({ type: "space", height: L * 0.5 });
           const inner: Frame = { left: frame.left + indent, width: frame.width - 2 * indent, base: theme.blockquote.italic ? { ...frame.base, italic: !frame.base.italic } : frame.base, nested: true };
-          items.push(...this.blocks(b.blocks, inner, { noIndent: true, leadIn: 0, dropCap: false }));
+          items.push(...this.blocks(b.blocks, inner, { noIndent: true, leadIn: 0, dropCap: false, flat: b.callout }));
           items.push({ type: "space", height: L * 0.5 });
           state.noIndent = true;
           break;
