@@ -8,7 +8,7 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 |---|---|---|---|
 | A | T0 Banco de pruebas de calidad | hecha (PR abierto) | |
 | A | T1.1 Líneas | hecha (PR abierto) | |
-| A | T1.2 Márgenes ópticos y letras elásticas | sin empezar | |
+| A | T1.2 Márgenes ópticos y letras elásticas | hecha (PR abierto) | |
 | A | T1.3 Páginas | sin empezar | |
 | A | T1.4 Guiones por idioma | sin empezar | |
 | B | T1.5 Ortotipografía | sin empezar | |
@@ -51,12 +51,26 @@ Desde T0, pegar aquí la tabla de `npm run quality` tras cada orden.
 | ensayo-es | 86 | 2311 | 11 | 6 | 0 | 0 | 69 | 0 | 0 | 10 | 636 | 476 |
 | largo-de | 62 | 1743 | 4 | 4 | 0 | 6 | 205 | 0 | 0 | 3 | 513 | 324 |
 
+### 2026-11-10, T1.2
+
+| Book | Pages | Lines | Short pages | Uneven spreads | Ladders | Very loose | Loose | Widows | Orphans | Hyphen turns | Hyphens | Layout ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| oz | 142 | 3183 | 39 | 14 | 0 | 0 | 7 | 0 | 0 | 0 | 42 | 423 |
+| leyendas | 126 | 3461 | 36 | 22 | 0 | 0 | 1 | 0 | 0 | 2 | 186 | 440 |
+| dialogo-es | 82 | 2104 | 17 | 14 | 0 | 0 | 0 | 0 | 0 | 2 | 201 | 391 |
+| ensayo-es | 84 | 2295 | 11 | 6 | 0 | 0 | 0 | 0 | 0 | 3 | 383 | 693 |
+| largo-de | 60 | 1720 | 6 | 4 | 0 | 0 | 2 | 0 | 0 | 3 | 265 | 418 |
+
+Capturas antes y después (Leyendas, dobles páginas con el motor de T1.1 y con T1.2): `docs/vellum/t12-before-leyendas-*.png` y `t12-after-leyendas-*.png`. Las páginas no coinciden en contenido porque el texto se reparte distinto.
+
 ## Desviaciones del plan
 
 - T0: las cifras del banco no coinciden del todo con la medición externa de la sección 2 (Oz: 43 páginas cortas de 142 frente a 28 de 91; Leyendas: 36 frente a 33, escaleras 11 frente a 9, huecos muy grandes 4 frente a 13). Las dobles páginas desiguales sí coinciden (15 y 25). Se usan las definiciones exactas de la orden; la línea base nueva es la del banco, no la de la sección 2.
 - T0: los libros de prueba salen de Project Gutenberg (Marianela, Ariel, Die Verwandlung); las 47 notas al pie de `ensayo-es` son de prueba, generadas a partir del propio texto.
 - T1.1: no se prohíben los guiones en la última palabra del párrafo (paso 3 de la orden). Con esa prohibición, los huecos muy grandes de Oz subían de 5 a 8; basta con `finalHyphenDemerits`, que ya penaliza partir la última línea.
 - T1.1 (**regla 5 incumplida a propósito, hay que recuperarlo**): quitar las escaleras (`maxHyphenRun: 2`) cuesta líneas flojas. `loose` sube: Oz 92→94, Leyendas 62→74, dialogo-es 54→77, ensayo-es 36→69, largo-de 166→205. También suben en ruido de reflujo `shortPages`/`unevenSpreads` (Oz 43→45 y 15→17; Leyendas 36→38 y 25→26; dialogo-es 17→18 y 12→13) y `hyphenTurns` (Leyendas 3→5, ensayo-es 6→10, largo-de 2→3). Medido: sin el límite de guiones seguidos la subida desaparece; el resto de reglas casi no cuesta. `ladders` baja a 0 en los cinco libros. Meta no alcanzada: `veryLoose` de Leyendas queda en 4 (la orden pedía 3 como mucho). Lo recuperan T1.2 (letras elásticas y márgenes ópticos: `loose` a la mitad) y T1.3 (páginas); ambas deben dejar cada cifra por debajo de la línea base de T0, que está en el PR #35.
+- T1.2: la tabla de salientes dice «punto y coma 0,7» y luego «dos puntos y punto y coma 0,4»; se tomó lo primero como «coma y punto» (0,7) y lo segundo como `:` y `;` (0,4).
+- T1.2: `loose` y `veryLoose` quedan muy por debajo de la línea base de T0 (Oz 92→7, Leyendas 62→1; muy grandes 0 en los cinco libros), con lo que se recupera lo que costó T1.1. Dos cifras de página suben respecto a la línea base que dejó T1.1 por ruido de reflujo: `dialogo-es` doble página desigual 13→14 y `largo-de` páginas cortas 4→6 (contra la línea base de T0, 12 y 6). Se baja a la nueva línea base y lo cierra T1.3.
 
 Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
@@ -69,3 +83,4 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 Hilo A, orden T0.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
+- 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.

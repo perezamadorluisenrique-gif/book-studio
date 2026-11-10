@@ -19,6 +19,8 @@ export interface Piece {
   tracking: number;
   width: number;
   strike?: boolean;
+  /** Horizontal stretch of the glyphs from letter expansion; absent means 1. `width` already includes it. */
+  scale?: number;
 }
 
 export interface SetLine {
@@ -62,6 +64,8 @@ export interface SetOptions {
   noteNumber?: (id: string) => number | undefined;
   /** Display text: make the last line count too, so lines come out even. */
   balance?: boolean;
+  /** Microtypography for justified text: hanging punctuation at the margins and letters that stretch up to 2 %. */
+  micro?: boolean;
 }
 
 interface BoxData {
@@ -94,6 +98,11 @@ type Atom = { kind: "word"; pieces: WordPiece[] } | { kind: "space" } | { kind: 
 const SPACE_RE = /[\s\u2000-\u2006\u2008-\u200A\u205F\u3000]/u;
 const NBSP_RE = /[\u00A0\u202F\u2007]/;
 const DROP_RE = /^([“‘"'«‹¡¿([]*)([\p{L}\p{N}])/u;
+/** How far each character hangs into the margin, as a fraction of its own width. */
+const HANG_RIGHT: Record<string, number> = { "-": 0.7, ",": 0.7, ".": 0.7, ":": 0.4, ";": 0.4, "’": 0.6, "”": 0.6, "'": 0.6, '"': 0.6, "»": 0.3, "!": 0.2, "?": 0.2, "–": 0.3, "—": 0.2 };
+const HANG_LEFT: Record<string, number> = { "‘": 0.6, "“": 0.6, "'": 0.6, '"': 0.6, "«": 0.3, "¿": 0.1, "¡": 0.1, "(": 0.1 };
+/** Letters may grow or shrink by this fraction of their width to even out the spaces. */
+const EXPAND = 0.02;
 const HYPHEN_PENALTY = 50;
 const DASH_PENALTY = 100;
 
@@ -161,7 +170,7 @@ export class ParagraphSetter {
       }
     }
     breaks ??= firstFit(items, lineWidth);
-    const lines = this.lines(items, breaks, lineWidth, indentFor, opts.align);
+    const lines = this.lines(items, breaks, lineWidth, indentFor, opts.align, !!opts.micro);
     if (dropCap && lines.length <= dropCap.lines) {
       // Too short for an initial; set it plainly.
       return this.set(inlines, base, { ...opts, dropCap: undefined, indent: 0 });
@@ -176,7 +185,7 @@ export class ParagraphSetter {
     const items = build(true);
     const r = breakParagraph(items, { ...common, tolerance: 1.3, lineCount: lines });
     if (!r) return null;
-    return { lines: this.lines(items, r.breaks, lineWidth, indentFor, opts.align), dropCap, hyphenated: hyphens };
+    return { lines: this.lines(items, r.breaks, lineWidth, indentFor, opts.align, !!opts.micro), dropCap, hyphenated: hyphens };
   }
 
   private extractDropCap(atoms: Atom[], base: RunStyle, dc: NonNullable<SetOptions["dropCap"]>) {
@@ -249,7 +258,7 @@ export class ParagraphSetter {
       }
       const smallCapsLead = words < lead;
       words++;
-      this.wordItems(atom.pieces, base, smallCapsLead, !!opts.hyphenate, space, items);
+      this.wordItems(atom.pieces, base, smallCapsLead, !!opts.hyphenate, space, items, !!opts.micro && !ragged);
     }
     while (items.length && items[items.length - 1].type === "glue") items.pop();
     items.push({ type: "penalty", width: 0, penalty: INFINITE_PENALTY, flagged: false });
@@ -258,7 +267,7 @@ export class ParagraphSetter {
     return items;
   }
 
-  private wordItems(pieces: WordPiece[], base: RunStyle, smallCapsLead: boolean, hyphenate: boolean, space: number, items: Item[]): void {
+  private wordItems(pieces: WordPiece[], base: RunStyle, smallCapsLead: boolean, hyphenate: boolean, space: number, items: Item[], micro: boolean): void {
     const styler = this.styler;
     const word = pieces.map((p) => p.text).join("");
     // Break opportunities, as indices into `word` → kind.
@@ -293,7 +302,7 @@ export class ParagraphSetter {
       let segStart = start;
       for (const cut of [...cuts, end]) {
         const raw = word.slice(segStart, cut).replace(/[\u00AD\u200B]/g, "");
-        this.segmentBoxes(raw, rs, dy, piece, piece.offset + (segStart - start), space, items);
+        this.segmentBoxes(raw, rs, dy, piece, piece.offset + (segStart - start), space, items, micro);
         const kind = cut < end ? points.get(cut) : undefined;
         if (kind === "hyphen") {
           const parts = styler.parts("-", rs);
@@ -303,6 +312,7 @@ export class ParagraphSetter {
             width: styler.width("-", rs),
             penalty: HYPHEN_PENALTY,
             flagged: true,
+            pr: micro ? HANG_RIGHT["-"] * styler.width("-", rs) : undefined,
             data: { hyphen: { text: "-", face: p.face, size: p.size, tracking: p.tracking, dy, offset: 0 } },
           });
         } else if (kind === "explicit") {
@@ -324,6 +334,7 @@ export class ParagraphSetter {
           width: styler.width("-", rs),
           penalty: HYPHEN_PENALTY,
           flagged: true,
+          pr: micro ? HANG_RIGHT["-"] * styler.width("-", rs) : undefined,
           data: { hyphen: { text: "-", face: parts[0].face, size: parts[0].size, tracking: parts[0].tracking, dy, offset: 0 } },
         });
       } else if (kind && kind !== "hyphen" && end < word.length) {
@@ -332,7 +343,7 @@ export class ParagraphSetter {
     }
   }
 
-  private segmentBoxes(text: string, rs: RunStyle, dy: number, piece: WordPiece, offset: number, space: number, items: Item[]): void {
+  private segmentBoxes(text: string, rs: RunStyle, dy: number, piece: WordPiece, offset: number, space: number, items: Item[], micro: boolean): void {
     if (!text) return;
     // Non-breaking spaces become fixed gaps that glue the word together.
     const chunks = text.split(/([\u00A0\u202F\u2007])/);
@@ -347,9 +358,22 @@ export class ParagraphSetter {
       }
       let partOff = off;
       for (const p of this.styler.parts(chunk, rs)) {
+        const width = this.styler.partWidth(p);
+        const hang = micro && !piece.note && !piece.style.code;
+        const first = hang ? [...p.text][0] : "";
+        const last = hang ? [...p.text].pop()! : "";
+        const fonts = this.styler.fonts;
         items.push({
           type: "box",
-          width: this.styler.partWidth(p),
+          width,
+          ...(hang
+            ? {
+                stretch: width * EXPAND,
+                shrink: width * EXPAND,
+                pl: (HANG_LEFT[first] ?? 0) * (HANG_LEFT[first] ? fonts.width(p.face, first, p.size) : 0),
+                pr: (HANG_RIGHT[last] ?? 0) * (HANG_RIGHT[last] ? fonts.width(p.face, last, p.size) : 0),
+              }
+            : {}),
           data: { text: p.text, face: p.face, size: p.size, tracking: p.tracking, dy, offset: piece.note ? piece.offset : partOff, strike: piece.style.strike, noteId: piece.note ? piece.noteId : undefined },
         });
         partOff += p.text.length;
@@ -358,7 +382,7 @@ export class ParagraphSetter {
     }
   }
 
-  private lines(items: Item[], breaks: KPBreak[], lineWidth: (i: number) => number, indentFor: (i: number) => number, align: Align): SetLine[] {
+  private lines(items: Item[], breaks: KPBreak[], lineWidth: (i: number) => number, indentFor: (i: number) => number, align: Align, micro: boolean): SetLine[] {
     const fonts = this.styler.fonts;
     const out: SetLine[] = [];
     let start = 0;
@@ -404,11 +428,14 @@ export class ParagraphSetter {
       let natural = 0;
       let stretch = 0;
       let shrink = 0;
+      let textWidth = 0;
       const widths: number[] = [];
       for (const e of els) {
         let w = 0;
-        if (e.kind === "text") w = fonts.width(e.d.face, e.text, e.d.size, e.d.tracking);
-        else if (e.kind === "gap") w = e.w;
+        if (e.kind === "text") {
+          w = fonts.width(e.d.face, e.text, e.d.size, e.d.tracking);
+          textWidth += w;
+        } else if (e.kind === "gap") w = e.w;
         else {
           w = e.w;
           if (e.stretch < FIL) stretch += e.stretch;
@@ -417,24 +444,56 @@ export class ParagraphSetter {
         widths.push(w);
         natural += w;
       }
-      const target = lineWidth(li);
-      const last = li === breaks.length - 1 || (end.type === "penalty" && end.penalty === -INFINITE_PENALTY);
-      let r = 0;
-      if (align === "justify" && !last) {
-        if (natural < target && stretch > 1e-9) r = (target - natural) / stretch;
-        else if (natural > target && shrink > 0) r = Math.max(-1, (target - natural) / shrink);
-      } else if (natural > target && shrink > 0) {
-        r = Math.max(-1, (target - natural) / shrink);
+      // Hanging punctuation: the line may stick out past the measure by what its first and last characters hang.
+      let hangLeft = 0;
+      let hangRight = 0;
+      if (micro && align === "justify") {
+        const first = items[s];
+        if (first?.type === "box") hangLeft = first.pl ?? 0;
+        if (end.type === "penalty" && end.width > 0) hangRight = end.pr ?? 0;
+        else {
+          for (let k = br.position - 1; k >= s; k--) {
+            const it = items[k];
+            if (it.type === "box") {
+              hangRight = it.pr ?? 0;
+              break;
+            }
+          }
+        }
       }
-      const finalWidth = natural + (r >= 0 ? r * stretch : r * shrink);
-      let x = indentFor(li);
+      const target = lineWidth(li) + hangLeft + hangRight;
+      const last = li === breaks.length - 1 || (end.type === "penalty" && end.penalty === -INFINITE_PENALTY);
+      // Letters give a little too (up to EXPAND of their width) before the spaces take the rest.
+      const E = micro && align === "justify" ? EXPAND : 0;
+      const letters = textWidth * E;
+      let r = 0;
+      let scale = 1;
+      const deficit = target - natural;
+      if (align === "justify" && !last && deficit > 0) {
+        if (stretch > 1e-9 || letters > 1e-9) {
+          const rt = deficit / (stretch + letters);
+          if (rt <= 1) {
+            r = rt;
+            scale = 1 + rt * E;
+          } else {
+            scale = 1 + E;
+            r = stretch > 1e-9 ? (deficit - letters) / stretch : 0;
+          }
+        }
+      } else if (deficit < 0 && (shrink > 0 || letters > 0)) {
+        r = Math.max(-1, deficit / (shrink + letters));
+        scale = 1 + r * E;
+      }
+      const finalWidth = natural + (scale - 1) * textWidth + (r >= 0 ? r * stretch : r * shrink);
+      let x = indentFor(li) - hangLeft;
       if (align === "center") x += (target - finalWidth) / 2;
       else if (align === "right") x += target - finalWidth;
       const pieces: Piece[] = [];
       els.forEach((e, i) => {
         if (e.kind === "text") {
-          pieces.push({ x, dy: e.d.dy, text: e.text, face: e.d.face, size: e.d.size, tracking: e.d.tracking, width: widths[i], strike: e.d.strike });
-          x += widths[i];
+          const w = widths[i] * scale;
+          pieces.push({ x, dy: e.d.dy, text: e.text, face: e.d.face, size: e.d.size, tracking: e.d.tracking, width: w, strike: e.d.strike, scale: scale !== 1 ? scale : undefined });
+          x += w;
         } else if (e.kind === "gap") {
           x += e.w;
         } else if (e.stretch < FIL) {

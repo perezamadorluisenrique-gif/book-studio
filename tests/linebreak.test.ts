@@ -120,4 +120,23 @@ describe("line breaking", () => {
     expect(beforeLast(a)).toBe(true);
     expect(beforeLast(b)).toBe(false);
   });
+
+  it("lets the last character hang into the margin so a line that was too long now fits", () => {
+    // 5 + 1 + 5 + 1 + 7 = 19 in a 17-wide measure: too long, so the last word goes to a second line...
+    const words = (pr?: number): KPItem[] => [box(5), glue(), box(5), glue(), { type: "box", width: 7, pr }, ...end()];
+    const opts = { lineWidth: () => 17, tolerance: 14 };
+    expect(breakParagraph(words(), opts)!.breaks).toHaveLength(2);
+    // ...unless its last 2 units hang into the margin.
+    expect(breakParagraph(words(2), opts)!.breaks).toHaveLength(1);
+  });
+
+  it("counts a box's own stretch when it fits the line", () => {
+    // 4 words of 5 plus 3 glues = 23 in a 25-wide measure: 2 short, the glue stretches 1.5 in total, so the ratio is 1.33.
+    const plain: KPItem[] = [box(5), glue(), box(5), glue(), box(5), glue(), box(5), { type: "penalty", width: 0, penalty: -INFINITE_PENALTY, flagged: false }];
+    const stretchy: KPItem[] = plain.map((it) => (it.type === "box" ? { ...it, stretch: 2, shrink: 2 } : it));
+    const a = breakParagraph(plain, { lineWidth: () => 25, tolerance: 0.5 });
+    const b = breakParagraph(stretchy, { lineWidth: () => 25, tolerance: 0.5 });
+    expect(a).toBeNull();
+    expect(b).not.toBeNull();
+  });
 });

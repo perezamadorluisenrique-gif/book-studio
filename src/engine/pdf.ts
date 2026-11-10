@@ -134,7 +134,7 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
           ops.push(`${fmt(tc)} Tc`);
           curTc = tc;
         }
-        ops.push(`${matrix(d.angle)} ${fmt(d.x + offX)} ${fmt(H + b - d.y)} Tm`);
+        ops.push(`${matrix(d.angle, d.scale)} ${fmt(d.x + offX)} ${fmt(H + b - d.y)} Tm`);
         ops.push(`${tjArray(font, d.text, features)} TJ`);
       } else if (d.kind === "image") {
         const img = await imageFor(d.path);
@@ -172,12 +172,12 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
   return doc.save({ useObjectStreams: true });
 }
 
-const matrix = (angle = 0) => {
-  if (!angle) return "1 0 0 1";
+const matrix = (angle = 0, scale = 1) => {
+  if (!angle) return `${fmt(scale)} 0 0 1`;
   const r = (angle * Math.PI) / 180;
   const c = Math.cos(r);
   const s = Math.sin(r);
-  return [c, s, -s, c].map(fmt).join(" ");
+  return [c * scale, s * scale, -s, c].map(fmt).join(" ");
 };
 
 /** Light grey text across the page, inside the text area so it can't be trimmed away. */

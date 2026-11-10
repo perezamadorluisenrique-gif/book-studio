@@ -78,7 +78,7 @@ export class FlowBuilder {
     const line = set.lines[lineIndex];
     const draws: Draw[] = [];
     for (const p of line.pieces) {
-      draws.push({ kind: "text", x: left + p.x, y: baseline + p.dy, text: p.text, face: p.face, size: p.size, tracking: p.tracking || undefined });
+      draws.push({ kind: "text", x: left + p.x, y: baseline + p.dy, text: p.text, face: p.face, size: p.size, tracking: p.tracking || undefined, scale: p.scale });
       if (p.strike) {
         const y = baseline + p.dy - p.size * 0.28;
         draws.push({ kind: "rule", x1: left + p.x, y1: y, x2: left + p.x + p.width, y2: y, width: p.size * 0.05 });
@@ -280,6 +280,7 @@ export class FlowBuilder {
             dropCap: state.dropCap && !frame.nested ? { lines: theme.firstParagraph.dropCap, family: theme.firstParagraph.dropCapFamily ?? theme.body.family, leading: L } : undefined,
             leadInWords: frame.nested ? 0 : state.leadIn,
             noteNumber: this.env.noteNumber,
+            micro: theme.body.justify,
           });
           items.push(...this.lineBoxes(set, { left: frame.left, blockId: b.id, src: b.src, body: true }));
           state.noIndent = false;

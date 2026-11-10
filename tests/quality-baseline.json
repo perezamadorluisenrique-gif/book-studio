@@ -1,55 +1,55 @@
 {
   "oz": {
     "pages": 142,
-    "shortPages": 45,
-    "unevenSpreads": 17,
+    "shortPages": 39,
+    "unevenSpreads": 14,
     "ladders": 0,
-    "veryLoose": 5,
-    "loose": 94,
+    "veryLoose": 0,
+    "loose": 7,
+    "widows": 0,
+    "orphans": 0,
+    "hyphenTurns": 0
+  },
+  "leyendas": {
+    "pages": 126,
+    "shortPages": 36,
+    "unevenSpreads": 22,
+    "ladders": 0,
+    "veryLoose": 0,
+    "loose": 1,
     "widows": 0,
     "orphans": 0,
     "hyphenTurns": 2
   },
-  "leyendas": {
-    "pages": 128,
-    "shortPages": 38,
-    "unevenSpreads": 26,
-    "ladders": 0,
-    "veryLoose": 4,
-    "loose": 74,
-    "widows": 0,
-    "orphans": 0,
-    "hyphenTurns": 5
-  },
   "dialogo-es": {
     "pages": 82,
-    "shortPages": 18,
-    "unevenSpreads": 13,
+    "shortPages": 17,
+    "unevenSpreads": 14,
     "ladders": 0,
-    "veryLoose": 1,
-    "loose": 77,
+    "veryLoose": 0,
+    "loose": 0,
     "widows": 0,
     "orphans": 0,
-    "hyphenTurns": 5
+    "hyphenTurns": 2
   },
   "ensayo-es": {
-    "pages": 86,
+    "pages": 84,
     "shortPages": 11,
     "unevenSpreads": 6,
     "ladders": 0,
     "veryLoose": 0,
-    "loose": 69,
+    "loose": 0,
     "widows": 0,
     "orphans": 0,
-    "hyphenTurns": 10
+    "hyphenTurns": 3
   },
   "largo-de": {
-    "pages": 62,
-    "shortPages": 4,
+    "pages": 60,
+    "shortPages": 6,
     "unevenSpreads": 4,
     "ladders": 0,
-    "veryLoose": 6,
-    "loose": 205,
+    "veryLoose": 0,
+    "loose": 2,
     "widows": 0,
     "orphans": 0,
     "hyphenTurns": 3

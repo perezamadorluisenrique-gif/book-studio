@@ -16,6 +16,8 @@ export interface TextDraw {
   size: number;
   /** Extra space after every glyph, in points. */
   tracking?: number;
+  /** Horizontal stretch of the glyphs (1 = none), from letter expansion; absent means 1. */
+  scale?: number;
   /** Fill colour as red, green, blue from 0 to 1; black when absent. */
   color?: Rgb;
   /** Rotation in degrees, counter-clockwise, about (x, y); -90 reads top to bottom, as on a spine. */

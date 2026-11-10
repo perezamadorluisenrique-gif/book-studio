@@ -88,6 +88,7 @@ export class PagePainter {
         ctx.save();
         ctx.translate(d.x, d.y);
         if (d.angle) ctx.rotate((-d.angle * Math.PI) / 180);
+        if (d.scale && d.scale !== 1) ctx.scale(d.scale, 1);
         if (d.color) ctx.fillStyle = `rgb(${d.color.map((c) => Math.round(c * 255)).join(",")})`;
         for (const g of shaped.glyphs) {
           ctx.save();
