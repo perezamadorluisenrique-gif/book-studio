@@ -32,6 +32,68 @@ const PT = 72;
 export interface LayoutOptions {
   /** The hyphenator for the book's language (see `loadHyphenator`); without one nothing is hyphenated. */
   hyphenator?: Hyphenator | null;
+  /**
+   * What earlier layouts learned: words already measured and chapters already paginated. Keep one between
+   * refreshes of the same book and only the chapter that changed is set again. The result is the same as
+   * without it. Without one, a cache lives for this call alone (the margin passes share it).
+   */
+  cache?: LayoutCache;
+}
+
+/** Chapters kept at most; the oldest go first. */
+const CHAPTER_CACHE_LIMIT = 600;
+
+interface CachedChapter {
+  pages: FlowPage[];
+  warnings: LayoutWarning[];
+}
+
+export class LayoutCache {
+  private fonts: FontSet | null = null;
+  private setters = new Map<string, { hyphenator: Hyphenator | null; styler: Styler; setter: ParagraphSetter }>();
+  private chapters = new Map<string, CachedChapter>();
+
+  /** The styler and paragraph setter for a language, which remember the words they have measured. */
+  setterFor(fonts: FontSet, lang: string, hyphenator: Hyphenator | null): { styler: Styler; setter: ParagraphSetter } {
+    if (this.fonts !== fonts) {
+      this.fonts = fonts;
+      this.setters.clear();
+      this.chapters.clear();
+    }
+    let hit = this.setters.get(lang);
+    if (!hit || hit.hyphenator !== hyphenator) {
+      const styler = new Styler(fonts, lang);
+      hit = { hyphenator, styler, setter: new ParagraphSetter(styler, hyphenator) };
+      this.setters.set(lang, hit);
+    }
+    return hit;
+  }
+
+  chapter(key: string): CachedChapter | undefined {
+    return this.chapters.get(key);
+  }
+
+  keepChapter(key: string, value: CachedChapter): void {
+    if (this.chapters.size >= CHAPTER_CACHE_LIMIT) {
+      const oldest = this.chapters.keys().next();
+      if (!oldest.done) this.chapters.delete(oldest.value);
+    }
+    this.chapters.set(key, value);
+  }
+}
+
+/** A short fingerprint of a string (cyrb53), so a whole chapter can stand as a cache key. */
+function fingerprint(text: string): string {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return `${(h2 >>> 0).toString(36)}${(h1 >>> 0).toString(36)}.${text.length.toString(36)}`;
 }
 
 export function layoutBook(book: Book, fonts: FontSet, options: LayoutOptions = {}): Layout {
@@ -40,12 +102,13 @@ export function layoutBook(book: Book, fonts: FontSet, options: LayoutOptions = 
   const trim = trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!;
   const minOut = kdpMinOutside(settings.bleed);
   let inside = Math.max(theme.margins.inside, kdpMinInside(1));
-  let result = compose(book, fonts, inside, options.hyphenator ?? null);
+  const cache = options.cache ?? new LayoutCache();
+  let result = compose(book, fonts, inside, options.hyphenator ?? null, cache);
   for (let pass = 0; pass < 3; pass++) {
     const need = kdpMinInside(result.pages.length);
     if (need <= inside + 1e-9) break;
     inside = need;
-    result = compose(book, fonts, inside, options.hyphenator ?? null);
+    result = compose(book, fonts, inside, options.hyphenator ?? null, cache);
   }
   const outside = Math.max(theme.margins.outside, minOut);
   const top = Math.max(theme.margins.top, minOut);
@@ -93,7 +156,7 @@ export function measureQuality(pages: LayoutPage[]): Quality {
   return q;
 }
 
-function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphenator | null): { pages: LayoutPage[]; toc: TocEntry[]; warnings: LayoutWarning[]; bodyStart: number } {
+function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphenator | null, cache: LayoutCache): { pages: LayoutPage[]; toc: TocEntry[]; warnings: LayoutWarning[]; bodyStart: number } {
   const { settings, meta } = book;
   const theme = themeById(settings.theme);
   const trim = trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!;
@@ -116,9 +179,8 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
   const longEnd = top + capacity + leading;
   const maxLong = pageH - longEnd >= minOut * PT + leading && longFooterY - longEnd >= leading * 0.9 ? 1 : 0;
   const warnings: LayoutWarning[] = [];
-  const styler = new Styler(fonts, lang);
   const hyphenate = settings.hyphenate && theme.body.hyphenate;
-  const setter = new ParagraphSetter(styler, hyphenate ? hyphenator : null);
+  const { styler, setter } = cache.setterFor(fonts, lang, hyphenate ? hyphenator : null);
   const noteNumbers = new Map<string, number>();
   for (const ch of book.chapters) for (const n of ch.notes) noteNumbers.set(n.id, n.number);
   const env: FlowEnv = {
@@ -169,15 +231,24 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
     });
 
   // A chapter set on a right-hand page and on a left-hand page comes out differently, so each is kept apart.
-  const chapterCache = new Map<string, FlowPage[]>();
+  // What else a chapter depends on goes into the key: the settings, the margin, the language and the size of
+  // every image. The cache outlives this call, so a later layout of the same book only sets what changed.
+  const envKey = fingerprint(JSON.stringify([settings, lang, insideIn, hyphenate && hyphenator ? 1 : 0, [...book.images].map(([path, a]) => [path, a.width, a.height])]));
+  const chapterFingerprints = new Map<Chapter, string>();
   const layChapter = (ch: Chapter, firstRecto: boolean): FlowPage[] => {
-    const key = `${ch.id}|${firstRecto}`;
-    let hit = chapterCache.get(key);
+    let print = chapterFingerprints.get(ch);
+    if (print === undefined) chapterFingerprints.set(ch, (print = fingerprint(JSON.stringify(ch))));
+    const key = `${envKey}|${firstRecto ? 1 : 0}|${print}`;
+    let hit = cache.chapter(key);
     if (!hit) {
-      hit = paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: ch.matter === "body" || ch.type === "prologue" })], capacity, foot, { unit: leading, balance: true, firstRecto, maxLong });
-      chapterCache.set(key, hit);
+      const before = warnings.length;
+      const pages = paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: ch.matter === "body" || ch.type === "prologue" })], capacity, foot, { unit: leading, balance: true, firstRecto, maxLong });
+      hit = { pages, warnings: warnings.slice(before) };
+      cache.keepChapter(key, hit);
+    } else {
+      warnings.push(...hit.warnings);
     }
-    return hit;
+    return hit.pages;
   };
 
   // ── Body and back matter (numbered from 1 on a recto) ─────────

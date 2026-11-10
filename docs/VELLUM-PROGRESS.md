@@ -12,7 +12,7 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 | A | T1.3 Páginas | hecha: metas alcanzadas el 2026-11-10 (cierre del paginado) | PR «page builder that searches each chapter» |
 | A | T1.4 Guiones por idioma | hecho | PR de T1.4 |
 | B | T1.5 Ortotipografía | hecho | PR de T1.5 |
-| B | T1.6 Velocidad | sin empezar | |
+| B | T1.6 Velocidad | hecha en parte: caché y motor más rápido (el hilo aparte de la web, en otro PR) | PR «cached layout» |
 | B | T2.0 Lo gratis nuevo | sin empezar | |
 | B | T2.1 Página de inicio | sin empezar | |
 | B | T2.2 Asistente de 4 pasos | sin empezar | |
@@ -102,6 +102,15 @@ En la misma máquina y momento, `main` medía 816, 928, 594, 1036 y 601 ms. Capt
 - La métrica se endurece, no se afloja: `PageStats.long` y `Quality.longPages` cuentan las páginas largas, y una doble página con una página larga y la otra no cuenta como desigual. Las 3 páginas cortas que quedan: en Oz, una apertura de capítulo seguida de un párrafo de 3 líneas y la página anterior a una imagen; en Leyendas, una página de versos antes de un título.
 - Rendimiento: sube un 25 a 35 % en Oz y Leyendas y hasta un 80 % en `ensayo-es` (dentro de la regla del doble). Casi todo el tiempo extra es componer las variantes de ±1 línea de cada párrafo; `ParagraphSetter.variants()` ya comparte los elementos y descarta sin componer lo imposible. Para T1.6: reutilizar los elementos de `set()` y pedir variantes solo cerca de las páginas con problema.
 
+- T1.6 (2026-11-10): el tiempo en frío baja un 40 a 47 % con las mismas cifras de calidad (la tabla del banco no cambia). Medido en la misma máquina, mejor de 7 pasadas, `main` frente a esta rama: Oz 716 → 380 ms, Leyendas 849 → 519 ms, ensayo-es 1308 → 700 ms. Dónde estaba el tiempo (perfil de CPU): el 60 % era armar los elementos de cada párrafo (dividir en palabras, medirlas con fontkit), dos veces por párrafo (`set` y las variantes de ±1 línea), y cada pasada de márgenes de KDP lo repetía entero; el cortador de líneas era el 25 %.
+- T1.6, lo que se hizo (todo da el mismo resultado exacto que antes; `tests/perf.test.ts` lo comprueba):
+  1. Memoria de palabras en `ParagraphSetter`: una palabra con el mismo estilo se convierte en elementos una sola vez, donde sea que esté. Los elementos se comparten y cada uno recuerda dónde empieza esa palabra en el texto (`BASES`), sin copiarlos.
+  2. `set()` y `variants()` del mismo párrafo comparten la preparación y los elementos (antes cada uno los armaba).
+  3. `LayoutCache` (opción `cache` de `layoutBook`): guarda el `ParagraphSetter` por idioma y los capítulos ya paginados, con clave = ajustes + margen + idioma + tamaño de cada imagen + huella del capítulo + paridad. Sin `cache`, vive solo durante la llamada, así que las pasadas de márgenes (hasta 4) comparten palabras. `Studio` guarda una entre reconstrucciones: volver a maquetar sin cambios cuesta 20 a 30 ms y tras cambiar un párrafo, 40 a 160 ms (Oz 38, Leyendas 79, ensayo-es 157). Los avisos de un capítulo se guardan con él y se repiten al reutilizarlo.
+  4. `breakParagraph`: sin asignar listas por cada grupo de nodos, `sumAfter` una vez por punto de corte, y con `lineCount` se descartan los nodos que ya no pueden acabar en ese número de líneas.
+- T1.6 (**meta no alcanzada**): «Oz y Leyendas se maquetan en menos tiempo que antes de T1.1» no se cumple: antes de T1.1 eran 326 y 352 ms en la máquina de entonces; hoy `main` mide 716 y 849 ms en esta máquina, y la rama 380 y 519 ms. Lo que queda es medir palabras nuevas con fontkit (un tercio) y cortar líneas. Ya no hay un +25 a 35 % de coste del paginado respecto a antes de #41: se recuperó y algo más.
+- T1.6: el libro de 300 páginas de la orden es Leyendas ×3 (371 páginas en la prueba); primera maquetación bajo 3 s y la segunda, tras cambiar un párrafo, bajo un tercio de la primera. El hilo aparte (`src/web/layout-worker.ts`) va en otro PR.
+
 Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Diario
@@ -110,7 +119,7 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilo B, orden T1.6 (velocidad).
+Hilo B: el hilo aparte de la web (resto de T1.6) y luego T2.0.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
@@ -118,3 +127,4 @@ Hilo B, orden T1.6 (velocidad).
 - 2026-11-10: T1.4 hecha. Patrones de guionado por idioma (es, en-us, en-gb, fr, de, it, pt, ca, gl, eu, nl) cargados bajo demanda en trozos aparte; penalización extra para guionar nombres propios; espacio duro y guion blando respetados. Leyendas: 28 páginas cortas (antes 32), loose 0; Oz sin cambios salvo hyphenTurns 1. Rendimiento: Oz 0,77 s, Leyendas 0,87 s. Pruebas locales: lint, typecheck, 342 tests, build, build:web, e2e 46/46.
 - 2026-11-10: T1.5 hecha. Raya de diálogo pegada, no se parte tras una raya inicial, espacios duros (tratamientos, número y unidad, pág./cap./n.º, siglo), siglos en versalitas, comillas anidadas, capitular admite la raya. EPUB ya tenía widows/orphans/hyphens. dialogo-es: 8 páginas cortas (antes 10). Idea ±1 en versos y citas: descartada; las páginas cortas de Leyendas son de prosa y la causa es que casi ningún párrafo admite ±1 línea con tolerancia 0,95 (con 1,3 sube «loose»).
 - 2026-11-10: paginado cerrado. Búsqueda por capítulo en `paginate`, dobles páginas una línea largas, espacio elástico sobre títulos. Oz 2 páginas cortas y 0 desiguales; Leyendas 1 y 0; los otros tres libros 0 y 0. Pruebas locales: lint, typecheck, 355 tests, build, build:web (KDP check de Oz y Leyendas), e2e 46/46.
+- 2026-11-10: T1.6 (caché y motor) hecha. Pruebas locales: lint, typecheck, 359 tests, build, build:web, e2e 46/46; calidad sin cambios.

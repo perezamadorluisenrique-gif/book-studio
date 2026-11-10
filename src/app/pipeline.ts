@@ -12,7 +12,7 @@ import { epubBlockers, hasFeature, printBlockers, type ExportBlocker, type Plan 
 import { bookSlug, writeEpub } from "../engine/epub";
 import type { FontSet } from "../engine/fonts";
 import { loadHyphenator } from "../engine/hyphenate";
-import { layoutBook, type Layout } from "../engine/layout/index";
+import { layoutBook, type Layout, type LayoutCache } from "../engine/layout/index";
 import type { Book, BookSettings } from "../engine/model";
 import { composeCover, type Cover } from "../engine/cover/cover";
 import { writePdf } from "../engine/pdf";
@@ -26,11 +26,12 @@ export interface Built {
   ms: number;
 }
 
-export async function buildBook(source: VaultSource, manifestPath: string, fonts: FontSet, overrides: Partial<BookSettings> = {}): Promise<Built> {
+/** `cache` carries what earlier builds of the same book learned, so a rebuild after an edit only sets what changed. */
+export async function buildBook(source: VaultSource, manifestPath: string, fonts: FontSet, overrides: Partial<BookSettings> = {}, opts: { cache?: LayoutCache } = {}): Promise<Built> {
   const t0 = performance.now();
   // Box sets always load so free users can preview them; exporting one needs Pro.
   const book = await loadBook(source, manifestPath, overrides, { boxSets: true });
-  const layout = layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? await loadHyphenator(book.meta.language) : null });
+  const layout = layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? await loadHyphenator(book.meta.language) : null, cache: opts.cache });
   const audit = auditBook(book, { pageList: true });
   return { book, layout, audit, ms: Math.round(performance.now() - t0) };
 }
