@@ -82,6 +82,13 @@ function drawLanding(deps: ProjectsDeps, give: (file: File) => void): { el: HTML
 /** The report of a Word import as sentences. */
 function reportLines(r: DocxReport): string[] {
   const out: string[] = [];
+  const w = r.words;
+  if (w.missing.length === 0) out.push(t("imp.r.wordsOk", { source: String(w.source), book: String(w.book) }));
+  else {
+    out.push(tn("imp.r.wordsMissing", w.missing.length, { source: String(w.source), book: String(w.book) }));
+    for (const m of w.missing.slice(0, 5)) out.push(m.lugar ? t("imp.r.wordsAt", { text: m.texto, place: m.lugar }) : t("imp.r.wordsAtStart", { text: m.texto }));
+    if (w.missing.length > 5) out.push(t("imp.r.wordsMore", { n: String(w.missing.length - 5) }));
+  }
   for (const { code, count } of r.items) out.push(tn(`imp.r.${code}`, count));
   if (r.footnotes) out.push(tn("imp.r.footnotes", r.footnotes));
   if (r.images) out.push(tn("imp.r.images", r.images));

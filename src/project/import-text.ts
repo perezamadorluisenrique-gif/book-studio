@@ -102,6 +102,16 @@ function chapterLines(lines: string[], inside: boolean[]): Cut[] {
   return cuts;
 }
 
+/** The words of a text: runs of letters, digits and their accents (so "don't" is two and "2026" is one). */
+export function words(text: string): string[] {
+  return text.match(/[\p{L}\p{N}\p{M}]+/gu) ?? [];
+}
+
+/** How many words a text has. The Word import uses it to prove nothing was lost. */
+export function countWords(text: string): number {
+  return words(text).length;
+}
+
 const tidy = (s: string): string => s.replace(/^\n+/, "").replace(/\s+$/, "");
 
 /** Split a manuscript into chapters. `fileName` (without folder) names the book when the text has no title. */

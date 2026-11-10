@@ -26,6 +26,11 @@
     "items": [],
     "chapters": 2,
     "images": 0,
-    "footnotes": 0
+    "footnotes": 0,
+    "words": {
+      "source": 20,
+      "book": 20,
+      "missing": []
+    }
   }
 }

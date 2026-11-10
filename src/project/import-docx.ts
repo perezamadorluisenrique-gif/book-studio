@@ -7,7 +7,7 @@
 // Pure code: the caller gives the XML parser (the browser's DOMParser; tests use xmldom).
 
 import JSZip from "jszip";
-import { importText, type ImportedBook } from "./import-text";
+import { countWords, importText, words, type ImportedBook } from "./import-text";
 import type { ProjectAsset } from "./model";
 
 export type ParseXml = (xml: string) => Document;
@@ -21,6 +21,15 @@ export interface DocxReport {
   chapters: number;
   images: number;
   footnotes: number;
+  /** The word-count guarantee: words in the Word file, words in the book, and what is missing. */
+  words: WordCheck;
+}
+
+export interface WordCheck {
+  source: number;
+  book: number;
+  /** Paragraphs of the Word file whose text is not in the book: the start of the text and the nearest heading before it. */
+  missing: { texto: string; lugar: string }[];
 }
 
 export interface ImportedDocx extends ImportedBook {
@@ -316,6 +325,110 @@ function lineSafe(text: string): string {
   return SCENE.test(text.replace(/\\\*/g, "*")) ? "* * *" : text.replace(LEADING, (_m, sp: string, mark: string) => `${sp}\\${mark}`);
 }
 
+// ── Word-count guarantee ──
+// Counts the words in the XML on its own, then looks for every paragraph in the finished book.
+
+const MC = "http://schemas.openxmlformats.org/markup-compatibility/2006";
+
+/** The text of one paragraph as Word shows it: no deleted text, no nested paragraphs (text boxes, cells). */
+function ownText(p: El): string {
+  let out = "";
+  const walkText = (e: El): void => {
+    for (const k of kids(e)) {
+      const n = k.localName;
+      if (n === "p" || n === "del" || n === "moveFrom" || n === "pPr" || n === "rPr") continue;
+      if (n === "t") out += k.textContent ?? "";
+      else if (n === "tab" || n === "br" || n === "cr") out += " ";
+      else if (n === "noBreakHyphen") out += "-";
+      else if (n === "Fallback" && k.namespaceURI === MC) continue;
+      else walkText(k);
+    }
+  };
+  walkText(p);
+  return out;
+}
+
+/** True when a paragraph sits in deleted text or in the old-format copy of a text box. */
+function ignoredParagraph(p: El, root: El): boolean {
+  for (let a = p.parentNode as El | null; a && a !== root; a = a.parentNode as El | null) {
+    if (a.localName === "del" || a.localName === "moveFrom" || (a.localName === "Fallback" && a.namespaceURI === MC)) return true;
+  }
+  return false;
+}
+
+const isTocStyle = (style: string): boolean => /^(toc|table of contents|contents|índice|tabla de contenido)/i.test(style) || /^toc\s*\d/i.test(style);
+
+function headingText(c: Ctx, p: El): string | null {
+  const ppr = child(p, "pPr");
+  const styleId = attr(child(ppr, "pStyle"), "val") ?? "";
+  const style = c.styles.get(styleId) ?? styleId.toLowerCase();
+  const outline = attr(child(ppr, "outlineLvl"), "val");
+  if (/^heading\s*\d$/i.test(style) || /^t[ií]tulo\s*\d$/i.test(style) || (outline !== null && /^\d$/.test(outline) && Number(outline) < 6)) return ownText(p).replace(/\s+/g, " ").trim();
+  return null;
+}
+
+interface SourcePara {
+  text: string;
+  place: string;
+}
+
+/** Every paragraph of the body, the tables, the text boxes and the notes that the book uses. */
+function sourceParagraphs(c: Ctx, body: El): SourcePara[] {
+  const out: SourcePara[] = [];
+  let place = "";
+  for (const p of Array.from(body.getElementsByTagNameNS(W, "p"))) {
+    if (ignoredParagraph(p, body)) continue;
+    const styleId = attr(child(child(p, "pPr"), "pStyle"), "val") ?? "";
+    if (isTocStyle(c.styles.get(styleId) ?? styleId.toLowerCase())) continue;
+    const head = headingText(c, p);
+    if (head) place = head;
+    const text = ownText(p).replace(/\s+/g, " ").trim();
+    if (words(text).length) out.push({ text, place });
+  }
+  for (const [key, num] of c.noteOrder) {
+    const note = c.footnotes.get(key);
+    if (!note) continue;
+    for (const p of kids(note).filter((k) => k.localName === "p")) {
+      const text = ownText(p).replace(/\s+/g, " ").trim();
+      if (words(text).length) out.push({ text, place: `[^${num}]` });
+    }
+  }
+  return out;
+}
+
+/** The book's Markdown without its own syntax, so only words are left. */
+function plainWords(markdown: string): string {
+  return markdown
+    .replace(/<!-- pagebreak -->/g, "")
+    .replace(/!\[(?:\\.|[^\]\\])*\]\(<[^>]*>\)/g, "")
+    .replace(/\[((?:\\.|[^\]\\])*)\]\(<[^>]*>\)/g, "$1")
+    .replace(/\[\^\d+\]:?/g, "")
+    .replace(/^[ \t]*(?:\d+\.|-|>)[ \t]/gm, "");
+}
+
+const norm = (s: string): string => words(s).join(" ").toLowerCase();
+
+function checkWords(source: SourcePara[], markdown: string, extra: string[]): WordCheck {
+  const plain = plainWords(markdown);
+  const blocks = new Set<string>();
+  for (const block of plain.split(/\n{2,}/)) {
+    blocks.add(norm(block));
+    for (const line of block.split("\n")) blocks.add(norm(line));
+  }
+  const whole = ` ${norm(plain)} ${extra.map(norm).join(" ")} `;
+  for (const e of extra) blocks.add(norm(e));
+  const missing: WordCheck["missing"] = [];
+  let sourceWords = 0;
+  for (const para of source) {
+    sourceWords += countWords(para.text);
+    const n = norm(para.text);
+    // A short paragraph must be a block of its own: inside a longer text it could match by chance.
+    if (blocks.has(n) || (n.split(" ").length >= 6 && whole.includes(` ${n} `))) continue;
+    missing.push({ texto: para.text.length > 80 ? `${para.text.slice(0, 77)}…` : para.text, lugar: para.place });
+  }
+  return { source: sourceWords, book: countWords(plain) + extra.reduce((n, e) => n + countWords(e), 0), missing };
+}
+
 /** Read the .docx and give back chapters, pictures and a report. */
 export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = ""): Promise<ImportedDocx> {
   if (bytes.byteLength > MAX_DOCX_BYTES) throw new Error("docx.tooBig");
@@ -384,13 +497,19 @@ export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = 
   let title: string | undefined;
   let subtitle: string | undefined;
   let author: string | undefined;
+  const metaText: string[] = [];
   blocks.forEach((b, idx) => {
     const extra = notesAfter.get(idx);
     if (b.kind === "skip") return;
     if (b.kind === "pageBreak") lines.push(PAGE_BREAK, "");
     else if (b.kind === "heading") lines.push(`${"#".repeat(Math.min(4, Math.max(1, (b.level ?? 1) - top + 1)))} ${b.text}`, "");
-    else if (b.title) title ??= b.text.replace(/\\([\\*_[\]<>`])/g, "$1").replace(/\*+/g, "");
-    else if (b.author) author ??= b.text.replace(/\\([\\*_[\]<>`])/g, "$1").replace(/\*+/g, "");
+    else if (b.title) {
+      if (!title) metaText.push(b.text);
+      title ??= b.text.replace(/\\([\\*_[\]<>`])/g, "$1").replace(/\*+/g, "");
+    } else if (b.author) {
+      if (!author) metaText.push(b.text);
+      author ??= b.text.replace(/\\([\\*_[\]<>`])/g, "$1").replace(/\*+/g, "");
+    }
     else if (b.subtitle) subtitle ??= b.text.replace(/\\([\\*_[\]<>`])/g, "$1").replace(/\*+/g, "");
     else if (b.kind === "quote") lines.push(...b.text.split("  \n").map((l) => `> ${l}`), "");
     else if (b.kind === "list") {
@@ -440,6 +559,6 @@ export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = 
     language: book.language ?? langCode,
     assets,
     markdown,
-    report: { items, chapters: book.chapters.length, images: assets.length, footnotes: c.noteOrder.size },
+    report: { items, chapters: book.chapters.length, images: assets.length, footnotes: c.noteOrder.size, words: checkWords(sourceParagraphs(c, body), markdown, metaText) },
   };
 }
