@@ -304,3 +304,121 @@ tbody th {
   display: inline-block;
   padding: 0.6rem 0.25rem;
 }
+
+/* Landing page: wider than a guide, mobile first. */
+main:has(.landing) {
+  max-width: 64rem;
+}
+
+.landing .hero {
+  padding: 1.5rem 0 1rem;
+  text-align: center;
+}
+
+.landing .hero h1 {
+  font-size: clamp(2.1rem, 7vw, 3.5rem);
+  max-width: 18ch;
+  margin: 0 auto 1rem;
+}
+
+.landing .lead {
+  font-size: 1.2rem;
+  max-width: 38rem;
+  margin: 0 auto 1.5rem;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1rem;
+}
+
+main .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 1.25rem;
+  border-radius: 8px;
+  border: 2px solid var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--accent);
+}
+
+main .btn.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+main .btn:hover {
+  filter: brightness(1.1);
+  text-decoration: none;
+}
+
+.landing h2 {
+  text-align: center;
+}
+
+.before-after {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  max-width: 44rem;
+  margin: 1rem auto 0.5rem;
+}
+
+.before-after figure,
+.steps figure {
+  margin: 0;
+}
+
+.before-after figcaption {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-top: 0.4rem;
+}
+
+.landing > .muted,
+.before-after + .muted {
+  max-width: 44rem;
+  margin: 0.5rem auto 1rem;
+  font-size: 0.95rem;
+}
+
+.steps {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+}
+
+.steps li {
+  margin: 0;
+}
+
+.steps h3 {
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 52rem) {
+  .steps {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.landing h3 {
+  margin-top: 1.25rem;
+}
+
+.landing > p,
+.landing > .table-wrap,
+.landing > .guide-list,
+.landing > h3 {
+  max-width: var(--measure);
+  margin-left: auto;
+  margin-right: auto;
+}

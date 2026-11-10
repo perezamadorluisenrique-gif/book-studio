@@ -38,6 +38,8 @@ const UI = {
     kinds: { pdf: "Print PDF", epub: "EPUB", zip: "Markdown source" },
     downloadsHead: ["Book", "Pages", "Trim", "Files"],
     pages: "pages",
+    before: "Set like a word processor",
+    after: "Set by Book Studio",
   },
   es: {
     skip: "Ir al contenido",
@@ -53,6 +55,8 @@ const UI = {
     kinds: { pdf: "PDF de imprenta", epub: "EPUB", zip: "Fuente en Markdown" },
     downloadsHead: ["Libro", "Páginas", "Formato", "Archivos"],
     pages: "páginas",
+    before: "Maquetado como en un procesador de textos",
+    after: "Maquetado por Book Studio",
   },
 };
 
@@ -116,7 +120,7 @@ function formatBytes(n) {
 
 function guidesList(page, ctx) {
   const items = ctx.pages
-    .filter((p) => p.lang === page.lang && p.type !== "hub")
+    .filter((p) => p.lang === page.lang && p.type !== "hub" && p.type !== "landing")
     .sort((a, b) => a.order - b.order)
     .map((p) => `<li><a href="${up(page)}${pagePath(p)}">${esc(p.title)}</a><br><span class="muted">${esc(p.description)}</span></li>`);
   return `<ul class="guide-list">\n${items.join("\n")}\n</ul>`;
@@ -132,8 +136,7 @@ function downloadsTable(page, ctx) {
   return `<div class="table-wrap" role="region" aria-label="${esc(ui.downloadsHead[0])}" tabindex="0"><table>\n<thead><tr>${head}</tr></thead>\n<tbody>\n${rows.join("\n")}\n</tbody></table></div>`;
 }
 
-/** Markdown body to HTML, with the site's link schemes and placeholders resolved. */
-export function renderBody(page, ctx) {
+function markedFor(page, ctx) {
   const marked = new Marked({ gfm: true });
   marked.use({
     renderer: {
@@ -158,9 +161,57 @@ export function renderBody(page, ctx) {
       },
     },
   });
+  return marked;
+}
+
+const inlineMd = (text, page, ctx) => markedFor(page, ctx).parseInline(String(text));
+const imgSrc = (src, page) => `${up(page)}${src.replace(/^img\//, "img/")}`;
+
+function need(page, key) {
+  const v = page[key];
+  if (v === undefined) throw new Error(`${page.file}: the body uses {{${key}}} but the front matter has no ${key}`);
+  return v;
+}
+
+/** The landing page's sections, composed from its front matter. */
+function stepsList(page, ctx) {
+  const items = need(page, "steps").map(
+    (st) => `<li><figure><img src="${esc(imgSrc(st.img, page))}" alt="${esc(st.alt)}" width="${st.width ?? 1100}" height="${st.height ?? 720}" loading="lazy"></figure><h3>${esc(st.title)}</h3><p>${inlineMd(st.text, page, ctx)}</p></li>`,
+  );
+  return `<ol class="steps">\n${items.join("\n")}\n</ol>`;
+}
+
+function beforeAfter(page, ctx) {
+  const ui = UI[page.lang];
+  const ba = need(page, "beforeAfter");
+  const fig = (img, alt, label) => `<figure><img src="${esc(imgSrc(img, page))}" alt="${esc(alt)}" width="${ba.width ?? 600}" height="${ba.height ?? 900}" loading="lazy"><figcaption>${esc(label)}</figcaption></figure>`;
+  return `<div class="before-after">\n${fig(ba.word.img, ba.word.alt, ui.before)}\n${fig(ba.studio.img, ba.studio.alt, ui.after)}\n</div>\n<p class="muted">${inlineMd(ba.caption, page, ctx)}</p>`;
+}
+
+function compareTable(page, ctx) {
+  const c = need(page, "compare");
+  const cell = (t) => inlineMd(t, page, ctx);
+  const head = c.head.map((h, i) => `<th scope="col">${i === 0 ? esc(h) : esc(h)}</th>`).join("");
+  const rows = c.rows.map((r) => `<tr><th scope="row">${cell(r[0])}</th>${r.slice(1).map((x) => `<td>${cell(x)}</td>`).join("")}</tr>`).join("\n");
+  return `<div class="table-wrap" role="region" aria-label="${esc(c.label)}" tabindex="0"><table>\n<thead><tr>${head}</tr></thead>\n<tbody>\n${rows}\n</tbody></table></div>`;
+}
+
+function faqList(page, ctx) {
+  return need(page, "faq")
+    .map((f) => `<h3>${esc(f.q)}</h3>\n<p>${inlineMd(f.a, page, ctx)}</p>`)
+    .join("\n");
+}
+
+/** Markdown body to HTML, with the site's link schemes and placeholders resolved. */
+export function renderBody(page, ctx) {
+  const marked = markedFor(page, ctx);
   let html = marked.parse(page.body);
   html = html.replace(/<p>\{\{guides\}\}<\/p>/g, () => guidesList(page, ctx));
   html = html.replace(/<p>\{\{downloads\}\}<\/p>/g, () => downloadsTable(page, ctx));
+  html = html.replace(/<p>\{\{steps\}\}<\/p>/g, () => stepsList(page, ctx));
+  html = html.replace(/<p>\{\{beforeafter\}\}<\/p>/g, () => beforeAfter(page, ctx));
+  html = html.replace(/<p>\{\{compare\}\}<\/p>/g, () => compareTable(page, ctx));
+  html = html.replace(/<p>\{\{faq\}\}<\/p>/g, () => faqList(page, ctx));
   if (/\{\{\w+\}\}/.test(html)) throw new Error(`${page.file}: unknown placeholder`);
   // The page title is the h1 in the template; headings in the body start at h2.
   if (/<h1[\s>]/.test(html)) throw new Error(`${page.file}: use ## headings; the title is the h1`);
@@ -177,10 +228,24 @@ function jsonLd(page) {
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
     url: SITE,
   };
+  if (page.type === "landing") {
+    const faq = { "@type": "FAQPage", inLanguage: page.lang, mainEntity: (page.faq ?? []).map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: String(f.a).replace(/\]\([^)]*\)/g, "]").replace(/[[\]*]/g, "") } })) };
+    return { "@context": "https://schema.org", "@graph": [{ ...app, inLanguage: page.lang, description: page.description }, faq] };
+  }
   if (page.type === "hub") return { "@context": "https://schema.org", ...app, inLanguage: page.lang, description: page.description };
   const article = { "@context": "https://schema.org", "@type": "Article", headline: page.title, description: page.description, inLanguage: page.lang, dateModified: page.updated, url, author: { "@type": "Organization", name: "Hidden Problems Lab" }, about: app };
   if (page.type !== "howto" || !page.steps) return article;
   return { ...article, "@type": "HowTo", name: page.title, step: page.steps.map((s, i) => ({ "@type": "HowToStep", position: i + 1, name: s })) };
+}
+
+function heroBlock(page, ctx) {
+  const hero = need(page, "hero");
+  const link = (b, cls) => `<a class="${cls}" href="${esc(resolveHref(b.href, page, ctx))}">${esc(b.label)}</a>`;
+  return `<section class="hero" aria-labelledby="hero-title">
+<h1 id="hero-title">${esc(page.h1 ?? page.title)}</h1>
+<p class="lead">${inlineMd(hero.lead, page, ctx)}</p>
+<p class="hero-actions">${link(hero.primary, "btn primary")} ${link(hero.secondary, "btn")}</p>
+</section>`;
 }
 
 /** A whole HTML document for one page. */
@@ -192,21 +257,22 @@ export function renderPage(page, ctx) {
   const alt = (p) => `<link rel="alternate" hreflang="${p.lang}" href="${SITE}${pagePath(p)}">`;
   const en = page.lang === "en" ? page : pair;
   const body = renderBody(page, ctx);
-  const updated = page.type === "hub" ? "" : `<p class="updated">${ui.updated} <time datetime="${esc(page.updated)}">${esc(page.updated)}</time></p>`;
+  const home = page.type === "hub" || page.type === "landing";
+  const updated = home ? "" : `<p class="updated">${ui.updated} <time datetime="${esc(page.updated)}">${esc(page.updated)}</time></p>`;
   return `<!doctype html>
 <html lang="${page.lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
-<title>${esc(page.title)}${page.type === "hub" ? "" : " · Book Studio"}</title>
+<title>${esc(page.title)}${home ? "" : " · Book Studio"}</title>
 <meta name="description" content="${esc(page.description)}">
 <link rel="canonical" href="${SITE}${pagePath(page)}">
 ${alt(page)}
 ${alt(pair)}
 <link rel="alternate" hreflang="x-default" href="${SITE}${pagePath(en)}">
 <link rel="sitemap" type="application/xml" href="${root}sitemap.xml">
-<meta property="og:type" content="${page.type === "hub" ? "website" : "article"}">
+<meta property="og:type" content="${home ? "website" : "article"}">
 <meta property="og:title" content="${esc(page.title)}">
 <meta property="og:description" content="${esc(page.description)}">
 <meta property="og:url" content="${SITE}${pagePath(page)}">
@@ -227,9 +293,8 @@ ${alt(pair)}
 </nav>
 </header>
 <main id="main">
-<article>
-<h1>${esc(page.h1 ?? page.title)}</h1>
-${updated}
+<article${page.type === "landing" ? ' class="landing"' : ""}>
+${page.type === "landing" ? heroBlock(page, ctx) : `<h1>${esc(page.h1 ?? page.title)}</h1>\n${updated}`}
 ${body}
 </article>
 </main>
@@ -251,9 +316,14 @@ export function auditPages(pages) {
     if (p.description.length < 70 || p.description.length > 160) problems.push(`${where}: description is ${p.description.length} characters (70–160)`);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(p.updated)) problems.push(`${where}: updated must be YYYY-MM-DD`);
     if (!pages.some((q) => q.lang !== p.lang && q.slug === p.pair && q.pair === p.slug)) problems.push(`${where}: no matching ${p.lang === "en" ? "es" : "en"} page that pairs back`);
-    if (!["hub", "article", "howto"].includes(p.type)) problems.push(`${where}: unknown type ${p.type}`);
+    if (!["hub", "article", "howto", "landing"].includes(p.type)) problems.push(`${where}: unknown type ${p.type}`);
     if (p.type === "howto" && !Array.isArray(p.steps)) problems.push(`${where}: a howto lists its steps`);
-    if (p.type !== "hub" && !/\]\(app:/.test(p.body)) problems.push(`${where}: no link to the app`);
+    if (p.type === "landing") {
+      if (!String(p.hero?.primary?.href).startsWith("app:")) problems.push(`${where}: the main button must open the app`);
+      if (!Array.isArray(p.steps) || p.steps.length !== 3) problems.push(`${where}: a landing page lists three steps`);
+      if (!Array.isArray(p.faq) || p.faq.length !== 6) problems.push(`${where}: a landing page answers six questions`);
+      if (!p.compare?.rows?.length) problems.push(`${where}: a landing page has a comparison table`);
+    } else if (p.type !== "hub" && !/\]\(app:/.test(p.body)) problems.push(`${where}: no link to the app`);
   }
   const seen = new Set();
   for (const p of pages) {

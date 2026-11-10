@@ -27,8 +27,55 @@ export interface ProjectsDeps {
   importZip(file: File): Promise<void>;
   /** Ask for a folder of Markdown notes and make a book from it. */
   importFolder(): Promise<void>;
+  /** Open the bundled sample book. */
+  sample(): void;
   /** Whether the browser promised to keep the books (false: it may clear them when space is short). */
   persisted(): Promise<boolean>;
+}
+
+const ACCEPT = ".md,.markdown,.txt,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+/** The headline, a drop zone for the manuscript and a link to a sample, for a person who has no books yet. */
+function drawLanding(deps: ProjectsDeps, give: (file: File) => void): { el: HTMLElement; drop: HTMLElement; input: HTMLInputElement } {
+  const input = h("input", { attr: { type: "file", accept: ACCEPT, hidden: "", tabindex: "-1", "aria-label": t("land.dropLabel") } });
+  const drop = h("div", { cls: "land-drop", attr: { role: "button", tabindex: "0", id: "land-drop" } }, h("strong", { text: t("land.drop") }), h("span", { text: t("land.dropHint") }));
+  const take = (file: File | undefined) => {
+    if (!file) return;
+    if (/\.(docx|md|markdown|txt)$/i.test(file.name)) give(file);
+    else deps.notify(t("land.badFile"));
+  };
+  drop.addEventListener("click", () => input.click());
+  drop.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      input.click();
+    }
+  });
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    input.value = "";
+    take(file);
+  });
+  drop.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    drop.classList.add("is-over");
+  });
+  drop.addEventListener("dragleave", () => drop.classList.remove("is-over"));
+  drop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    drop.classList.remove("is-over");
+    take(e.dataTransfer?.files?.[0]);
+  });
+  const el = h(
+    "section",
+    { cls: "land", attr: { "aria-labelledby": "land-title" } },
+    h("h2", { text: t("land.title"), attr: { id: "land-title" } }),
+    h("p", { cls: "land-lead", text: t("land.lead") }),
+    drop,
+    input,
+    h("p", { cls: "land-sample" }, h("button", { cls: "link-button", text: t("land.sample"), attr: { type: "button", id: "land-sample" }, on: { click: () => deps.sample() } })),
+  );
+  return { el, drop, input };
 }
 
 /** The report of a Word import as sentences. */
@@ -45,14 +92,20 @@ function fail(deps: ProjectsDeps, e: unknown): void {
   deps.notify(m === "docx.notDocx" || m === "docx.tooBig" ? t(m) : t("proj.failed", { error: m }));
 }
 
+// Each call draws the screen after reading the list; when two overlap, only the last one draws, so the form
+// a person is filling in is never replaced by an older drawing.
+let latest = 0;
+
 /** Draw the whole screen inside `box`; call it again after anything changes. */
 export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus?: string): Promise<void> {
+  const mine = ++latest;
   let projects: Project[] = [];
   try {
     projects = await deps.list();
   } catch (e) {
     fail(deps, e);
   }
+  if (mine !== latest) return;
   const again = (f?: string) => void renderProjects(box, deps, f);
   // A quiet reminder (not a pop-up): which books have no recent copy, and whether the browser may clear them.
   const due = projects.filter((p) => deps.backupDue(p));
@@ -112,8 +165,39 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
     zipInput,
   );
   const pasteBox = h("textarea", { attr: { id: "imp-text", rows: "6", "aria-describedby": "imp-hint" } });
-  const fileInput = h("input", { attr: { type: "file", id: "imp-file", accept: ".md,.markdown,.txt,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document", "aria-describedby": "imp-hint" } });
+  const fileInput = h("input", { attr: { type: "file", id: "imp-file", accept: ACCEPT, "aria-describedby": "imp-hint" } });
   const importName = h("input", { attr: { type: "text", id: "imp-name", autocomplete: "off", value: "" } });
+
+  /** Make a book from a file or from pasted text, say what was left out, and open it. */
+  async function importIt(file: File | undefined, pasted: string, title: string): Promise<void> {
+    try {
+      const fileName = file?.name ?? "";
+      if (/\.doc$/i.test(fileName)) {
+        deps.notify(t("imp.oldDoc"));
+        return;
+      }
+      const isDocx = /\.docx$/i.test(fileName);
+      const text = file && !isDocx ? await file.text() : file ? "" : pasted;
+      if (!file && !text.trim()) {
+        deps.notify(t("imp.empty"));
+        return;
+      }
+      const bytes = file && isDocx ? new Uint8Array(await file.arrayBuffer()) : undefined;
+      if (!bytes && !text.trim()) {
+        deps.notify(t("imp.empty"));
+        return;
+      }
+      const { project, notes, report } = await deps.importManuscript({ text: bytes ? undefined : text, bytes, fileName, name: title });
+      const done = tn("imp.done", project.chapters.length, { name: project.name });
+      const extra = [notes.includes("intro") ? t("imp.intro") : "", ...(report ? reportLines(report) : [])].filter(Boolean);
+      if (extra.length) await deps.ask({ title: t("imp.reportTitle"), message: `${done}\n\n${extra.map((l) => `• ${l}`).join("\n")}`, ok: t("imp.reportOk") });
+      else deps.notify(done);
+      deps.open(project);
+    } catch (e) {
+      fail(deps, e);
+    }
+  }
+
   const importForm = h(
     "form",
     {
@@ -122,36 +206,7 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
       on: {
         submit: (ev: Event) => {
           ev.preventDefault();
-          void (async () => {
-            try {
-              const file = fileInput.files?.[0];
-              const fileName = file?.name ?? "";
-              if (/\.doc$/i.test(fileName)) {
-                deps.notify(t("imp.oldDoc"));
-                return;
-              }
-              const isDocx = /\.docx$/i.test(fileName);
-              const text = file && !isDocx ? await file.text() : file ? "" : pasteBox.value;
-              if (!file && !text.trim()) {
-                deps.notify(t("imp.empty"));
-                return;
-              }
-              const bytes = file && isDocx ? new Uint8Array(await file.arrayBuffer()) : undefined;
-              const name = importName.value.trim();
-              if (!bytes && !text.trim()) {
-                deps.notify(t("imp.empty"));
-                return;
-              }
-              const { project, notes, report } = await deps.importManuscript({ text: bytes ? undefined : text, bytes, fileName, name });
-              const done = tn("imp.done", project.chapters.length, { name: project.name });
-              const extra = [notes.includes("intro") ? t("imp.intro") : "", ...(report ? reportLines(report) : [])].filter(Boolean);
-              if (extra.length) await deps.ask({ title: t("imp.reportTitle"), message: `${done}\n\n${extra.map((l) => `• ${l}`).join("\n")}`, ok: t("imp.reportOk") });
-              else deps.notify(done);
-              deps.open(project);
-            } catch (e) {
-              fail(deps, e);
-            }
-          })();
+          void importIt(fileInput.files?.[0], pasteBox.value, importName.value.trim());
         },
       },
     },
@@ -165,6 +220,9 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
     importName,
     h("button", { cls: "mod-cta", text: t("imp.go"), attr: { type: "submit" } }),
   );
+
+  // The first thing a person with no books sees: the promise, and a place to drop the manuscript.
+  const landing = projects.length ? null : drawLanding(deps, (file) => void importIt(file, "", ""));
 
   const date = new Intl.DateTimeFormat(getLocale(), { dateStyle: "medium" });
   const list = h("ul", { cls: "proj-list", attr: { "aria-label": t("proj.listLabel") } });
@@ -247,6 +305,7 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
 
   append(
     box,
+    ...(landing ? [landing.el] : []),
     h("h2", { text: t("proj.title"), attr: { id: "proj-title", tabindex: "-1" } }),
     h("p", { cls: "proj-intro", text: t("proj.intro") }),
     note,
@@ -260,5 +319,14 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
   if (focus === "new") nameInput.focus();
   else if (focus?.startsWith("rename:")) box.querySelector<HTMLElement>(`[data-id="${focus.slice(7)}"] button:nth-of-type(3)`)?.focus();
   else if (focus?.startsWith("backup:")) box.querySelector<HTMLElement>(`[data-id="${focus.slice(7)}"] button:nth-of-type(2)`)?.focus();
-  else if (focus === "title") box.querySelector<HTMLElement>("#proj-title")?.focus();
+  else if (focus === "import") {
+    const target = landing ? landing.drop : fileInput;
+    target.focus();
+    // Browsers that allow it open the file chooser at once; most want a click first, and then the focus above is what we have.
+    try {
+      landing?.input.showPicker?.();
+    } catch {
+      // Needs a user gesture: the focused drop zone is the fallback.
+    }
+  } else if (focus === "title") box.querySelector<HTMLElement>("#proj-title")?.focus();
 }

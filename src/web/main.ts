@@ -462,8 +462,13 @@ function firstSeen(p: Project): number {
   return now;
 }
 
+// Showing the list takes a moment; when two calls overlap (the page's own and a click), only the last one goes on.
+let showing = 0;
+
 async function showProjects(focus?: string): Promise<void> {
+  const mine = ++showing;
   await workspace.close();
+  if (mine !== showing) return;
   placeStudio(false);
   $("studio").hidden = true;
   const box = $("projects");
@@ -505,6 +510,7 @@ async function showProjects(focus?: string): Promise<void> {
         const f = await chooseFolder();
         if (f) await saveImported(await vaultToProjects(filesOf(f), { now: Date.now(), newId }));
       },
+      sample: () => void openSample(),
       persisted: async () => {
         try {
           return (await navigator.storage?.persisted?.()) || (await navigator.storage?.persist?.()) || false;
@@ -594,7 +600,11 @@ langSelect.addEventListener("change", () => void changeLocale(langSelect.value =
 
 $("open-folder").addEventListener("click", () => void pickFolder());
 $("open-sample").addEventListener("click", () => void openSample());
-$("open-projects").addEventListener("click", () => void showProjects());
+// Already on the list: leave it as it is, so what someone has started typing is not drawn over.
+$("open-projects").addEventListener("click", () => {
+  if (!$("projects").hidden) $("proj-title")?.focus();
+  else void showProjects();
+});
 $<HTMLInputElement>("folder-input").addEventListener("change", (e) => {
   const input = e.target as HTMLInputElement;
   if (input.files?.length) void open(folderFromFiles(input.files));
@@ -627,9 +637,9 @@ registerPwa({
 void (async () => {
   applyPageText();
   updateReopen(await getHandle<DirHandle>("folder"));
-  // First thing a visitor sees: their own books if they have any, otherwise the sample book, typeset.
-  // A link that names a sample (the guides use them) always opens that sample.
-  const hasBooks = new URLSearchParams(location.search).has("sample") ? false : (await listProjects().catch(() => [])).length > 0;
-  if (hasBooks) await showProjects();
-  else await openSample();
+  // First thing a visitor sees: their own books, or when they have none, the promise and a place to drop their Word file.
+  // A link that names a sample (the guides use them) opens that sample; `?start=import` goes to the file chooser.
+  const params = new URLSearchParams(location.search);
+  if (params.has("sample")) await openSample();
+  else await showProjects(params.get("start") === "import" ? "import" : undefined);
 })();

@@ -14,7 +14,7 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 | B | T1.5 Ortotipografía | hecho | PR de T1.5 |
 | B | T1.6 Velocidad | hecha (metas de tiempo en frío no alcanzadas del todo, ver desviaciones) | PR «cached, off-thread layout» |
 | B | T2.0 Lo gratis nuevo | hecha (falta el PR de la lista de Pro en la web, otro repositorio) | PR «every trim, the full cover and footnotes are free» |
-| B | T2.1 Página de inicio | sin empezar | |
+| B | T2.1 Página de inicio | hecha | PR «landing page and drop-your-Word first screen» |
 | B | T2.2 Asistente de 4 pasos | sin empezar | |
 | C | T3.1 a T3.5 Word sin pérdidas | sin empezar | |
 | D | T4.1 a T4.5 Editor de cubiertas | sin empezar | |
@@ -111,6 +111,12 @@ En la misma máquina y momento, `main` medía 816, 928, 594, 1036 y 601 ms. Capt
 - T1.6 (**meta no alcanzada**): «Oz y Leyendas se maquetan en menos tiempo que antes de T1.1» no se cumple: antes de T1.1 eran 326 y 352 ms en la máquina de entonces; hoy `main` mide 716 y 849 ms en esta máquina, y la rama 380 y 519 ms. Lo que queda es medir palabras nuevas con fontkit (un tercio) y cortar líneas. Ya no hay un +25 a 35 % de coste del paginado respecto a antes de #41: se recuperó y algo más.
 - T1.6: el libro de 300 páginas de la orden es Leyendas ×3 (371 páginas en la prueba); primera maquetación bajo 3 s y la segunda, tras cambiar un párrafo, bajo un tercio de la primera. El hilo aparte: `src/web/layout-worker.ts` (con su propia `LayoutCache`) y `src/web/layout-remote.ts`; `StudioHost.layout` es opcional, solo la web lo da, y si el worker no arranca o falla, `buildBook` maqueta en la página como antes. El plugin de Obsidian no cambia. En el e2e, una prueba comprueba que el worker corre y otra que el libro sale igual con el archivo del worker bloqueado.
 
+- T2.1 (2026-11-10): `/es/` y `/en/` son ahora la portada (`type: landing`, sin JavaScript, 40 KB de HTML). Se compone desde el front matter (`hero`, `beforeAfter`, `steps`, `compare`, `faq`) con marcadores `{{beforeafter}}`, `{{steps}}`, `{{compare}}`, `{{faq}}` en el cuerpo. Las guías siguen en la lista de la propia portada.
+- T2.1, desviación 1: la imagen «Word» no usa Times (el repositorio no tiene esa letra) ni sale con viuda. Se compone con el mismo tipo de letra y el mismo motor en modo `plain` (`new LayoutCache(true)`: líneas llenadas de una en una, sin guiones, sin microtipografía, sin capitular y sin equilibrar páginas). El pie de la foto lo dice. `tools/landing-shots.ts` busca un párrafo que empiece cerca del principio de una página llena en los dos libros, para que enseñen casi el mismo pasaje.
+- T2.1, desviación 2: en la tabla de comparación, las filas «cubierta completa» y «en español» de Vellum, Atticus y Kindle Create dicen «No lo indica su web»: `FACTS.md` no tiene esos datos y las webs consultadas (vellum.pub) no los mencionan. No se suponen. Si Enrique los verifica, se completan en `site/*/index.md`.
+- T2.1: las capturas de los pasos 2 y 3 son del estado actual de la app (vista previa y barra de exportar); T2.2 las rehace con el asistente (`npm run landing-shots -- --app`).
+- T2.1: en la app, el inicio sin libros muestra el titular, la zona «Suelta aquí tu Word» y el ejemplo en vez de abrir el libro de muestra (`?sample=` sigue abriéndolo; `?start=import` deja el foco en la zona). Dos carreras arregladas de paso: la lista de libros no se vuelve a dibujar encima de lo que alguien empieza a escribir.
+
 Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Diario
@@ -119,7 +125,7 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilo B, orden T2.1 (página de inicio).
+Hilo B, orden T2.2 (asistente de 4 pasos).
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
@@ -129,3 +135,4 @@ Hilo B, orden T2.1 (página de inicio).
 - 2026-11-10: paginado cerrado. Búsqueda por capítulo en `paginate`, dobles páginas una línea largas, espacio elástico sobre títulos. Oz 2 páginas cortas y 0 desiguales; Leyendas 1 y 0; los otros tres libros 0 y 0. Pruebas locales: lint, typecheck, 355 tests, build, build:web (KDP check de Oz y Leyendas), e2e 46/46.
 - 2026-11-10: T1.6 hecha (caché, motor más rápido y hilo aparte de la web). Pruebas locales: lint, typecheck, 359 tests, build, build:web, e2e 47/47; calidad sin cambios.
 - 2026-11-10: T2.0 hecha. Gratis para siempre: los 12 formatos, los cinco temas (Classic, Modern, Elegant, Non-fiction, Large Print), notas al pie, cubierta completa, revisión previa de KDP, hoja de datos y letra grande; Pro conserva temas de género, índice, ediciones, cajas de libros y paquete de EPUB accesible. `FREE_SINCE_2026_11` en `tests/entitlements.test.ts` impide volver a cobrarlo. En la edición comunitaria (sin Pro) la pestaña KDP ahora se ve. Pruebas locales: lint, typecheck, 361 tests, build, build:web, e2e 48/48 (una prueba nueva exporta con el plan gratis un PDF 7 × 10 con notas al pie y la cubierta sin pantalla de Pro).
+- 2026-11-10: T2.1 hecha. Portada de venta sin JavaScript en `/es/` y `/en/`, pantalla vacía con zona para soltar el Word, `?start=import`. Pruebas locales: lint, typecheck, 377 tests, build, build:web, e2e 53/53 (nuevas: soltar un .docx, elegir archivo, `?start=import`, axe en la pantalla vacía y en `/es/` y `/en/`).

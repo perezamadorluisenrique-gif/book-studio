@@ -140,10 +140,13 @@ export class ParagraphSetter {
   constructor(
     private styler: Styler,
     private hyphenator: Hyphenator | null,
+    /** Word-processor look: greedy lines, no hyphens, no microtypography (see `LayoutCache`). */
+    private plain = false,
   ) {}
 
   /** The parts of a paragraph every way of setting it shares: atoms without the initial, and line widths. */
   private prepare(inlines: Inline[], base: RunStyle, opts: SetOptions) {
+    if (this.plain) opts = { ...opts, hyphenate: false, micro: false };
     const atoms = tokenize(inlines, opts.noteNumber);
     let dropCap: DropCap | undefined;
     let dropWidth = 0;
@@ -206,8 +209,9 @@ export class ParagraphSetter {
         breaks = attempt([1, 2, 4, 8]);
       }
     }
+    if (this.plain && !ragged) breaks = firstFit(items, lineWidth);
     breaks ??= firstFit(items, lineWidth);
-    const lines = this.lines(items, breaks, lineWidth, indentFor, opts.align, !!opts.micro);
+    const lines = this.lines(items, breaks, lineWidth, indentFor, opts.align, !!opts.micro && !this.plain);
     if (dropCap && lines.length <= dropCap.lines) {
       // Too short for an initial; set it plainly.
       return this.set(inlines, base, { ...opts, dropCap: undefined, indent: 0 });
