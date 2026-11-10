@@ -864,6 +864,15 @@ describe("web app, import a manuscript", () => {
     await writeFile(file, bytes);
     const check = await epubcheck(file);
     if (check) expect(check.ok, check.log).toBe(true);
+
+    // The book goes back to Word: a .docx with the chapters as headings, the table and the picture.
+    const [word] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Download as Word" }).click()]);
+    expect(word.suggestedFilename()).toMatch(/\.docx$/);
+    const docx = await JSZip.loadAsync(await readFile(await word.path()));
+    const xml = await docx.file("word/document.xml")!.async("string");
+    expect(xml).toContain("The storm");
+    expect(xml).toContain("<w:tbl>");
+    expect(Object.keys(docx.files).some((f) => f.startsWith("word/media/"))).toBe(true);
     await context.close();
   });
 
