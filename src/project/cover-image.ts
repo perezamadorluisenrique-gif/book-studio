@@ -80,3 +80,13 @@ export function removeCover(p: Project, now: number): Project {
   delete meta.cover;
   return { ...p, assets: p.assets.filter((a) => a.name !== old), meta, updatedAt: now };
 }
+
+/** The name of the front cover the cover designer renders for the EPUB. */
+export const EBOOK_COVER_NAME = "cover-ebook.jpg";
+
+/** Use these JPG bytes (a picture of the designed front cover) as the book's cover for the EPUB. */
+export function setEbookCover(p: Project, data: Uint8Array, now: number): Project {
+  const assets = p.assets.filter((a) => a.name !== EBOOK_COVER_NAME);
+  assets.push({ name: EBOOK_COVER_NAME, mime: "image/jpeg", data });
+  return { ...p, assets, meta: { ...p.meta, cover: EBOOK_COVER_NAME }, updatedAt: now };
+}

@@ -5,7 +5,8 @@
 
 import { clear, h } from "../app/dom";
 import { getLocale, t } from "../app/ui-i18n";
-import type { Built } from "../app/pipeline";
+import { exportCover, type Built } from "../app/pipeline";
+import type { OutputFile } from "../app/host";
 import { composeCover, type Cover } from "../engine/cover/cover";
 import { parseCoverDesign, type CoverDesign, type CoverLayer, type ImageLayer, type PanelId, type TextLayer } from "../engine/cover/design";
 import { layerBox } from "../engine/cover/render-design";
@@ -14,9 +15,11 @@ import { coverTemplateAllowed, type Plan } from "../engine/entitlements";
 import type { FontSet } from "../engine/fonts";
 import { imageInfo } from "../engine/images";
 import type { ImageAsset } from "../engine/model";
+import { bookSlug } from "../engine/epub";
 import { PagePainter } from "../preview/canvas";
+import { ebookCoverJpeg, socialPng } from "./cover-export";
 import { addImageLayer, addTextLayer, canRedo, canUndo, commit, layerById, layerName, moveLayer, patchLayer, redo, removeLayer, snapLayer, stackLayer, startHistory, undo, type CoverHistory, type SnapGuide } from "../project/cover-ops";
-import { MAX_COVER_BYTES, sniffImage } from "../project/cover-image";
+import { MAX_COVER_BYTES, setEbookCover, sniffImage } from "../project/cover-image";
 import type { Project, ProjectAsset } from "../project/model";
 
 export interface CoverEditorDeps {
@@ -26,6 +29,8 @@ export interface CoverEditorDeps {
   /** The book as last built and the fonts, or null when there is none yet. */
   base(): Promise<{ built: Built; fonts: FontSet } | null>;
   plan(): Plan;
+  /** Save a file the person asked for; resolves to where it went, or null if they cancelled. */
+  save(file: OutputFile): Promise<string | null>;
   notify(message: string): void;
   ask(d: { title: string; message: string; ok: string; cancel?: string }): Promise<"ok" | "cancel" | "extra">;
 }
@@ -62,6 +67,7 @@ class CoverEditor {
   private timer = 0;
   private dirty = false;
   private removed = false;
+  private ebook: Uint8Array | null = null;
   private resize: () => void;
 
   constructor(
@@ -175,9 +181,10 @@ class CoverEditor {
     const keep = this.removed ? undefined : this.history.present;
     const stripped = keep ? parseCoverDesign(keep).design : undefined;
     const base = this.deps.project() ?? this.project;
-    const next: Project = { ...base, assets: this.assets, updatedAt: Date.now() };
+    let next: Project = { ...base, assets: this.assets, updatedAt: Date.now() };
     if (stripped) next.coverDesign = stripped;
     else delete next.coverDesign;
+    if (this.ebook) next = setEbookCover(next, this.ebook, Date.now());
     this.deps.change(next);
   }
 
@@ -420,6 +427,22 @@ class CoverEditor {
       ),
     );
 
+    // Back cover and files
+    const barcode = h("select", { attr: { id: "cv-barcode" } }, h("option", { attr: { value: "isbn", selected: d.barcode !== "blank" }, text: t("cv.barcode.isbn") }), h("option", { attr: { value: "blank", selected: d.barcode === "blank" }, text: t("cv.barcode.blank") }));
+    barcode.addEventListener("change", () => this.apply({ ...this.design, barcode: barcode.value === "blank" ? "blank" : undefined }));
+    const fileButton = (id: string, key: "cv.pdf" | "cv.jpg" | "cv.png" | "cv.ebook", kind: "pdf" | "jpg" | "png" | "ebook") => h("button", { text: t(key), attr: { type: "button", id }, on: { click: () => void this.makeFile(kind) } });
+    this.side.append(
+      h(
+        "section",
+        { cls: "cv-sec" },
+        h("h3", { text: t("cv.files") }),
+        h("p", { cls: "cv-note", text: t("cv.backHelp") }),
+        h("label", { attr: { for: "cv-barcode" }, text: t("cv.barcode") }),
+        barcode,
+        h("div", { cls: "cv-files" }, fileButton("cv-pdf", "cv.pdf", "pdf"), fileButton("cv-jpg", "cv.jpg", "jpg"), fileButton("cv-png", "cv.png", "png"), fileButton("cv-ebook", "cv.ebook", "ebook")),
+      ),
+    );
+
     // Selected layer
     const sel = this.selected ? layerById(d, this.selected) : undefined;
     this.side.append(h("section", { cls: "cv-sec cv-props" }, h("h3", { text: t("cv.selected") }), ...(sel ? this.props(sel) : [h("p", { text: t("cv.none") })])));
@@ -497,6 +520,38 @@ class CoverEditor {
     const r = addTextLayer(this.design, panel, t("cv.newText"), color);
     this.apply(r.design);
     this.select(r.id);
+  }
+
+  /** The cover as it will print (no guides), from the design as it is now. */
+  private finalBook() {
+    this.commitDraft();
+    return { ...this.built.book, images: this.images, meta: { ...this.built.book.meta, coverLayout: this.history.present } };
+  }
+
+  private async makeFile(kind: "pdf" | "jpg" | "png" | "ebook"): Promise<void> {
+    try {
+      const book = this.finalBook();
+      const slug = bookSlug(book);
+      if (kind === "pdf") {
+        const out = await exportCover({ ...this.built, book }, this.fonts);
+        return this.saved(await this.deps.save({ name: out.name, mime: "application/pdf", data: out.data }));
+      }
+      const cover = composeCover(book, this.fonts, this.built.layout.pages.length);
+      if (kind === "png") return this.saved(await this.deps.save({ name: `${slug}-social.png`, mime: "image/png", data: await socialPng(cover, this.painter, this.history.present.background.color) }));
+      const jpg = await ebookCoverJpeg(cover, this.painter);
+      if (kind === "jpg") return this.saved(await this.deps.save({ name: `${slug}-front-cover.jpg`, mime: "image/jpeg", data: jpg }));
+      this.ebook = jpg;
+      this.dirty = true;
+      this.save();
+      this.deps.notify(t("cv.ebookDone"));
+      this.say(t("cv.ebookDone"));
+    } catch (e) {
+      this.deps.notify(t("cv.failed", { error: e instanceof Error ? e.message : String(e) }));
+    }
+  }
+
+  private saved(where: string | null): void {
+    if (where) this.deps.notify(t("cv.saved", { where }));
   }
 
   private async addPicture(input: HTMLInputElement, panel: PanelId): Promise<void> {

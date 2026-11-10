@@ -19,10 +19,16 @@ export interface CoverInfo {
   /** The book's front cover picture, if it has one; picture templates use it. */
   coverTarget?: string;
   coverAlt?: string;
+  /** The author photo from the book details, shown beside the bio. */
+  photoTarget?: string;
+  photoAlt?: string;
   spineTitle?: string;
   /** Which variant of a generative background (1, 2, 3…). */
   variant: number;
 }
+
+/** The file name the designer gives the ebook cover it renders. */
+export const EBOOK_COVER = /^cover-ebook\./i;
 
 export function coverInfo(book: Pick<Book, "meta">, variant = 1): CoverInfo {
   const { meta } = book;
@@ -34,8 +40,11 @@ export function coverInfo(book: Pick<Book, "meta">, variant = 1): CoverInfo {
     tagline: meta.coverDesign.tagline,
     blurb: meta.coverDesign.blurb,
     bio: meta.coverDesign.bio,
-    coverTarget: meta.cover?.target,
+    // A cover made by the designer for the ebook is a picture of the design itself; it never goes back into a template.
+    coverTarget: meta.cover?.path && !EBOOK_COVER.test(meta.cover.target) ? meta.cover.target : undefined,
     coverAlt: meta.cover?.alt,
+    photoTarget: meta.coverDesign.photo?.path ? meta.coverDesign.photo.target : undefined,
+    photoAlt: meta.coverDesign.photo?.alt,
     spineTitle: meta.coverDesign.spineTitle,
     variant,
   };
@@ -167,10 +176,15 @@ function backLayers(look: Look, info: CoverInfo, g: CoverGeometry): CoverLayer[]
     const bioRoom = info.bio.length ? 0.2 : 0.05;
     out.push(text("back", 0.1, y, 0.8, Math.max(barTop - bioRoom - y, 0.2), info.blurb.join("\n\n"), { family: look.body, size: 12, minSize: 8, color: inkOnBack, align: "left", lineHeight: 1.35 }));
   }
-  if (info.bio.length) {
+  if (info.bio.length || info.photoTarget) {
     const top = barTop - 0.02;
     const bottom = 1 - SAFE / g.back.h - 0.01;
-    out.push(text("back", 0.1, top, Math.max(barLeft - 0.14, 0.3), bottom - top, info.bio.join("\n"), { family: look.body, size: 9, minSize: 7, color: inkOnBack, align: "left", valign: "bottom", lineHeight: 1.3 }));
+    // The photo is a square about 0.9 in on a side, bottom-aligned with the bio.
+    const photoH = 0.9 / g.back.h;
+    const photoW = 0.9 / g.back.w;
+    if (info.photoTarget) out.push({ id: `i${++counter}`, kind: "image", panel: "back", x: 0.1, y: bottom - photoH, w: photoW, h: photoH, target: info.photoTarget, alt: info.photoAlt ?? "", fit: "cover" });
+    const left = info.photoTarget ? 0.1 + photoW + 0.03 : 0.1;
+    if (info.bio.length) out.push(text("back", left, top, Math.max(barLeft - 0.04 - left, 0.2), bottom - top, info.bio.join("\n"), { family: look.body, size: 9, minSize: 7, color: inkOnBack, align: "left", valign: "bottom", lineHeight: 1.3 }));
   }
   return out;
 }

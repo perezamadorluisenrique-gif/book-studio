@@ -90,9 +90,11 @@ export function composeCover(book: Book, fonts: FontSet, pages: number, opts: Co
   }
 
   // ── Barcode box ──
-  const isbn = meta.isbnPrint ? checkIsbn(meta.isbnPrint) : null;
+  const blank = meta.coverLayout?.barcode === "blank";
+  const isbn = meta.isbnPrint && !blank ? checkIsbn(meta.isbnPrint) : null;
   const bar = barcodeBox(painter, g.barcode, isbn && isbn.ok ? isbn.isbn13 : null, meta.isbnPrint ?? "", old);
-  if (!meta.isbnPrint) findings.push({ severity: "info", message: "No ISBN in the manifest, so the barcode area is left blank. KDP places its own barcode there if you let it assign an ISBN." });
+  if (blank) findings.push({ severity: "info", message: "The barcode area is left blank on purpose. KDP places its own barcode there if you let it assign an ISBN." });
+  else if (!meta.isbnPrint) findings.push({ severity: "info", message: "No ISBN in the manifest, so the barcode area is left blank. KDP places its own barcode there if you let it assign an ISBN." });
   else if (isbn && !isbn.ok) findings.push({ severity: "warning", message: `The ISBN ${meta.isbnPrint} is not valid (${isbn.reason === "checksum" ? "its check digit is wrong" : isbn.reason === "prefix" ? "it doesn't start with 978 or 979" : "it needs 10 or 13 digits"}), so the barcode area is left blank.` });
 
   if (opts.guides) guides(draws, g);

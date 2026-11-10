@@ -288,6 +288,7 @@ const workspace = new Workspace($("workspace"), {
         change: (next) => workspace.applyProject(next),
         base: () => studio.coverBase(),
         plan: () => license.plan(),
+        save: (file) => host.save(file),
         notify: toast,
         ask: (d) => host.ask(d),
       },

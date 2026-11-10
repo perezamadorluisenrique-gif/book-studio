@@ -140,6 +140,10 @@ En la misma máquina y momento, `main` medía 816, 928, 594, 1036 y 601 ms. Capt
 - T4.3: la lógica pura está en `src/project/cover-ops.ts` (historial, mover, imán, capas) con 7 pruebas; el recorte y oscurecer, en el motor (`zoom`, `focusX/Y`, `dim` con velo negro o blanco: `RectDraw.opacity` nuevo en el PDF y el canvas). El diseño se guarda 500 ms después del último cambio y al cerrar. La imagen subida es un recurso del libro (`cover-art-N.jpg|png`).
 - T4.3, desviaciones: no hay asas para cambiar el tamaño de una capa con el ratón (hay `resizeLayer` en las operaciones, sin pantalla); las líneas finas (reglas y marcos) no tienen recuadro para señalarlas pero sí están en la lista de capas. «Alinear a guías» es el imán al mover, no un botón de alinear. No se probó con un lector de pantalla real, solo axe (sin fallos graves en escritorio y móvil de 390 px).
 
+- T4.4 (2026-11-10): contraportada y archivos. Las plantillas ponen la foto del autor (de los datos del libro) junto a la biografía; el logotipo de editorial se añade como capa de imagen en la contraportada. Opción de código de barras: dibujar el del ISBN o dejar el hueco en blanco (`design.barcode: "blank"`). En el diseñador, botones para descargar el PDF de cubierta, la portada en JPG de 1600 × 2560, una imagen de 1200 × 630 para redes y «Usar esta portada en el EPUB» (guarda `cover-ebook.jpg` como portada del libro; las plantillas con imagen ignoran ese archivo para no meterse a sí mismas).
+- T4.4: el JPG sale de la portada recortada al centro a 1600 × 2560; una portada de 6 × 9 pierde algo más de un 6 % de ancho (la zona segura de 0,25 in lo deja pasar). El PNG de redes pone la portada sobre el color de fondo del diseño, con sombra. Prueba: el PDF tiene el tamaño de `coverGeometry` en 9 combinaciones (5×8, 6×9, 8,5×11 con 100, 250 y 400 páginas), y el e2e comprueba las dimensiones del JPG y del PNG descargados.
+- T4.4, desviación: con «Volver a la cubierta sencilla» el EPUB sigue con `cover-ebook.jpg` (es una imagen del diseño con el título dentro) hasta que se cambie la portada en los datos del libro. No hay ajuste propio para el logotipo (es una capa de imagen como otra).
+
 Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Diario
@@ -148,7 +152,7 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilo D, órdenes T4.4 y T4.5 (editor de cubiertas). T4.1 a T4.3 hechas. Hilos A, B y C terminados.
+Hilo D, órdenes T4.5 (cubierta en el asistente). T4.1 a T4.4 hechas. Hilos A, B y C terminados.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
@@ -163,3 +167,4 @@ Hilo D, órdenes T4.4 y T4.5 (editor de cubiertas). T4.1 a T4.3 hechas. Hilos A,
 - 2026-11-10: T4.1 hecha. Cubierta por capas con su JSON en el proyecto, `renderDesign` y avisos; números de KDP comprobados (barcode sin fuente). Pruebas locales: ver PR.
 - 2026-11-10: T4.2 hecha. 20 plantillas, 6 fondos generativos, dibujos `path` y `gradient`.
 - 2026-11-10: T4.3 hecha. Diseñador de cubiertas en la web con deshacer, imán, plantillas, imágenes y revisiones en vivo.
+- 2026-11-10: T4.4 hecha. Contraportada con foto, opción de barras, PDF, JPG de ebook y PNG de redes.
