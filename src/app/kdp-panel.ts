@@ -1,12 +1,9 @@
 // The KDP tab: the preflight, the full paperback cover and the metadata sheet.
-// Seeing them is always free; running the preflight, exporting the cover and the
-// sheet are part of Pro.
+// All three are free.
 
-import { FREE_EDITION } from "../config";
 import { composeCover } from "../engine/cover/cover";
 import { bookSlug } from "../engine/epub";
 import { coverPixels, PAPER_LABEL } from "../engine/cover/geometry";
-import { hasFeature, type ExportBlocker, type Plan } from "../engine/entitlements";
 import type { FontSet } from "../engine/fonts";
 import { buildKdpSheet } from "../engine/kdp-sheet";
 import { PREFLIGHT_DISCLAIMER, runPreflight, type PreflightReport } from "../engine/preflight";
@@ -19,15 +16,11 @@ import { t, tn } from "./ui-i18n";
 
 export interface KdpContext {
   host: StudioHost;
-  plan(): Plan;
   built(): Built | null;
   fonts(): Promise<FontSet>;
   painter(): PagePainter | null;
-  /** Ask before something the plan doesn't include; resolves true to go ahead. */
-  gate(blockers: ExportBlocker[]): Promise<boolean>;
   write(message: string, make: () => Promise<{ name: string; mime: string; data: Uint8Array | string }>): Promise<void>;
   showPage(folio: string): void;
-  openLicense(): void;
 }
 
 const severityWord = (s: "error" | "warning" | "info"): string => t(`kdp.sev.${s}`);
@@ -44,14 +37,10 @@ export class KdpPanel {
     private ctx: KdpContext,
   ) {}
 
-  private pro(feature: "preflight" | "cover" | "kdpSheet"): boolean {
-    return hasFeature(this.ctx.plan(), feature);
-  }
-
   render(): void {
     const built = this.ctx.built();
     clear(this.panel);
-    if (!built || FREE_EDITION) return;
+    if (!built) return;
     if (this.reportFor !== built) {
       this.report = null;
       this.reportFor = built;
@@ -65,10 +54,6 @@ export class KdpPanel {
   private preflightSection(built: Built): HTMLElement {
     const sec = h("section", { cls: "bs-section" }, h("h3", { text: t("kdp.preflightTitle") }));
     append(sec, h("p", { text: t("kdp.preflightIntro") }));
-    if (!this.pro("preflight")) {
-      append(sec, h("p", { cls: "bs-pro-note", text: t("kdp.preflightPro") }), h("button", { cls: "mod-cta", text: t("kdp.getPro"), on: { click: () => this.ctx.openLicense() } }));
-      return sec;
-    }
     const run = h("button", { cls: "mod-cta", text: this.report ? t("kdp.checkAgain") : t("kdp.check") });
     run.disabled = this.running;
     run.addEventListener("click", () => void this.runCheck(built));
@@ -99,7 +84,6 @@ export class KdpPanel {
   }
 
   private async runCheck(built: Built): Promise<void> {
-    if (!(await this.ctx.gate(this.pro("preflight") ? [] : [{ feature: "preflight", message: t("kdp.preflightGate") }]))) return;
     this.running = true;
     this.render();
     try {
@@ -140,7 +124,7 @@ export class KdpPanel {
       this.ctx.host.store.set("coverGuides", guides.checked);
       this.render();
     });
-    const exp = h("button", { cls: "mod-cta", text: this.pro("cover") ? t("kdp.exportCover") : t("kdp.exportCoverPro") });
+    const exp = h("button", { cls: "mod-cta", text: t("kdp.exportCover") });
     exp.addEventListener("click", () => void this.exportCover(built));
     append(sec, h("div", { cls: "bs-bar" }, h("label", { cls: "bs-check" }, guides, t("kdp.coverGuides")), exp));
     const canvas = h("canvas", { cls: "bs-cover-canvas", attr: { role: "img", "aria-label": t("kdp.coverAria", { width: g.width.toFixed(2), height: g.height.toFixed(2) }) } });
@@ -175,7 +159,6 @@ export class KdpPanel {
   fontsNow: FontSet | null = null;
 
   private async exportCover(built: Built): Promise<void> {
-    if (!(await this.ctx.gate(this.pro("cover") ? [] : [{ feature: "cover", message: t("kdp.coverGate") }]))) return;
     await this.ctx.write(t("kdp.writingCover"), async () => {
       const out = await exportCover(built, await this.ctx.fonts());
       return { name: out.name, mime: "application/pdf", data: out.data };
@@ -187,10 +170,6 @@ export class KdpPanel {
   private sheetSection(built: Built): HTMLElement {
     const sec = h("section", { cls: "bs-section" }, h("h3", { text: t("kdp.sheetTitle") }));
     append(sec, h("p", { text: t("kdp.sheetIntro") }));
-    if (!this.pro("kdpSheet")) {
-      append(sec, h("p", { cls: "bs-pro-note", text: t("kdp.sheetPro") }), h("button", { text: t("kdp.getPro"), on: { click: () => this.ctx.openLicense() } }));
-      return sec;
-    }
     const sheet = buildKdpSheet(built.book, built.layout.pages.length);
     if (sheet.problems.length) append(sec, h("ul", { cls: "bs-problems" }, ...sheet.problems.map((p) => h("li", { cls: "is-warning" }, h("strong", { text: `${t("kdp.sev.warning")}: ` }), p))));
     const rows = sheet.fields.map((f) =>

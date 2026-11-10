@@ -4,7 +4,7 @@
 import { clear, h } from "../app/dom";
 import { t, getLocale } from "../app/ui-i18n";
 import { FREE_EDITION } from "../config";
-import { themeAllowed, trimAllowed, type Plan } from "../engine/entitlements";
+import { themeAllowed, type Plan } from "../engine/entitlements";
 import { THEMES } from "../engine/themes";
 import { DEFAULT_TRIM, trimById, TRIMS } from "../engine/trims";
 import { coverAsset, frontCoverPixels, imageSize, MAX_COVER_BYTES, removeCover, setCover, sniffImage } from "../project/cover-image";
@@ -169,7 +169,7 @@ export class DetailsForm {
       { cls: "dt-group" },
       h("legend", { text: t("dt.sectionLayout") }),
       make(this.id("theme"), t("dt.f.theme"), "theme", theme, THEMES.map((x) => ({ value: x.id, label: x.name, ok: themeAllowed(plan, x.id) }))),
-      make(this.id("trim"), t("dt.f.trim"), "trim", trim, TRIMS.map((x) => ({ value: x.id, label: x.label, ok: trimAllowed(plan, x.id) }))),
+      make(this.id("trim"), t("dt.f.trim"), "trim", trim, TRIMS.map((x) => ({ value: x.id, label: x.label, ok: true }))),
     );
   }
 

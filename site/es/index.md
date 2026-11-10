@@ -27,4 +27,4 @@ Los dos libros se hicieron con el plan gratuito. Descarga el PDF de imprenta, el
 
 ## Pro
 
-[Book Studio Pro](pro:) añade nueve formatos de KDP más, más temas, una revisión previa para KDP, la cubierta completa, notas al pie, índice analítico, cajas de libros (box sets) y el paquete de EPUB accesible (pago único).
+Todos los formatos de KDP, cinco temas, las notas al pie, la cubierta completa y la revisión previa de KDP son gratis. [Book Studio Pro](pro:) añade temas de género, índice analítico, cajas de libros (box sets) y el paquete de EPUB accesible (pago único).

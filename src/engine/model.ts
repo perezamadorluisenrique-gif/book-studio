@@ -169,7 +169,7 @@ export type RunningHeads = "author-title" | "title-chapter" | "none";
 
 export type Paper = "white" | "cream" | "color";
 
-/** Where notes go in print: all together at the end of the book, or at the foot of the page that calls them (Pro). */
+/** Where notes go in print: all together at the end of the book, or at the foot of the page that calls them. */
 export type NotePlacement = "end" | "page";
 
 export interface BookSettings {

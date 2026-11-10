@@ -546,11 +546,12 @@ describe("web app, book details and cover", () => {
     expect(await page.locator("#dt-keywords-err").textContent()).toContain("only the first 7");
     await keywords.fill(DATA.Keywords);
 
-    // Pro themes show as disabled with the Pro label; a free trim is allowed.
-    const elegant = page.locator("#dt-theme option[value=elegant]");
-    expect(await elegant.isDisabled()).toBe(true);
-    expect(await elegant.textContent()).toContain("Pro");
-    expect(await page.locator("#dt-theme option[value=modern]").isDisabled()).toBe(false);
+    // Genre themes show as disabled with the Pro label; Elegant, every trim and the other free themes are allowed.
+    const thriller = page.locator("#dt-theme option[value=thriller]");
+    expect(await thriller.isDisabled()).toBe(true);
+    expect(await thriller.textContent()).toContain("Pro");
+    for (const free of ["modern", "elegant", "nonfiction", "large-print"]) expect(await page.locator(`#dt-theme option[value=${free}]`).isDisabled(), free).toBe(false);
+    expect(await page.locator("#dt-trim option[value=\"7x10\"]").isDisabled()).toBe(false);
     await field(page, "Trim size").selectOption("5x8");
     await saved(page);
 
@@ -710,6 +711,32 @@ describe("web app, copies and folders", () => {
     const imported = await exportPdfPages(page);
     expect(imported).toBe(direct);
     expect(imported).toBeGreaterThan(24);
+    await context.close();
+  });
+
+  it("exports with the free plan a 7 × 10 PDF with footnotes at the foot of the page and the full cover, with no gate", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "bs-free-"));
+    await writeFile(join(dir, "Free book.md"), "---\nbook: true\ntitle: Free book\nauthor: A. Writer\nlanguage: en\ntheme: elegant\ntrim: 7x10\nfootnotes: page\n---\n\n## Chapters\n\n1. [[One]]\n");
+    const body = Array.from({ length: 40 }, (_, i) => `Paragraph ${i + 1} walks on, with a note.[^n${i}]`).join("\n\n");
+    const notes = Array.from({ length: 40 }, (_, i) => `[^n${i}]: Note number ${i + 1}, set at the foot of its page.`).join("\n");
+    await writeFile(join(dir, "One.md"), `# One\n\n${body}\n\n${notes}\n`);
+    const { context, page } = await plainPage();
+    await page.getByRole("button", { name: "My books" }).click();
+    const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Import a folder" }).click()]);
+    await chooser.setFiles(dir);
+    await page.getByRole("button", { name: /^Open Free book/ }).click();
+    await page.getByRole("button", { name: "Export print PDF" }).waitFor();
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    // No dialog asks for Pro: the download starts at once.
+    const [pdf] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export print PDF" }).click()]);
+    expect(pdf.suggestedFilename()).toContain("7x10");
+    expect(pdf.suggestedFilename()).not.toContain("SAMPLE");
+    const r = await checkKdpPdf(new Uint8Array(await readFile(await pdf.path())), trimById("7x10")!, { bleed: false });
+    expect(r.errors).toEqual([]);
+    await page.getByRole("tab", { name: "KDP" }).click();
+    const [cover] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export cover PDF" }).click()]);
+    expect(cover.suggestedFilename()).toMatch(/cover.*\.pdf$/);
+    expect(await page.getByText("part of Book Studio Pro").count()).toBe(0);
     await context.close();
   });
 

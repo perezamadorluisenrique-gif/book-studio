@@ -27,7 +27,7 @@ Add one more note with `book: true` in its front matter. Under `## Front matter`
 
 ## 3. Choose the trim size
 
-Pick your trim before you worry about anything else, because it decides the page count and the margins. The free plan prints 6 × 9 in, KDP's most common paperback size, plus 5 × 8 and 5.5 × 8.5. Book Studio Pro adds nine more trims (one-time purchase): [see Pro](pro:). All the KDP trims, the margin table and the bleed rules are in [KDP trim sizes, margins and bleed](guide:kdp-trim-sizes).
+Pick your trim before you worry about anything else, because it decides the page count and the margins. Every trim Book Studio supports is free, starting with 6 × 9 in, KDP's most common paperback size. All the KDP trims, the margin table and the bleed rules are in [KDP trim sizes, margins and bleed](guide:kdp-trim-sizes).
 
 The inside margin depends on page count, and Book Studio sets it for you:
 
@@ -51,7 +51,7 @@ Decide on bleed here. You need it only if an image or color reaches the page edg
 
 ## 6. Export the PDF and EPUB
 
-Export the print PDF and the EPUB. Book Studio builds the front and back matter, applies the inside margin for your page count, embeds the fonts and pads the book to KDP's 24-page minimum. It also reports the spine width. Your cover designer needs that number, because the free plan has no cover designer of its own.
+Export the print PDF and the EPUB. Book Studio builds the front and back matter, applies the inside margin for your page count, embeds the fonts and pads the book to KDP's 24-page minimum. It also reports the spine width. Your cover designer needs that number, because Book Studio has no cover designer yet; it only builds the full cover sheet.
 
 The EPUB has a navigable table of contents, the book's language on every page and your image descriptions. To see what is checked, read [the accessible EPUB guide](guide:accessible-epub).
 

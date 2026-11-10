@@ -27,4 +27,4 @@ Both books were built with the free plan. Download the print PDF, the EPUB, or t
 
 ## Pro
 
-[Book Studio Pro](pro:) adds nine more KDP trims, more themes, a KDP preflight check, a full wraparound cover, footnotes, an index, box sets and the accessible-EPUB pack (one-time purchase).
+Every KDP trim, five themes, footnotes, the full wraparound cover and the KDP preflight check are free. [Book Studio Pro](pro:) adds genre themes, an index, box sets and the accessible-EPUB pack (one-time purchase).

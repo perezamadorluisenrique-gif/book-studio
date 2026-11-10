@@ -16,23 +16,23 @@ KDP los da en pulgadas, ancho × alto. En la ayuda en español se llaman «tama�
 | Formato (pulgadas) | En Book Studio |
 |---|---|
 | 5 × 8 | Gratis |
-| 5,06 × 7,81 | Pro |
-| 5,25 × 8 | Pro |
+| 5,06 × 7,81 | Gratis |
+| 5,25 × 8 | Gratis |
 | 5,5 × 8,5 | Gratis |
 | 6 × 9 | El más habitual en KDP; gratis |
-| 6,14 × 9,21 | Pro |
-| 6,69 × 9,61 | Pro |
-| 7 × 10 | Pro |
-| 7,44 × 9,69 | Pro |
-| 7,5 × 9,25 | Pro |
-| 8 × 10 | Pro |
+| 6,14 × 9,21 | Gratis |
+| 6,69 × 9,61 | Gratis |
+| 7 × 10 | Gratis |
+| 7,44 × 9,69 | Gratis |
+| 7,5 × 9,25 | Gratis |
+| 8 × 10 | Gratis |
 | 8,25 × 6 | Aún no en Book Studio |
 | 8,25 × 8,25 | Aún no en Book Studio |
 | 8,5 × 8,5 | Aún no en Book Studio |
-| 8,5 × 11 | Pro |
+| 8,5 × 11 | Gratis |
 | 8,27 × 11,69 | A4; aún no en Book Studio |
 
-El 6 × 9 es el tamaño de tapa blanda más habitual en KDP. El plan gratuito de Book Studio imprime en 6 × 9, 5 × 8 y 5,5 × 8,5. Book Studio Pro añade los otros nueve formatos de la tabla (pago único): [ver Pro](pro:). Los cuatro formatos más grandes o cuadrados aún no están en Book Studio.
+El 6 × 9 es el tamaño de tapa blanda más habitual en KDP. Book Studio imprime todos los formatos marcados como gratis en la tabla, sin coste y sin marca de agua. Los cuatro formatos más grandes o cuadrados aún no están en Book Studio.
 
 ## El margen interior depende del número de páginas
 
