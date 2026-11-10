@@ -21,11 +21,11 @@ const fonts = await FontSet.load(async (f) => new Uint8Array(readFileSync(new UR
 await measureAll(root, fonts);
 const results = await measureAll(root, fonts);
 
-say(`| Book | Pages | Lines | Short pages | Uneven spreads | Ladders | Very loose | Loose | Widows | Orphans | Hyphen turns | Hyphens | Layout ms |`);
-say(`|---|---|---|---|---|---|---|---|---|---|---|---|---|`);
+say(`| Book | Pages | Lines | Short pages | Uneven spreads | Ladders | Very loose | Loose | Widows | Orphans | Hyphen turns | Hyphens | Long pages | Layout ms |`);
+say(`|---|---|---|---|---|---|---|---|---|---|---|---|---|---|`);
 for (const r of results) {
   const q = r.quality;
-  say(`| ${r.book} | ${r.pages} | ${q.lines} | ${DEFECTS.map((d) => q[d]).slice(0, 8).join(" | ")} | ${q.hyphens} | ${r.ms} |`);
+  say(`| ${r.book} | ${r.pages} | ${q.lines} | ${DEFECTS.map((d) => q[d]).slice(0, 8).join(" | ")} | ${q.hyphens} | ${q.longPages} | ${r.ms} |`);
 }
 
 if (process.argv.includes("--write")) {

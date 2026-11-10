@@ -39,6 +39,8 @@ export interface FootnoteSource {
 export interface VSpace {
   type: "space";
   height: number;
+  /** Extra height the page builder may add here to bring the last line down to the foot of the page. */
+  stretch?: number;
 }
 
 export interface VNewPage {
@@ -77,10 +79,12 @@ interface Fill {
   hyphenEnd: boolean;
   /** Whole lines of the capacity left empty (0 on a final page, or without a line height). */
   short: number;
+  /** Height added to the stretchable spaces of the page, already counted in `used`. */
+  grow: number;
 }
 
 /** Fills one page from item `i`: the same greedy rule for every caller. `null` when no box is left. */
-function fill(items: VItem[], i: number, capacity: number, foot: FootnoteSource | undefined, unit: number | undefined): Fill | null {
+function fill(items: VItem[], i: number, capacity: number, foot: FootnoteSource | undefined, unit: number | undefined, flex = false): Fill | null {
   const n = items.length;
   const eps = 0.01;
   while (i < n && items[i].type !== "box") i++;
@@ -129,8 +133,21 @@ function fill(items: VItem[], i: number, capacity: number, foot: FootnoteSource 
   const last = items[end];
   const hyphenEnd = last.type === "box" && !!last.q?.hyphen;
   let short = 0;
-  if (unit && !final) short = Math.max(0, Math.floor((capacity - used - notesHeight(items, i, end, foot) + eps) / unit));
-  return { start: i, end, used, final, overflow, hyphenEnd, short };
+  let grow = 0;
+  if (unit && !final) {
+    const room = capacity - used - notesHeight(items, i, end, foot);
+    if (flex && room > eps) {
+      let can = 0;
+      for (let k = i; k <= end; k++) {
+        const it = items[k];
+        if (it.type === "space" && it.stretch) can += it.stretch;
+      }
+      grow = Math.min(room, can);
+      used += grow;
+    }
+    short = Math.max(0, Math.floor((room - grow + eps) / unit));
+  }
+  return { start: i, end, used, final, overflow, hyphenEnd, short, grow };
 }
 
 /** Height the footnotes called between items `from` and `to` take at the foot of the page. */
@@ -148,9 +165,16 @@ function notesHeight(items: VItem[], from: number, to: number, foot?: FootnoteSo
 }
 
 /** Draws the page `f` describes. `capacity` places the footnotes; `statCapacity` is the real one, for the stats. */
-function emit(items: VItem[], f: Fill, capacity: number, statCapacity: number, foot: FootnoteSource | undefined, unit: number | undefined): FlowPage {
+function emit(items: VItem[], f: Fill, capacity: number, statCapacity: number, foot: FootnoteSource | undefined, unit: number | undefined, long = 0): FlowPage {
   const page: FlowPage = { draws: [], used: 0, overflow: f.overflow, stats: emptyStats() };
   let y = 0;
+  let can = 0;
+  if (f.grow > 0) {
+    for (let k = f.start; k <= f.end; k++) {
+      const it = items[k];
+      if (it.type === "space" && it.stretch) can += it.stretch;
+    }
+  }
   for (let k = f.start; k <= f.end; k++) {
     const it = items[k];
     if (it.type === "newpage") continue;
@@ -159,6 +183,8 @@ function emit(items: VItem[], f: Fill, capacity: number, statCapacity: number, f
       if (!page.start && it.start) page.start = it.start;
     }
     y += it.height;
+    // Every stretchable space takes its share of what the page needs to reach the foot.
+    if (can > 0 && it.type === "space" && it.stretch) y += (f.grow * it.stretch) / can;
   }
   page.used = y;
   if (foot) {
@@ -176,72 +202,38 @@ function emit(items: VItem[], f: Fill, capacity: number, statCapacity: number, f
   }
   const real = f.final || !unit ? f : { ...f, short: Math.max(0, Math.floor((statCapacity - f.used - notesHeight(items, f.start, f.end, foot) + 0.01) / unit)) };
   page.stats = pageStats(items, f.start, f.end, real.short, f.final, f.hyphenEnd);
+  if (!f.final) page.stats.long = Math.max(0, long);
   return page;
 }
-
-/** What a page costs: lines it falls short of full, and a right-hand page that ends on a hyphen. A final page costs nothing. */
-const pageCost = (f: Fill, recto: boolean): number => (f.final ? 0 : f.short * 100 + (f.hyphenEnd && recto ? 10 : 0));
 
 /** The items with the `size` boxes from `at` replaced. */
 function splice(items: VItem[], at: number, size: number, boxes: VBox[]): VItem[] {
   return [...items.slice(0, at), ...boxes, ...items.slice(at + size)];
 }
 
-/** Index of the first box with a paragraph group at or after `from`, or items.length. */
-function nextGroup(items: VItem[], from: number): number {
-  for (let k = from; k < items.length; k++) {
-    const it = items[k];
-    if (it.type === "box" && it.group) return k;
-  }
-  return items.length;
-}
+// What the page builder pays for each flaw when it balances a chapter. A short page is the flaw to avoid;
+// a facing pair that ends at two heights is worse than both pages a line short.
+const COST_SHORT = 100;
+const COST_LONG = 30;
+const COST_UNEVEN = 1000;
+const COST_STUB = 150;
+const COST_HYPHEN_TURN = 60;
+const COST_ALT = 3;
+/** Per line of space added above headings and around breaks. */
+const COST_STRETCH = 15;
+/** A last page with fewer lines than this is a stub. */
+const STUB_LINES = 4;
+/** Pages the search may open before it settles for the best start found so far. */
+const SEARCH_LIMIT = 6000;
 
-/**
- * One page, with a repair: when it comes out short (or ends on a hyphen at the right), try setting one of
- * its paragraphs, or the one that starts on the next page, with one line more or less. The result may be a
- * new item list with the re-set paragraph in it.
- */
-function layPage(items: VItem[], i: number, capacity: number, recto: boolean, foot: FootnoteSource | undefined, unit: number | undefined): { items: VItem[]; f: Fill } | null {
-  let f = fill(items, i, capacity, foot, unit);
-  if (!f) return null;
-  let cost = pageCost(f, recto);
-  if (cost === 0 || !unit) return { items, f };
-  // Up to three one-line adjustments, each the best of its round, and only while the cost keeps falling.
-  for (let round = 0; round < 3 && cost > 0; round++) {
-    const limit = nextGroup(items, f.end + 1);
-    let best: { items: VItem[]; f: Fill; cost: number } | null = null;
-    // From the last paragraph back: those nearest the break are the likeliest to settle it. More lines first, since that fills the page.
-    for (let k = Math.min(limit, items.length - 1); k >= f.start; k--) {
-      const it = items[k];
-      if (it.type !== "box" || !it.group || it.group.adjusted) continue;
-      for (const delta of [1, -1] as const) {
-        const alt = it.group.alt(delta);
-        if (!alt) continue;
-        const trial = splice(items, k, it.group.size, alt);
-        const tf = fill(trial, f.start, capacity, foot, unit);
-        if (!tf) continue;
-        const c = pageCost(tf, recto);
-        if (c < (best?.cost ?? cost)) best = { items: trial, f: tf, cost: c };
-      }
-      if (best && best.cost === 0) break;
-    }
-    if (!best) break;
-    items = best.items;
-    f = best.f;
-    cost = best.cost;
-  }
-  return { items, f };
-}
-
-/** Lines to take off the left and the right page of a facing pair, fewest first. */
-const REDUCTIONS: [number, number][] = [[0, 0], [1, 0], [0, 1], [1, 1], [2, 0], [0, 2], [2, 1], [1, 2], [2, 2]];
-
-interface PageRec {
-  page: FlowPage;
-  /** Where the page starts in the item list (valid in every later list too: edits only touch what comes after). */
-  from: number;
-  fill: Fill;
-  recto: boolean;
+/** One way of ending a page: the item list (a paragraph may be re-set in it), where it ends, and how many lines it is off full. */
+interface PageOpt {
+  items: VItem[];
+  f: Fill;
+  /** Lines over (+) or under (−) the full page; 0 on a final page. */
+  dev: number;
+  /** Paragraphs re-set to get here. */
+  alts: number;
 }
 
 export interface PaginateOptions {
@@ -251,6 +243,28 @@ export interface PaginateOptions {
   balance?: boolean;
   /** The first page of the flow is a right-hand page (the default when balancing). */
   firstRecto?: boolean;
+  /** Lines a facing pair may run past the foot of the page, both pages alike (0 by default). */
+  maxLong?: number;
+}
+
+interface PlacedPage {
+  items: VItem[];
+  f: Fill;
+  dev: number;
+  cap: number;
+}
+
+interface SearchNode {
+  items: VItem[];
+  /** Where the next page starts. */
+  i: number;
+  pageNo: number;
+  cost: number;
+  parent: SearchNode | null;
+  /** The pages laid to get here from `parent`. */
+  pages: PlacedPage[];
+  done: boolean;
+  closed?: boolean;
 }
 
 /** `capacity` can depend on the page, for a flow that starts below a heading. */
@@ -270,95 +284,195 @@ export function paginate(items: VItem[], capacityOf: number | ((page: number) =>
   }
   const firstRecto = opts.firstRecto ?? true;
   const rectoAt = (no: number) => (firstRecto ? no % 2 === 0 : no % 2 === 1);
-  const hasMore = (list: VItem[], from: number) => {
-    for (let k = from; k < list.length; k++) if (list[k].type === "box") return true;
-    return false;
+  const devs: number[] = [];
+  for (let d = Math.max(0, Math.floor(opts.maxLong ?? 0)); d >= -2; d--) devs.push(d);
+  const firstBox = (list: VItem[], from: number): number => {
+    let k = from;
+    while (k < list.length && list[k].type !== "box") k++;
+    return k;
   };
 
-  /** Lays the flow out from item `from` as page `no`, a facing pair at a time. */
-  const run = (list: VItem[], from: number, no: number): { items: VItem[]; pages: PageRec[] } => {
-    const pages: PageRec[] = [];
-    let i = from;
-    let items = list;
-    while (hasMore(items, i)) {
-      const pageNo = no + pages.length;
-      if (rectoAt(pageNo)) {
-        const c = cap(pageNo);
-        const r = layPage(items, i, c, true, foot, unit);
-        if (!r) break;
-        items = r.items;
-        pages.push({ page: emit(items, r.f, c, c, foot, unit), from: r.f.start, fill: r.f, recto: true });
-        i = r.f.end + 1;
-        continue;
+  // Lists with one paragraph re-set, so the same edit of the same list is the same list.
+  const edits = new WeakMap<VItem[], Map<string, VItem[] | null>>();
+  const edited = (list: VItem[], k: number, delta: -1 | 1): VItem[] | null => {
+    let m = edits.get(list);
+    if (!m) edits.set(list, (m = new Map<string, VItem[] | null>()));
+    const key = `${k}:${delta}`;
+    if (!m.has(key)) {
+      const g = (list[k] as VBox).group!;
+      const alt = g.alt(delta);
+      m.set(key, alt ? splice(list, k, g.size, alt) : null);
+    }
+    return m.get(key) ?? null;
+  };
+
+  /** Every distinct way page `no` can end when it starts at item `i` of `list`. */
+  const pageOptions = (list: VItem[], i: number, no: number): PageOpt[] => {
+    const c = cap(no);
+    const out: PageOpt[] = [];
+    const seen = new Map<VItem[], Set<number>>();
+    const tryList = (l: VItem[], alts: number, upto: number): void => {
+      for (const d of devs) {
+        const f = fill(l, i, c + d * unit, foot, unit, true);
+        if (!f || f.end < upto) continue;
+        let ends = seen.get(l);
+        if (!ends) seen.set(l, (ends = new Set()));
+        if (ends.has(f.end)) continue;
+        ends.add(f.end);
+        out.push({ items: l, f, dev: f.final ? 0 : d - f.short, alts });
+        if (f.final) break;
       }
-      // A left page and the right page facing it: both end at the same line, even if that leaves a line or two of each empty.
-      let best: { cost: number; items: VItem[]; left: Fill; right?: Fill; dl: number; dr: number } | null = null;
-      search: for (const [dl, dr] of REDUCTIONS) {
-        const l = layPage(items, i, cap(pageNo) - dl * unit, false, foot, unit);
-        if (!l) break;
-        let r: { items: VItem[]; f: Fill } | null = null;
-        const rStart = l.f.end + 1;
-        if (hasMore(l.items, rStart)) r = layPage(l.items, rStart, cap(pageNo + 1) - dr * unit, true, foot, unit);
-        let cost = (dl + dr) * 10;
-        // Short is counted against the reduced capacity; add the reduction back to compare the real heights.
-        if (r && !l.f.final && !r.f.final) cost += Math.abs(l.f.short + dl - (r.f.short + dr)) * 100;
-        if (r && r.f.hyphenEnd && !r.f.final) cost += 10;
-        if (!best || cost < best.cost) best = { cost, items: r ? r.items : l.items, left: l.f, right: r?.f, dl, dr };
-        if (cost === 0) break search;
-      }
-      if (!best) break;
-      items = best.items;
-      const c = cap(pageNo);
-      pages.push({ page: emit(items, best.left, c - best.dl * unit, c, foot, unit), from: best.left.start, fill: best.left, recto: false });
-      i = best.left.end + 1;
-      if (best.right) {
-        const c2 = cap(pageNo + 1);
-        pages.push({ page: emit(items, best.right, c2 - best.dr * unit, c2, foot, unit), from: best.right.start, fill: best.right, recto: true });
-        i = best.right.end + 1;
+    };
+    tryList(list, 0, -1);
+    if (!out.length) return out;
+    // Paragraphs that start on the page (as the longest way of ending it has it) can be set a line longer or shorter.
+    const last = out[0].f.end;
+    const singles: { k: number; delta: -1 | 1; list: VItem[] }[] = [];
+    for (let k = i; k <= last; k++) {
+      const it = list[k];
+      if (it.type !== "box" || !it.group || it.group.adjusted) continue;
+      for (const delta of [1, -1] as const) {
+        const l = edited(list, k, delta);
+        if (!l) continue;
+        singles.push({ k, delta, list: l });
+        // The re-set paragraph must start on the page, or the pages after it would not know about it.
+        tryList(l, 1, k);
       }
     }
-    return { items, pages };
-  };
-
-  let { items: cur, pages } = run(items, 0, 0);
-
-  // A last page with a line or two on it: try setting a paragraph of the last pages a line longer or shorter.
-  const tailCost = (list: PageRec[]) => list.reduce((a, p) => a + pageCost(p.fill, p.recto), 0);
-  for (let attempt = 0; attempt < 3 && pages.length >= 2; attempt++) {
-    const last = pages[pages.length - 1];
-    if (last.fill.used >= 4 * unit) break;
-    let fixed: { items: VItem[]; pages: PageRec[]; at: number } | null = null;
-    for (let q = pages.length - 2; q >= Math.max(0, pages.length - 3) && !fixed; q--) {
-      // Redo from the start of the facing pair the page belongs to.
-      const s = pages[q].recto && q > 0 ? q - 1 : q;
-      const upto = pages[q + 1].from;
-      for (let k = pages[q].from; k < upto && !fixed; k++) {
-        const it = cur[k];
-        if (it.type !== "box" || !it.group || it.group.adjusted) continue;
-        for (const delta of [1, -1] as const) {
-          const alt = it.group.alt(delta);
-          if (!alt) continue;
-          const trial = splice(cur, k, it.group.size, alt);
-          const redo = run(trial, pages[s].from, s);
-          const newLast = redo.pages[redo.pages.length - 1];
-          const longEnough = newLast.fill.used >= 4 * unit;
-          const gone = s + redo.pages.length < pages.length && tailCost(redo.pages) <= tailCost(pages.slice(s));
-          if (longEnough || gone) {
-            fixed = { items: trial, pages: redo.pages, at: s };
-            break;
-          }
+    // Two at once: one alone may only move the problem.
+    if (singles.length <= 8) {
+      for (let a = 0; a < singles.length; a++) {
+        for (let b = a + 1; b < singles.length; b++) {
+          const first = singles[a];
+          const second = singles[b];
+          if (first.k === second.k) continue;
+          // `second` comes later in the list (k grows), so edit it first: the earlier index stays valid.
+          const l2 = edited(list, second.k, second.delta);
+          const l = l2 && edited(l2, first.k, first.delta);
+          if (!l) continue;
+          const shift = (list[first.k] as VBox).group!.alt(first.delta)!.length - (list[first.k] as VBox).group!.size;
+          tryList(l, 2, second.k + shift);
         }
       }
     }
-    if (!fixed) break;
-    cur = fixed.items;
-    pages = [...pages.slice(0, fixed.at), ...fixed.pages];
+    return out;
+  };
+
+  const pageCost = (o: PageOpt, recto: boolean): number => {
+    let c = o.alts * COST_ALT;
+    if (o.f.final) return c;
+    c += (o.f.grow / unit) * COST_STRETCH;
+    c += o.dev < 0 ? -o.dev * COST_SHORT : o.dev * COST_LONG;
+    if (o.f.hyphenEnd && recto) c += COST_HYPHEN_TURN;
+    return c;
+  };
+  const stub = (o: PageOpt, no: number): number => (o.f.final && no > 0 && o.f.used < STUB_LINES * unit ? COST_STUB : 0);
+  const moreAfter = (o: PageOpt): boolean => firstBox(o.items, o.f.end + 1) < o.items.length;
+  const placed = (o: PageOpt, no: number): PlacedPage => ({ items: o.items, f: o.f, dev: o.dev, cap: cap(no) });
+
+  // Cheapest way through the chapter, a facing pair at a time. A search node is "the next pair starts at this box".
+  const nodes = new Map<VBox, Map<number, SearchNode>>();
+  const heap: SearchNode[] = [];
+  const push = (n: SearchNode): void => {
+    heap.push(n);
+    let k = heap.length - 1;
+    while (k > 0) {
+      const up = (k - 1) >> 1;
+      if (heap[up].cost <= heap[k].cost) break;
+      [heap[up], heap[k]] = [heap[k], heap[up]];
+      k = up;
+    }
+  };
+  const pop = (): SearchNode | undefined => {
+    const top = heap[0];
+    const tail = heap.pop();
+    if (heap.length && tail) {
+      heap[0] = tail;
+      let k = 0;
+      for (;;) {
+        const l = 2 * k + 1;
+        const r = l + 1;
+        let m = k;
+        if (l < heap.length && heap[l].cost < heap[m].cost) m = l;
+        if (r < heap.length && heap[r].cost < heap[m].cost) m = r;
+        if (m === k) break;
+        [heap[m], heap[k]] = [heap[k], heap[m]];
+        k = m;
+      }
+    }
+    return top;
+  };
+  let goal: SearchNode | null = null;
+  const reach = (from: SearchNode, pages: PlacedPage[], lastOpt: PageOpt, cost: number): void => {
+    const total = from.cost + cost;
+    const next = firstBox(lastOpt.items, lastOpt.f.end + 1);
+    const pageNo = from.pageNo + pages.length;
+    if (next >= lastOpt.items.length) {
+      if (!goal || total < goal.cost) goal = { items: lastOpt.items, i: next, pageNo, cost: total, parent: from, pages, done: true };
+      return;
+    }
+    const box = lastOpt.items[next] as VBox;
+    let byNo = nodes.get(box);
+    if (!byNo) nodes.set(box, (byNo = new Map<number, SearchNode>()));
+    const known = byNo.get(pageNo);
+    if (known && known.cost <= total) return;
+    const n: SearchNode = { items: lastOpt.items, i: next, pageNo, cost: total, parent: from, pages, done: false };
+    byNo.set(pageNo, n);
+    push(n);
+  };
+
+  const root: SearchNode = { items, i: firstBox(items, 0), pageNo: 0, cost: 0, parent: null, pages: [], done: false };
+  if (root.i >= items.length) return [];
+  push(root);
+  let opened = 0;
+  let deepest = root;
+  for (;;) {
+    const n = pop();
+    if (!n) break;
+    if (goal && (goal as SearchNode).cost <= n.cost) break;
+    if (n.closed || nodes.get(n.items[n.i] as VBox)?.get(n.pageNo) !== n && n !== root) continue;
+    n.closed = true;
+    if (n.pageNo > deepest.pageNo || (n.pageNo === deepest.pageNo && n.cost < deepest.cost)) deepest = n;
+    if (++opened > SEARCH_LIMIT) break;
+    const no = n.pageNo;
+    if (rectoAt(no)) {
+      // A right-hand page with no left page of this flow facing it.
+      for (const o of pageOptions(n.items, n.i, no)) reach(n, [placed(o, no)], o, pageCost(o, true) + stub(o, no));
+      continue;
+    }
+    for (const l of pageOptions(n.items, n.i, no)) {
+      const lc = pageCost(l, false) + stub(l, no);
+      if (l.f.final || !moreAfter(l)) {
+        reach(n, [placed(l, no)], l, lc);
+        continue;
+      }
+      for (const r of pageOptions(l.items, firstBox(l.items, l.f.end + 1), no + 1)) {
+        let c = lc + pageCost(r, true) + stub(r, no + 1);
+        if (!l.f.final && !r.f.final) c += Math.abs(l.dev - r.dev) * COST_UNEVEN;
+        reach(n, [placed(l, no), placed(r, no + 1)], r, c);
+      }
+    }
   }
-  return pages.map((p) => p.page);
+  let end: SearchNode | null = goal;
+  if (!end) {
+    // Out of budget (a very long chapter with many ways to go): finish greedily from the furthest point reached.
+    let n = deepest;
+    for (;;) {
+      const no = n.pageNo;
+      const f = fill(n.items, n.i, cap(no), foot, unit, true);
+      if (!f) break;
+      const o: PageOpt = { items: n.items, f, dev: f.final ? 0 : -f.short, alts: 0 };
+      n = { items: n.items, i: firstBox(n.items, f.end + 1), pageNo: no + 1, cost: n.cost, parent: n, pages: [placed(o, no)], done: false };
+    }
+    end = n;
+  }
+  const chain: PlacedPage[] = [];
+  for (let n: SearchNode | null = end; n; n = n.parent) chain.unshift(...n.pages);
+  return chain.map((p) => emit(p.items, p.f, p.cap + p.dev * unit, p.cap, foot, unit, p.dev));
 }
 
 export function emptyStats(): PageStats {
-  return { lines: 0, loose: 0, veryLoose: 0, hyphens: 0, ladders: 0, short: 0, hyphenEnd: 0, orphans: 0, widows: 0, adjusted: 0 };
+  return { lines: 0, loose: 0, veryLoose: 0, hyphens: 0, ladders: 0, short: 0, long: 0, hyphenEnd: 0, orphans: 0, widows: 0, adjusted: 0 };
 }
 
 function pageStats(items: VItem[], from: number, to: number, short: number, final: boolean, hyphenEnd: boolean): PageStats {

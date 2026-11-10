@@ -98,6 +98,8 @@ export interface PageStats {
   ladders: number;
   /** Whole lines the page is short of full; 0 on the last page of a flow. */
   short: number;
+  /** Lines the page runs past the foot, with its facing page; 0 on the last page of a flow. */
+  long: number;
   /** 1 when the last line of the page ends in a hyphen. */
   hyphenEnd: number;
   /** 1 when the page ends on the first line of a longer paragraph (orphan), or starts on the last line of one (widow). */
@@ -113,6 +115,8 @@ export interface Quality extends PageStats {
   pages: number;
   /** Pages with `short > 0`. */
   shortPages: number;
+  /** Pages with `long > 0`: not a defect when the facing page matches, but worth watching. */
+  longPages: number;
   /** Facing pages of one chapter, neither the chapter's last, that end at different heights. */
   unevenSpreads: number;
   /** Right-hand pages that end on a hyphen. */
