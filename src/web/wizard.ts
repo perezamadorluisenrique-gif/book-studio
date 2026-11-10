@@ -5,6 +5,8 @@
 import { clear, h } from "../app/dom";
 import { t, tn, getLocale } from "../app/ui-i18n";
 import { themeAllowed, type Plan } from "../engine/entitlements";
+import type { CoverDesign } from "../engine/cover/design";
+import { COVER_TEMPLATES } from "../engine/cover/templates";
 import { THEMES } from "../engine/themes";
 import { DEFAULT_TRIM, TRIMS } from "../engine/trims";
 import type { BuiltFacts, FixPlace } from "../project/checklist";
@@ -19,6 +21,10 @@ export interface WizardDeps {
   plan(): Plan;
   /** A small picture of the first page of chapter one in a style; null when it can't be made. */
   thumbnail(project: Project, theme: string, trim: string, width: number): Promise<HTMLCanvasElement | null>;
+  /** A small picture of a cover template with this book's title and author; null when it can't be made. */
+  coverThumbnail(id: string, width: number): Promise<HTMLCanvasElement | null>;
+  /** The design of a cover template filled with this book's texts. */
+  coverDesign(id: string): Promise<CoverDesign | null>;
   /** Open the full book-details form. */
   moreDetails(): void;
   download(kind: "pdf" | "cover" | "epub"): void;
@@ -26,7 +32,10 @@ export interface WizardDeps {
   go(place: FixPlace): void;
 }
 
-const STEPS = [1, 2, 3, 4] as const;
+const STEPS = [1, 2, 3, 4, 5] as const;
+/** The covers offered in the guide: four free ones that look different from each other. */
+export const GUIDE_COVERS = ["classic-navy", "modern-bold", "red-band", "green-frame"] as const;
+const COVER_WIDTH = 120;
 const LANGUAGES = ["en", "es", "fr", "de", "it", "pt", "ca", "gl", "nl"];
 const THUMB_WIDTH = 110;
 
@@ -58,7 +67,7 @@ export class Wizard {
   /** The built book changed: bring the checklist of the last step up to date. */
   refresh(): void {
     const p = this.deps.project();
-    if (!p || onboardingOf(p) !== 4 || !this.checklist) return;
+    if (!p || onboardingOf(p) !== 5 || !this.checklist) return;
     this.fillChecklist(p);
   }
 
@@ -84,7 +93,7 @@ export class Wizard {
     this.checklist = null;
     clear(this.box);
     this.box.hidden = false;
-    const names = { 1: t("wiz.s1"), 2: t("wiz.s2"), 3: t("wiz.s3"), 4: t("wiz.s4") } as const;
+    const names = { 1: t("wiz.s1"), 2: t("wiz.s2"), 3: t("wiz.s3"), 4: t("wiz.s4"), 5: t("wiz.s5") } as const;
     const bar = h(
       "ol",
       { cls: "wiz-steps" },
@@ -100,12 +109,13 @@ export class Wizard {
     const body = h("div", { cls: "wiz-body" });
     const skip = h("button", { cls: "wiz-skip", text: t("wiz.skip"), attr: { type: "button", "aria-label": t("wiz.skipLabel"), id: "wiz-skip" }, on: { click: () => this.go("done") } });
     const back = step > 1 ? h("button", { text: t("wiz.back"), attr: { type: "button", id: "wiz-back" }, on: { click: () => this.go((step - 1) as Onboarding) } }) : null;
-    const next = h("button", { cls: "mod-cta", text: step === 4 ? t("wiz.finish") : t("wiz.next"), attr: { type: "button", id: "wiz-next" }, on: { click: () => this.go(step === 4 ? "done" : ((step + 1) as Onboarding)) } });
+    const next = h("button", { cls: "mod-cta", text: step === 5 ? t("wiz.finish") : t("wiz.next"), attr: { type: "button", id: "wiz-next" }, on: { click: () => this.go(step === 5 ? "done" : ((step + 1) as Onboarding)) } });
     this.box.append(h("section", { cls: "wiz", attr: { "aria-labelledby": "wiz-heading", role: "region" } }, h("nav", { attr: { "aria-label": t("wiz.label") } }, bar), heading, body, h("div", { cls: "wiz-actions" }, back, next, skip)));
     if (step === 1) this.step1(body, p);
     else if (step === 2) this.step2(body, p);
     else if (step === 3) this.step3(body, p);
-    else this.step4(body, p);
+    else if (step === 4) this.step4(body, p);
+    else this.step5(body, p);
     if (keepFocus) heading.focus();
   }
 
@@ -178,9 +188,35 @@ export class Wizard {
   }
 
   private step4(body: HTMLElement, p: Project): void {
+    const current = p.coverDesign?.template ?? "";
+    const grid = h("div", { cls: "wiz-styles wiz-covers" });
+    const gen = this.gen;
+    for (const id of GUIDE_COVERS) {
+      const tpl = COVER_TEMPLATES.find((x) => x.id === id);
+      if (!tpl) continue;
+      const name = getLocale() === "es" ? tpl.nameEs : tpl.name;
+      const input = h("input", { attr: { type: "radio", name: "wiz-cover", value: id, checked: id === current } });
+      input.checked = id === current;
+      input.addEventListener("change", () => {
+        if (!input.checked) return;
+        void this.deps.coverDesign(id).then((design) => {
+          const now = this.deps.project();
+          if (design && now) this.deps.change({ ...now, coverDesign: design, updatedAt: Date.now() });
+        });
+      });
+      const slot = h("span", { cls: "wiz-thumb", attr: { "aria-hidden": "true" } });
+      grid.append(h("label", { cls: "wiz-style" }, h("span", { cls: "wiz-style-name" }, input, ` ${name}`), slot));
+      void this.deps.coverThumbnail(id, COVER_WIDTH).then((canvas) => {
+        if (canvas && gen === this.gen) slot.append(canvas);
+      });
+    }
+    body.append(h("p", { text: t("wiz.s4.help") }), h("fieldset", { cls: "wiz-group" }, h("legend", { text: t("wiz.coverLegend") }), grid));
+  }
+
+  private step5(body: HTMLElement, p: Project): void {
     const button = (label: string, kind: "pdf" | "cover" | "epub", primary = false) => h("button", { cls: primary ? "mod-cta" : undefined, text: label, attr: { type: "button" }, on: { click: () => this.deps.download(kind) } });
     this.checklist = h("div", { cls: "wiz-checklist" });
-    body.append(h("p", { text: t("wiz.s4.help") }), h("div", { cls: "wiz-downloads" }, button(t("wiz.dlPdf"), "pdf", true), button(t("wiz.dlCover"), "cover"), button(t("wiz.dlEpub"), "epub")), this.checklist);
+    body.append(h("p", { text: t("wiz.s5.help") }), h("div", { cls: "wiz-downloads" }, button(t("wiz.dlPdf"), "pdf", true), button(t("wiz.dlCover"), "cover"), button(t("wiz.dlEpub"), "epub")), this.checklist);
     this.fillChecklist(p);
   }
 

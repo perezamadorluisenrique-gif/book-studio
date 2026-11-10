@@ -144,6 +144,9 @@ En la misma máquina y momento, `main` medía 816, 928, 594, 1036 y 601 ms. Capt
 - T4.4: el JPG sale de la portada recortada al centro a 1600 × 2560; una portada de 6 × 9 pierde algo más de un 6 % de ancho (la zona segura de 0,25 in lo deja pasar). El PNG de redes pone la portada sobre el color de fondo del diseño, con sombra. Prueba: el PDF tiene el tamaño de `coverGeometry` en 9 combinaciones (5×8, 6×9, 8,5×11 con 100, 250 y 400 páginas), y el e2e comprueba las dimensiones del JPG y del PNG descargados.
 - T4.4, desviación: con «Volver a la cubierta sencilla» el EPUB sigue con `cover-ebook.jpg` (es una imagen del diseño con el título dentro) hasta que se cambie la portada en los datos del libro. No hay ajuste propio para el logotipo (es una capa de imagen como otra).
 
+- T4.5 (2026-11-10): paso nuevo «Cubierta» en el asistente, entre «Datos» y «Descarga» (ahora son 5 pasos: `Onboarding` admite 5; `src/web/wizard.ts`, miniaturas en `src/web/cover-thumbs.ts`). Ofrece 4 cubiertas gratis y distintas (Classic navy, Modern bold, Red band, Green frame) con el título y el autor del libro y el grosor de lomo de su número de páginas; un clic elige una y queda guardada en el proyecto, y se abre en el diseñador. Seguir sin elegir deja la cubierta sencilla. e2e «del Word al PDF» con 60.000 palabras: Siguiente ×3, elegir cubierta, Siguiente y Descargar PDF = 6 clics (el límite de la orden), PDF válido para KDP.
+- T4.5, desviaciones: un libro con el asistente a medias en el paso 4 (descarga, antes de este cambio) verá ahora el paso de cubierta; no se migra nada guardado. Si después de elegir cubierta cambia el número de páginas (otro estilo, por ejemplo), el lomo del diseño ya no coincide con el grosor exacto y el diseñador puede avisar; se arregla eligiendo otra vez la plantilla.
+
 Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Diario
@@ -152,7 +155,7 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilo D, órdenes T4.5 (cubierta en el asistente). T4.1 a T4.4 hechas. Hilos A, B y C terminados.
+Hilo D, órdenes Hilo D terminado (T4.1 a T4.5). Siguiente: hilo E (T5.1 en adelante). Hilos A, B y C terminados.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
@@ -168,3 +171,4 @@ Hilo D, órdenes T4.5 (cubierta en el asistente). T4.1 a T4.4 hechas. Hilos A, B
 - 2026-11-10: T4.2 hecha. 20 plantillas, 6 fondos generativos, dibujos `path` y `gradient`.
 - 2026-11-10: T4.3 hecha. Diseñador de cubiertas en la web con deshacer, imán, plantillas, imágenes y revisiones en vivo.
 - 2026-11-10: T4.4 hecha. Contraportada con foto, opción de barras, PDF, JPG de ebook y PNG de redes.
+- 2026-11-10: T4.5 hecha. Paso de cubierta en el asistente; Word a PDF con cubierta en 6 clics. Hilo D terminado.

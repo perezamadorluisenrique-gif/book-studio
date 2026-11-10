@@ -29,8 +29,8 @@ export interface ProjectAsset {
   data: Uint8Array;
 }
 
-/** Where a person is in the first-book guide: its four steps, or "done" (finished or skipped). */
-export type Onboarding = 1 | 2 | 3 | 4 | "done";
+/** Where a person is in the first-book guide: its five steps, or "done" (finished or skipped). */
+export type Onboarding = 1 | 2 | 3 | 4 | 5 | "done";
 
 export interface Project {
   id: string;
@@ -54,7 +54,7 @@ export interface Project {
 /** The guide step of a project; books without one (older books, copies, imports from a folder) have no guide. */
 export function onboardingOf(p: Project): Onboarding {
   const v = p.onboarding;
-  return v === 1 || v === 2 || v === 3 || v === 4 ? v : "done";
+  return v === 1 || v === 2 || v === 3 || v === 4 || v === 5 ? v : "done";
 }
 
 export const SECTION_ORDER: SectionKind[] = ["front", "body", "back"];

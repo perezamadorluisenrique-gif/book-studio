@@ -25,6 +25,7 @@ import type { Project } from "../project/model";
 import { fetchPost } from "./post";
 import { renderProjects } from "./projects";
 import { openCoverEditor } from "./cover-editor";
+import { coverThumbnail, designFor } from "./cover-thumbs";
 import { showPublishChecklist } from "./publish";
 import { deleteProject, deleteSnapshot, getHandle, listProjects, listSnapshots, putProject, putSnapshot, setHandle } from "./store";
 import { Studio } from "../app/studio";
@@ -357,6 +358,14 @@ const wizard = new Wizard($("wizard"), {
   change: (next, layout) => workspace.change(next, layout),
   plan: () => license.plan(),
   thumbnail: async (project, theme, trim, width) => themeThumbnail(project, theme, trim, await studio.fontSet(), width),
+  coverThumbnail: async (id, width) => {
+    const base = await studio.coverBase();
+    return base ? coverThumbnail(base, id, width) : null;
+  },
+  coverDesign: async (id) => {
+    const base = await studio.coverBase();
+    return base ? designFor(base, id) : null;
+  },
   moreDetails: () => workspace.reveal("details"),
   download: (kind) => void (kind === "pdf" ? studio.exportPdf() : kind === "cover" ? studio.exportCoverPdf() : studio.exportEpub()),
   facts: () => studio.publishFacts(),

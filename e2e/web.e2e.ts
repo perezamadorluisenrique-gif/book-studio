@@ -1003,9 +1003,9 @@ describe("web app, first-book guide", () => {
     await page.locator("#land-drop").waitFor();
     const t0 = Date.now();
     await dropFile(page, "la-noche-larga.docx", docx);
-    // Step 1: the book is in. The guide's bar shows the four steps and where we are.
-    await page.getByRole("heading", { name: "Paso 1 de 4: Sube" }).waitFor({ timeout: 60_000 });
-    expect(await page.locator(".wiz-step").allTextContents()).toEqual(expect.arrayContaining([expect.stringContaining("Sube"), expect.stringContaining("Estilo"), expect.stringContaining("Datos"), expect.stringContaining("Descarga")]));
+    // Step 1: the book is in. The guide's bar shows the five steps and where we are.
+    await page.getByRole("heading", { name: "Paso 1 de 5: Sube" }).waitFor({ timeout: 60_000 });
+    expect(await page.locator(".wiz-step").allTextContents()).toEqual(expect.arrayContaining([expect.stringContaining("Sube"), expect.stringContaining("Estilo"), expect.stringContaining("Datos"), expect.stringContaining("Cubierta"), expect.stringContaining("Descarga")]));
     expect(await page.getByText("Tu manuscrito está dentro: 30 capítulos.").count()).toBe(1);
     let clicks = 0;
     const click = async (name: string | RegExp) => {
@@ -1013,13 +1013,19 @@ describe("web app, first-book guide", () => {
       await page.getByRole("button", { name }).click();
     };
     await click("Siguiente");
-    await page.getByRole("heading", { name: "Paso 2 de 4: Estilo" }).waitFor();
+    await page.getByRole("heading", { name: "Paso 2 de 5: Estilo" }).waitFor();
     await click("Siguiente");
-    await page.getByRole("heading", { name: "Paso 3 de 4: Datos" }).waitFor();
+    await page.getByRole("heading", { name: "Paso 3 de 5: Datos" }).waitFor();
     // Typing the title is not a click.
     await page.getByLabel("Título", { exact: true }).fill("La noche larga");
     await click("Siguiente");
-    await page.getByRole("heading", { name: "Paso 4 de 4: Descarga" }).waitFor();
+    await page.getByRole("heading", { name: "Paso 4 de 5: Cubierta" }).waitFor();
+    // One click picks a cover that already carries the title and author.
+    await page.locator(".wiz-covers .wiz-thumb canvas").nth(3).waitFor({ timeout: 30_000 });
+    clicks++;
+    await page.getByLabel("Marco verde").check();
+    await click("Siguiente");
+    await page.getByRole("heading", { name: "Paso 5 de 5: Descarga" }).waitFor();
     clicks++;
     const [download] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Descargar PDF de imprenta" }).click()]);
     const r = await checkKdpPdf(new Uint8Array(await readFile(await download.path())), trimById("6x9")!, { bleed: false });
@@ -1027,7 +1033,7 @@ describe("web app, first-book guide", () => {
     expect(r.pages).toBeGreaterThan(100);
     const seconds = (Date.now() - t0) / 1000;
     process.stdout.write(`Word to PDF in ${seconds.toFixed(1)} s, ${clicks} clicks, ${r.pages} pages\n`);
-    expect(clicks).toBeLessThanOrEqual(4);
+    expect(clicks).toBeLessThanOrEqual(6);
     expect(seconds).toBeLessThan(60);
     // The book carries the title that was typed.
     expect(await page.locator(".ch-pick").count()).toBe(30);
@@ -1040,9 +1046,9 @@ describe("web app, first-book guide", () => {
     await page.goto(base);
     await page.locator("#land-drop").waitFor();
     await dropFile(page, "diary.docx", await bigDocx(3000, 3));
-    await page.getByRole("heading", { name: "Step 1 of 4: Upload" }).waitFor({ timeout: 60_000 });
+    await page.getByRole("heading", { name: "Step 1 of 5: Upload" }).waitFor({ timeout: 60_000 });
     await page.getByRole("button", { name: "Next" }).click();
-    await page.getByRole("heading", { name: "Step 2 of 4: Style" }).waitFor();
+    await page.getByRole("heading", { name: "Step 2 of 5: Style" }).waitFor();
     // Five free styles, each with a picture of the first page, and 6 × 9 chosen.
     await page.locator(".wiz-thumb canvas").nth(4).waitFor({ timeout: 30_000 });
     expect(await page.locator(".wiz-style input").count()).toBe(5);
@@ -1064,7 +1070,7 @@ describe("web app, first-book guide", () => {
     await page.reload();
     await page.getByRole("button", { name: "My books" }).click().catch(() => undefined);
     await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
-    await page.getByRole("heading", { name: "Step 2 of 4: Style" }).waitFor();
+    await page.getByRole("heading", { name: "Step 2 of 5: Style" }).waitFor();
     expect(await page.getByLabel("Elegant").isChecked()).toBe(true);
     await page.getByRole("button", { name: "Skip the first book guide" }).click();
     await page.locator(".wiz-box").waitFor({ state: "hidden" });
@@ -1078,19 +1084,49 @@ describe("web app, first-book guide", () => {
     await context.close();
   });
 
+  it("offers four covers with the book's title, and the chosen one opens in the cover designer", async () => {
+    const context = await browser.newContext({ locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.locator("#land-drop").waitFor();
+    await dropFile(page, "diary.docx", await bigDocx(2000, 2));
+    await page.getByRole("heading", { name: "Step 1 of 5: Upload" }).waitFor({ timeout: 60_000 });
+    for (let i = 0; i < 3; i++) await page.getByRole("button", { name: "Next" }).click();
+    await page.getByRole("heading", { name: "Step 4 of 5: Cover" }).waitFor();
+    await page.locator(".wiz-covers .wiz-thumb canvas").nth(3).waitFor({ timeout: 30_000 });
+    expect(await page.locator(".wiz-covers input").count()).toBe(4);
+    const ink = await page.locator(".wiz-covers .wiz-thumb canvas").first().evaluate((c) => {
+      const el = c as HTMLCanvasElement;
+      const data = el.getContext("2d")!.getImageData(0, 0, el.width, el.height).data;
+      let other = 0;
+      for (let i = 0; i < data.length; i += 4) if (Math.abs(data[i] - data[0]) + Math.abs(data[i + 2] - data[2]) > 60) other++;
+      return other;
+    });
+    expect(ink).toBeGreaterThan(20);
+    await page.getByLabel("Green frame").check();
+    await page.waitForTimeout(900);
+    await page.getByRole("button", { name: "Skip the first book guide" }).click();
+    await page.getByRole("button", { name: "Open the cover designer" }).click();
+    const dialog = page.getByRole("dialog", { name: "Cover designer" });
+    await dialog.locator("canvas[data-ready]").waitFor({ timeout: 30_000 });
+    expect(await dialog.locator("#cv-template").inputValue()).toBe("green-frame");
+    await context.close();
+  });
+
   for (const [label, viewport] of [["desktop", { width: 1280, height: 800 }], ["mobile 390 px", { width: 390, height: 844 }]] as const) {
-    it(`has no serious accessibility violations on the four steps, ${label}`, async () => {
+    it(`has no serious accessibility violations on the five steps, ${label}`, async () => {
       const context = await browser.newContext({ viewport, locale: "en-US" });
       const page = await context.newPage();
       await page.goto(base);
       await page.locator("#land-drop").waitFor();
       await dropFile(page, "diary.docx", await bigDocx(2000, 2));
-      for (const [n, name] of [[1, "Upload"], [2, "Style"], [3, "Details"], [4, "Download"]] as const) {
-        await page.getByRole("heading", { name: `Step ${n} of 4: ${name}` }).waitFor({ timeout: 60_000 });
+      for (const [n, name] of [[1, "Upload"], [2, "Style"], [3, "Details"], [4, "Cover"], [5, "Download"]] as const) {
+        await page.getByRole("heading", { name: `Step ${n} of 5: ${name}` }).waitFor({ timeout: 60_000 });
         if (n === 2) await page.locator(".wiz-thumb canvas").nth(4).waitFor({ timeout: 30_000 });
+        if (n === 4) await page.locator(".wiz-covers .wiz-thumb canvas").nth(3).waitFor({ timeout: 30_000 });
         const { violations } = await new AxeBuilder({ page }).include(".wiz-box").withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
         expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `step ${n}: ${v.id}`)).toEqual([]);
-        if (n < 4) await page.getByRole("button", { name: "Next" }).click();
+        if (n < 5) await page.getByRole("button", { name: "Next" }).click();
       }
       await context.close();
     });
