@@ -74,7 +74,7 @@ La mejor forma de aprender el formato es leer uno real. Descarga la fuente en Ma
 
 ## Resultado
 
-Obtienes un PDF interior listo para KDP y un EPUB 3. El plan gratuito imprime en 6 × 9, 5 × 8 y 5,5 × 8,5 pulgadas con los temas Classic y Modern. Book Studio Pro añade nueve formatos más y más temas (pago único): [ver Pro](pro:). Para elegir tamaño, lee [tamaños de KDP](guide:tamanos-kdp).
+Obtienes un PDF interior listo para KDP y un EPUB 3. Es gratis para todos los formatos de KDP, con cinco temas, notas al pie y la cubierta completa incluidos. Book Studio Pro añade temas de género, índice analítico, cajas de libros y más (pago único): [ver Pro](pro:). Para elegir tamaño, lee [tamaños de KDP](guide:tamanos-kdp).
 
 ## Siguiente paso
 

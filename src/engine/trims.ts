@@ -29,8 +29,8 @@ export const TRIMS: Trim[] = [
 /** The default trim, and the one every plan can fall back to. */
 export const DEFAULT_TRIM = "6x9";
 
-/** The three best-selling KDP trims, free for good. */
-export const FREE_TRIMS: readonly string[] = ["6x9", "5x8", "5.5x8.5"];
+/** Every KDP trim is free: without the size the author wants, there is no book "ready for Amazon". */
+export const FREE_TRIMS: readonly string[] = TRIMS.map((t) => t.id);
 
 export function trimById(id: string): Trim | undefined {
   return TRIMS.find((t) => t.id === id);

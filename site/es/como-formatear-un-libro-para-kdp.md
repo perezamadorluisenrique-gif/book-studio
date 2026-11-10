@@ -27,7 +27,7 @@ Añade una nota más con `book: true` en las propiedades. Bajo `## Preliminares`
 
 ## 3. Elige el tamaño de corte
 
-Decide el formato antes que nada, porque de él dependen el número de páginas y los márgenes. El plan gratuito imprime en 6 × 9 pulgadas, el tamaño de tapa blanda más habitual en KDP, y en 5 × 8 y 5,5 × 8,5. Book Studio Pro añade nueve formatos más (pago único): [ver Pro](pro:). Todos los formatos, la tabla de márgenes y las reglas de sangrado están en [tamaños de KDP: corte, márgenes y sangrado](guide:tamanos-kdp).
+Decide el formato antes que nada, porque de él dependen el número de páginas y los márgenes. Todos los formatos que Book Studio admite son gratis, empezando por el 6 × 9 pulgadas, el tamaño de tapa blanda más habitual en KDP. Todos los formatos, la tabla de márgenes y las reglas de sangrado están en [tamaños de KDP: corte, márgenes y sangrado](guide:tamanos-kdp).
 
 El margen interior (medianil) depende del número de páginas, y Book Studio lo fija por ti:
 
@@ -51,7 +51,7 @@ Decide aquí el sangrado. Solo lo necesitas si una imagen o un color llega al bo
 
 ## 6. Exporta el PDF y el EPUB
 
-Exporta el PDF de imprenta y el EPUB. Book Studio construye los preliminares y las páginas finales, aplica el margen interior de tu número de páginas, incrusta las fuentes y rellena el libro hasta el mínimo de 24 páginas de KDP. También te da el ancho del lomo. Lo necesita quien diseñe tu cubierta, porque el plan gratuito no incluye diseñador de cubiertas.
+Exporta el PDF de imprenta y el EPUB. Book Studio construye los preliminares y las páginas finales, aplica el margen interior de tu número de páginas, incrusta las fuentes y rellena el libro hasta el mínimo de 24 páginas de KDP. También te da el ancho del lomo. Lo necesita quien diseñe tu cubierta, porque Book Studio aún no tiene diseñador de cubiertas; solo genera la hoja de cubierta completa.
 
 El EPUB lleva un índice navegable, el idioma del libro en cada página y tus descripciones de imagen. Para ver qué se comprueba, lee la [guía de EPUB accesible](guide:epub-accesible).
 

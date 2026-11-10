@@ -47,9 +47,9 @@ Kindle Create is free from Amazon and has a direct path to KDP. You import a DOC
 ## Book Studio's limits
 
 - No full word processor. The web app has a simple chapter editor (no comments, no track changes, no tables); you can also write in Obsidian or another Markdown editor, or import a Word file.
-- No cover designer in the free plan. It reports the spine width for your designer.
+- No cover designer yet. It builds the full cover sheet at the size KDP expects and reports the spine width for your designer.
 - Fewer themes than Vellum.
-- The free plan prints three trims (6 × 9, 5 × 8, 5.5 × 8.5); Book Studio supports 12 of KDP's 16. Book Studio Pro adds the other nine, more themes, a full cover, an index, box sets and the accessible-EPUB pack (one-time purchase): [see Pro](pro:).
+- The free plan prints every trim Book Studio supports (12 of KDP's 16) and includes the full cover and footnotes. Book Studio Pro adds genre themes, an index, box sets and the accessible-EPUB pack (one-time purchase): [see Pro](pro:).
 - It is a young project by one developer.
 
 ## Which one to use

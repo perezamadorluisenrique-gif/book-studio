@@ -72,8 +72,8 @@ describe("footnotes at the foot of the page", () => {
     expect(b.layout.warnings.some((w) => /longer than half a page/.test(w.message))).toBe(true);
   });
 
-  it("is a Pro setting for print only", () => {
-    expect(printBlockers("free", { theme: "classic", trim: "6x9", footnotes: "page" }).map((x) => x.feature)).toEqual(["footnotes"]);
+  it("is free, for print only", () => {
+    expect(printBlockers("free", { theme: "classic", trim: "6x9", footnotes: "page" })).toEqual([]);
     expect(printBlockers("free", { theme: "classic", trim: "6x9", footnotes: "end" })).toEqual([]);
     expect(printBlockers("pro", { theme: "classic", trim: "6x9", footnotes: "page" })).toEqual([]);
     expect(epubBlockers("free", { theme: "classic" })).toEqual([]);

@@ -13,13 +13,13 @@ Book Studio comes in two forms that share one engine and one interface:
 - **An Obsidian plugin.** It works on the vault you write in, rebuilds the preview as you type and saves exports to a vault folder.
 - **A web app.** Open a folder of Markdown files, such as your vault, in the browser, or write a book right there: it has a chapter editor, a book-details form, a cover image, and a **Publish checklist** of what KDP still needs. You can also import a Word (`.docx`), Markdown or text manuscript. Books you write in the web app are kept in your browser only. Nothing is uploaded.
 
-Book Studio is free: unlimited books, the Classic and Modern themes, the 6" × 9", 5" × 8" and 5.5" × 8.5" trims, and EPUB 3. **Book Studio Pro** (a one-time license key) adds the other themes and trims, large print, a KDP preflight, a full wraparound cover, footnotes at the page foot, a back-of-book index, one-click editions and a KDP details sheet. See [Book Studio Pro](#book-studio-pro).
+Book Studio is free: unlimited books, every KDP trim size, the Classic, Modern, Elegant, Non-fiction and Large Print themes, footnotes at the page foot, the full wraparound cover, the KDP preflight and details sheet, the print PDF and EPUB 3. **Book Studio Pro** (a one-time license key) adds the genre themes (Thriller, Romance, Fantasy), a back-of-book index, one-click editions, box sets and the accessible-EPUB pack. See [Book Studio Pro](#book-studio-pro).
 
 ## Features
 
 - **One note is the book.** A manifest note lists the chapters as links, in order, under *Front matter*, *Chapters* and *Back matter*. Its properties hold the title, author, theme and trim. To reorder chapters, reorder the links.
 - **Real typesetting.** Knuth–Plass line breaking, hyphenation in the book's language, smart quotes and dashes, old-style figures and small caps where the theme calls for them. Widows and orphans are avoided.
-- **Themes with character.** Drop caps, ornamental scene breaks, chapter openers, part pages and running heads. Themes: Classic and Modern.
+- **Themes with character.** Drop caps, ornamental scene breaks, chapter openers, part pages and running heads. Themes: Classic, Modern, Elegant, Non-fiction and Large Print, plus the genre themes Thriller, Romance and Fantasy in Pro.
 - **Ready for KDP.**
   - The 6" × 9" trim, the most common paperback size.
   - Inside margins that grow with the page count, as KDP requires.
@@ -96,14 +96,14 @@ Chapter notes are ordinary Markdown:
 | `series`, `series-number`, `also-by` | Series metadata and the "Also by" page |
 | `dedication`, `epigraph`, `epigraph-source` | Their own pages in the front matter |
 | `cover` | Cover image for the EPUB |
-| `theme` | `classic` or `modern` |
-| `trim` | `6x9`, `5x8` or `5.5x8.5` free; more trims with Pro |
+| `theme` | `classic`, `modern`, `elegant`, `nonfiction` or `large-print`; the genre themes `thriller`, `romance` and `fantasy` need Pro |
+| `trim` | Any of the twelve KDP trims, for example `6x9`, `5x8` or `5.5x8.5` |
 | `paper` | `white`, `cream` or `color`: sets the spine width |
-| `footnotes` | `end` (default) or `page` for notes at the foot of the page (Pro) |
+| `footnotes` | `end` (default) or `page` for notes at the foot of the page |
 | `index-terms` | A list of words and phrases for the back-of-book index (Pro) |
 | `editions` | A block of editions, each with its own settings, ISBN and `format: print` or `epub` (Pro) |
-| `back-blurb`, `author-bio`, `author-photo`, `tagline` | Back cover text, author photo and the cover's tagline (Pro) |
-| `cover-background`, `cover-ink`, `spine-title` | Cover colours and the spine text (Pro) |
+| `back-blurb`, `author-bio`, `author-photo`, `tagline` | Back cover text, author photo and the cover's tagline |
+| `cover-background`, `cover-ink`, `spine-title` | Cover colours and the spine text |
 | `bleed` | `true` when images run off the page edge |
 | `chapter-start` | `recto` (right-hand pages, the default) or `any` |
 | `running-heads` | `author-title`, `title-chapter` or `none` |
@@ -121,24 +121,23 @@ In **My books**, choose *Import a manuscript* and pick a Word (`.docx`), `.md` o
 
 ## Book Studio Pro
 
-Pro is a one-time payment. You get a license key in the purchase email or receipt and paste it into the plugin's settings (or the web app's license panel), then press Activate. Without a key everything above keeps working, and the print PDF of a Pro design is exported with a SAMPLE watermark so you can see the result first.
+Pro is a one-time payment. You get a license key in the purchase email or receipt and paste it into the plugin's settings (or the web app's license panel), then press Activate. Without a key everything above keeps working, and the print PDF of a Pro theme is exported with a SAMPLE watermark so you can see the result first.
 
 Pro adds:
 
-- All themes (Elegant, Nonfiction, Large Print, Thriller, Romance, Fantasy) and more trims.
-- **KDP preflight** that checks page count, margins, images, blank runs, ISBN, metadata, spine and the PDF itself, with an HTML report. It reduces rejections; KDP's own review makes the final decision.
-- **Full cover**: front, spine and back with barcode space, the right spine width for the page count and paper, and a PDF at the size KDP expects.
-- **Footnotes at the page foot** and a **back-of-book index** built from `index-terms`.
+- **Genre themes**: Thriller, Romance and Fantasy, and the ones to come.
+- A **back-of-book index** built from `index-terms`.
 - **Editions**: describe a paperback, a large-print edition and an ebook in the manifest and export them together, each with its own ISBN, cover and report.
-- **KDP details sheet**: title, description, keywords and categories ready to paste.
-- The accessible pack and box sets.
+- **Box sets** and the **accessible EPUB pack**.
+
+Free, and never Pro again: every trim size, the Elegant, Non-fiction and Large Print themes, footnotes at the page foot, the **full cover** (front, spine and back with barcode space, at the size KDP expects), the **KDP preflight** (page count, margins, images, blank runs, ISBN, metadata, spine and the PDF itself, with an HTML report; it reduces rejections, and KDP's own review makes the final decision) and the **KDP details sheet** (title, description, keywords and categories ready to paste).
 
 Keys are generated by the payment service. Offline Ed25519 signed keys (`tools/license.mjs`: `keygen`, `sign`, `verify`; public key in `src/engine/license-keys.ts`) are also accepted for sales made by hand; they need no network at all.
 
 ## Payment and network use
 
 - Pro is a **one-time payment**: no subscription, and the key never expires.
-- **Free forever**, as in `src/engine/entitlements.ts`: any number of books, the Classic and Modern themes, the 6" × 9", 5" × 8" and 5.5" × 8.5" trims, the print PDF, EPUB 3 with its basic accessibility metadata, and the preview of everything. Nothing 0.1.x let you do is ever taken away.
+- **Free forever**, as in `src/engine/entitlements.ts`: any number of books, every KDP trim, the Classic, Modern, Elegant, Non-fiction and Large Print themes, footnotes at the page foot, the full cover, the KDP preflight and details sheet, the print PDF, EPUB 3 with its basic accessibility metadata, and the preview of everything. Nothing an earlier version let you do is ever taken away.
 - **Activate sends your key once** to the licence endpoint of the payment service the key came from (Polar, Lemon Squeezy or Gumroad), to check that it is valid for Book Studio Pro. The result is stored on your device and the key is never checked again, so being offline later never locks you out.
 - **Nothing else ever goes over the network**: no telemetry, no analytics, no account, and your notes and books never leave your device.
 - Author: Siulved54.

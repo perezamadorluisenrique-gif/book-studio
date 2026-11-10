@@ -118,7 +118,7 @@ const elegant: Theme = {
   id: "elegant",
   name: "Elegant",
   description: "Cormorant display type over Crimson Pro text; romantic and literary.",
-  pro: true,
+  pro: false,
   body: { family: "crimson-pro", size: 11.5, leading: 15.5, oldstyle: true, justify: true, hyphenate: true, indent: 1.2, blockParagraphs: false },
   margins: { top: 0.8, bottom: 0.85, outside: 0.65, inside: 0.8 },
   chapter: {
@@ -149,7 +149,7 @@ const nonfiction: Theme = {
   id: "nonfiction",
   name: "Non-fiction",
   description: "Spaced paragraphs, numbered chapters and sans-serif section headings for guides and memoirs.",
-  pro: true,
+  pro: false,
   body: { family: "crimson-pro", size: 11, leading: 15, oldstyle: false, justify: true, hyphenate: true, indent: 0, blockParagraphs: true },
   margins: { top: 0.75, bottom: 0.85, outside: 0.65, inside: 0.8 },
   chapter: {
@@ -179,7 +179,7 @@ const largePrint: Theme = {
   id: "large-print",
   name: "Large Print",
   description: "Atkinson Hyperlegible at 16 pt, ragged right and unhyphenated, following large-print guidelines.",
-  pro: true,
+  pro: false,
   body: { family: "atkinson", size: 16, leading: 22, oldstyle: false, justify: false, hyphenate: false, indent: 1.2, blockParagraphs: false },
   margins: { top: 0.7, bottom: 0.8, outside: 0.6, inside: 0.75 },
   chapter: {

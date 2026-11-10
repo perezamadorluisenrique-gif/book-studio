@@ -76,7 +76,7 @@ The best way to learn the format is to read a real one. Download the Markdown so
 
 ## Output
 
-You get a print-ready PDF interior for KDP and an EPUB 3. The free plan prints the 6 × 9, 5 × 8 and 5.5 × 8.5 trims with the Classic and Modern themes. Book Studio Pro adds nine more trims and more themes (one-time purchase): [see Pro](pro:). To choose a size, read [KDP trim sizes](guide:kdp-trim-sizes).
+You get a print-ready PDF interior for KDP and an EPUB 3. It is free for every KDP trim size, with five themes, footnotes and the full cover included. Book Studio Pro adds genre themes, an index, box sets and more (one-time purchase): [see Pro](pro:). To choose a size, read [KDP trim sizes](guide:kdp-trim-sizes).
 
 ## Next step
 

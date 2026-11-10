@@ -3,7 +3,7 @@
 // and the web app both mount it; everything host-specific goes through StudioHost.
 
 import { FREE_EDITION, PRO_PREVIEW } from "../config";
-import { hasFeature, PRO_FEATURES, themeAllowed, trimAllowed, type ExportBlocker, type Plan } from "../engine/entitlements";
+import { hasFeature, PRO_FEATURES, themeAllowed, type ExportBlocker, type Plan } from "../engine/entitlements";
 import { FontSet } from "../engine/fonts";
 import { LayoutCache } from "../engine/layout/index";
 import type { BookSettings, SourceRef } from "../engine/model";
@@ -120,17 +120,14 @@ export class Studio {
     );
     this.kdp = new KdpPanel(this.panels.kdp, {
       host: this.host,
-      plan: () => this.plan(),
       built: () => this.built,
       fonts: () => this.loadFonts(),
       painter: () => this.painter,
-      gate: async (b) => (await this.gate(b)) === true,
       write: (m, make) => this.write(m, make),
       showPage: (folio) => {
         const index = this.built?.layout.pages.findIndex((p) => p.folio === folio) ?? -1;
         if (index >= 0) this.scrollToPage(index);
       },
-      openLicense: () => this.host.openLicense(),
     });
     container.appendChild(this.root);
     this.unsubscribe = this.license.onChange(() => this.planChanged());
@@ -467,7 +464,7 @@ export class Studio {
       { attr: { "aria-label": t("set.theme") }, on: { change: () => this.setOverride({ theme: theme.value }) } },
     );
     const trim = select(
-      TRIMS.filter((tr) => !FREE_EDITION || trimAllowed(plan, tr.id) || tr.id === s.trim).map((tr) => ({ value: tr.id, label: tr.label, badge: trimAllowed(plan, tr.id) ? undefined : FREE_EDITION ? t("set.notIncluded") : t("set.pro") })),
+      TRIMS.map((tr) => ({ value: tr.id, label: tr.label })),
       s.trim,
       { attr: { "aria-label": t("set.trimAria") }, on: { change: () => this.setOverride({ trim: trim.value }) } },
     );
@@ -790,9 +787,8 @@ export class Studio {
     const pro = hasFeature(this.plan(), "accessiblePack");
     this.tabs.preview.textContent = t("tab.preview");
     this.tabs.problems.textContent = problems ? t("tab.problemsN", { n: problems }) : t("tab.problems");
-    // The free edition's EPUB has no accessibility pack, so there is nothing to show.
-    this.tabs.kdp.hidden = FREE_EDITION;
     this.tabs.kdp.textContent = t("tab.kdp");
+    // The free edition's EPUB has no accessibility pack, so there is nothing to show.
     this.tabs.accessibility.hidden = FREE_EDITION;
     this.tabs.accessibility.textContent = audit && pro && !audit.passed ? t("tab.accessibilityFix") : pro || FREE_EDITION ? t("tab.accessibility") : t("tab.accessibilityPro");
   }
@@ -824,7 +820,7 @@ export class Studio {
   }
 
   private tabKey(e: KeyboardEvent, tab: Tab): void {
-    const order: Tab[] = FREE_EDITION ? ["preview", "problems"] : ["preview", "problems", "kdp", "accessibility"];
+    const order: Tab[] = FREE_EDITION ? ["preview", "problems", "kdp"] : ["preview", "problems", "kdp", "accessibility"];
     const i = order.indexOf(tab);
     let next: Tab | null = null;
     if (e.key === "ArrowRight") next = order[(i + 1) % order.length];
