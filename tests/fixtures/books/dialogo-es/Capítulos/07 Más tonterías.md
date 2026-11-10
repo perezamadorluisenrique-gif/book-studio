@@ -1,0 +1,143 @@
+# Más tonterías
+
+Habían descansado. Siguieron adelante, hasta llegar a la entrada del bosque que hay más allá de Saldeoro. Detuviéronse entre un grupo de viejos nogales, cuyos troncos y raíces formaban en el suelo una serie de escalones, con musgosos huecos y recortes tan apropiados para sentarse, que el arte no los hiciera mejor. Desde lo alto del bosque corría un hilo de agua, saltando de piedra en piedra, hasta dar con su fatigado cuerpo en un estanquillo que servía de depósito para alimentar el chorro de que se abastecían los vecinos. Enfrente el suelo se deprimía poco a poco, ofreciendo grandioso panorama de verdes colinas pobladas de bosques y caseríos, de praderas llanas donde pastaban con tranquilidad vagabunda centenares de reses. En el último término dos lejanos y orgullosos cerros que eran límite de la tierra, dejaban ver en un largo segmento azul purísimo del mar. Era un paisaje cuya contemplación revelaba al alma sus excelsas relaciones con lo infinito.
+
+Sentose Pablo en el tronco de un nogal, apoyando su brazo izquierdo en el borde del estanque. Alzaba la derecha mano para coger las ramas que descendían hasta tocar su frente, por la cual pasaba a ratos, con el mover de las hojas, un rayo de sol.
+
+--¿Qué haces, Nela?--dijo el muchacho después de una pausa, no sintiendo ni los pasos, ni la voz, ni la respiración de su compañera--. ¿Qué haces? ¿Dónde estás?
+
+--Aquí--replicó la Nela, tocándole el hombro--. Estaba mirando el mar.
+
+--¡Ah! ¿Está muy lejos?
+
+--Allá se ve por los cerros de Ficóbriga.
+
+--Grande, grandísimo, tan grande, que se estará mirando todo un día sin acabarlo de ver, ¿no es eso?
+
+--No se ve sino un pedazo como el que coges dentro de la boca cuando le pegas una mordida a un pan.
+
+--Ya, ya comprendo. Todos dicen que ninguna hermosura iguala a la del mar, por causa de la sencillez que hay en él.... Oye, Nela, lo que voy a decirte.... ¿Pero qué haces?
+
+La Nela, agarrando con ambas manos la rama del nogal, se suspendía y balanceaba graciosamente.
+
+--Aquí estoy, señorito mío. Estaba pensando que por qué no nos daría Dios a nosotras las personas alas para volar como los pájaros. ¡Qué cosa más bonita que hacer _zas_, y remontarnos y ponernos de un vuelo en aquel pico que está allá entre Ficóbriga y el mar!...
+
+--Si Dios no nos ha dado alas; en cambio nos ha dado el pensamiento, que vuela más que todos los pájaros, porque llega hasta el mismo Dios.... Dime tú, ¿para qué querría yo alas de pájaro, si Dios me hubiera negado el pensamiento?
+
+--Pues a mí me gustaría tener las dos cosas. Y si tuviera alas, te cogería en mi piquito para llevarte por esos mundos y subirte a lo más alto de las nubes.
+
+El ciego alargó su mano hasta tocar la cabeza de la Nela.
+
+--Siéntate junto a mí. ¿No estás cansada?
+
+--Un poquitín--replicó ella, sentándose y apoyando su cabeza con infantil confianza en el hombro de su amo.
+
+--Respiras fuerte, Nelilla; tú estás muy cansada. Es de tanto volar.... Pues lo que te iba a decir, es esto: Hablando del mar me hiciste recordar una cosa que mi padre me leyó anoche. Ya sabes que desde la edad en que tuve uso de razón, acostumbra mi padre leerme todas las noches distintos libros de ciencia y de historia, de artes y de entretenimiento. Esas lecturas y estos paseos se puede decir que son mi vida toda. Diome el Señor, para compensarme de la ceguera, una memoria feliz, y gracias a ella he sacado algún provecho de las lecturas; pues aunque éstas han sido sin método, yo al fin y al cabo he logrado poner algún orden en las ideas que iban entrando en mi entendimiento. ¡Qué delicias tan grandes las mías al entender el orden admirable del Universo, el concertado rodar de los astros, el giro de los átomos pequeñitos, y después las leyes, más admirable aún, que gobiernan nuestra alma! También me ha recreado mucho la historia, que es un cuento verdadero de todo lo que los hombres han hecho antes de ahora; resultando, hija mía, que siempre han hecho las mismas maldades y las mismas tonterías, aunque no han cesado de mejorarse, acercándose todo lo posible, mas sin llegar nunca, a las perfecciones que sólo posee Dios. Por último, me ha leído mi padre cosas sutiles y un poco hondas para ser penetradas de pronto; pero que suspenden y enamoran cuando se medita en ellas. Es lectura que a él no le agrada, por no comprenderla, y que a mí me ha cansado también unas veces, deleitándome otras. Pero no hay duda que cuando se da con un autor que sepa hablar con claridad, esas materias son preciosas. Contienen ideas sobre las causas y los efectos, sobre la razón de todo lo que pensamos y el modo como lo pensamos, y enseñan la esencia de todas las cosas.
+
+La Nela parecía no comprender ni una sola palabra de lo que su amigo decía; pero atendía profundamente abriendo la boca. Para apoderarse de aquellas esencias y causas de que su amo le hablaba, abría el pico como el pájaro que acecha el vuelo de la mosca que quiere cazar.
+
+--Pues bien--añadió él--anoche leyó mi padre unas páginas sobre la belleza. Hablaba el autor de la belleza, y decía que era el resplandor de la bondad y de la verdad, con otros muchos conceptos ingeniosos y tan bien traídos y pensados, que daba gusto oírlos.
+
+--Ese libro--dijo la Nela queriendo demostrar suficiencia--no será como uno que tiene padre Centeno, que llaman... _Las mil y no sé cuántas noches_.
+
+--No es eso, tontuela; habla de la belleza en absoluto... ¿no entenderás esto de la belleza ideal?... tampoco lo entiendes... porque has de saber que hay una belleza que no se ve ni se toca, ni se percibe con ningún sentido.
+
+--Como, por ejemplo, la Virgen María--interrumpió la Nela--a quien no vemos ni tocamos, porque las imágenes no son ella misma, sino su retrato.
+
+--Estás en lo cierto: así es. Pensando en esto, mi padre cerró el libro, y él decía una cosa y yo otra. Hablamos de la forma y mi padre me dijo: «Desgraciadamente tú no puedes comprenderla». Yo sostuve que sí; dije que no había más que una sola belleza y que esa había de servir para todo.
+
+La Nela, poco atenta a cosas tan sutiles, había cogido de las manos de su amigo las flores, y combinaba sus risueños colores.
+
+--Yo tenía una idea sobre esto--añadió el ciego con mucha energía--una idea con la cual estoy encariñado desde hace algunos meses. Sí, lo sostengo, lo sostengo.... No, no me hacen falta los ojos para esto. Yo le dije a mi padre: «Concibo un tipo de belleza encantadora, un tipo que contiene todas las bellezas posibles; ese tipo es la Nela». Mi padre se echó a reír y me dijo que sí.
+
+La Nela se puso como amapola y no supo responder nada. Durante un breve instante de terror y ansiedad, creyó que el ciego la estaba _mirando_.
+
+--Sí, tú eres la belleza más acabada que puede imaginarse--añadió Pablo con calor--. ¿Cómo podría suceder que tu bondad, tu inocencia, tu candor, tu gracia, tu imaginación, tu alma celestial y cariñosa que ha sido capaz de alegrar mis tristes días; cómo podría suceder, cómo, que no estuviese representada en la misma hermosura?... Nela, Nela--añadió balbuciente y con afán--. ¿No es verdad que eres muy bonita?
+
+La Nela calló. Instintivamente se había llevado las manos a la cabeza, enredando entre sus cabellos las florecitas medio ajadas que había cogido antes en la pradera.
+
+--¿No respondes?... Es verdad que eres modesta. Si no lo fueras, no serías tan repreciosa como eres. Faltaría la lógica de las bellezas, y eso no puede ser. ¿No respondes?...
+
+--Yo...--murmuró la Nela con timidez, sin dejar de la mano su tocado--no sé... dicen que cuando niña era muy bonita.... Ahora....
+
+--Y ahora también.
+
+María, en su extraordinaria confusión, pudo hablar así:
+
+--Ahora... ya sabes tú que las personas dicen muchas tonterías... se equivocan también... a veces el que tiene más ojos ve menos.
+
+--¡Oh! ¡Qué bien dicho! Ven acá: dame un abrazo.
+
+La Nela no pudo acudir pronto, porque habiendo conseguido sostener entre sus cabellos una como guirnalda de florecillas, sintió vivos deseos de observar el efecto de aquel atavío en el claro cristal del agua. Por primera vez desde que vivía se sintió presumida. Apoyándose en sus manos, asomose al estanque.
+
+--¿Qué haces, Mariquilla?
+
+--Me estoy mirando en el agua, que es como un espejo--replicó con la mayor inocencia, delatando su presunción.
+
+--Tú no necesitas mirarte. Eres hermosa como los ángeles que rodean el trono de Dios.
+
+El alma del ciego llenábase de entusiasmo y fervor.
+
+--El agua se ha puesto a temblar--dijo la Nela--y no me veo bien, señorito. Ella tiembla como yo. Ya está más tranquila, ya no se mueve.... Me estoy mirando... ahora.
+
+--¡Qué linda eres! Ven acá, niña mía--añadió el ciego, extendiendo sus brazos.
+
+--¡Linda yo!--dijo ella llena de confusión y ansiedad--. Pues esa que veo en el estanque no es tan fea como dicen. Es que hay también muchos que no saben ver.
+
+--Sí, muchos.
+
+--¡Si yo me vistiese como se visten otras!...--exclamó la Nela con orgullo.
+
+--Te vestirás.
+
+--¿Y ese libro dice que yo soy bonita?--preguntó la Nela apelando a todos los recursos de convicción.
+
+--Lo digo yo, que poseo una verdad inmutable--exclamó el ciego, llevado de su ardiente fantasía.
+
+--Puede ser--observó la Nela, apartándose de su espejo pensativa y no muy satisfecha--que los hombres sean muy brutos y no comprendan las cosas como son.
+
+--La humanidad está sujeta a mil errores.
+
+--Así lo creo--dijo Mariquilla, recibiendo gran consuelo con las palabras de su amigo--. ¿Por qué han de reírse de mí?
+
+--¡Oh!, miserable condición de los hombres--exclamó el ciego, arrastrado al absurdo por su delirante entendimiento--. El don de la vista puede causar grandes extravíos... aparta a los hombres de la posesión de la verdad absoluta... y la verdad absoluta dice que tú eres hermosa, hermosa sin tacha ni sombra alguna de fealdad. Que me digan lo contrario, y les desmentiré... Váyanse ellos a paseo con sus formas. No... la forma no puede ser la máscara de Satanás puesta ante la faz de Dios. ¡Ah!, ¡menguados!, ¡a cuántos desvaríos os conducen vuestros ojos! Nela, Nela, ven acá, quiero tenerte junto a mí y abrazar tu preciosa cabeza.
+
+María corrió a arrojarse en los brazos de su amigo.
+
+--Chiquilla bonita--exclamó este, estrechándola de un modo delirante contra su pecho--¡te quiero con toda mi alma!
+
+La Nela no dijo nada. En su corazón lleno de casta ternura, se desbordaban los sentimientos más hermosos. El joven, palpitante y conturbado, la abrazó más fuerte diciéndole al oído:
+
+--Te quiero más que a mi vida. Ángel de Dios, quiéreme o me muero.
+
+María se soltó de los brazos de Pablo, y este cayó en profunda meditación. A la fenomenal mujer una fuerza poderosa, irresistible, la impulsaba a mirarse en el espejo del agua. Deslizándose suavemente llegó al borde, y vio allá sobre el fondo verdoso su imagen mezquina, con los ojuelos negros, la tez pecosa, la naricilla picuda, aunque no sin gracia, el cabello escaso y la movible fisonomía de pájaro. Alargó su cuerpo sobre el agua para verse el busto, y lo halló deplorablemente desairado. Las flores que tenía en la cabeza se cayeron al agua, haciendo temblar la superficie, y con la superficie, la imagen. La hija de la Canela sintió como si arrancaran su corazón de raíz, y cayó hacia atrás murmurando:
+
+--¡Madre de Dios!, ¡qué feísima soy!
+
+--¿Qué dices, Nela? Me parece que he oído tu voz.
+
+--No decía nada, niño mío.... Estaba pensando... sí, pensaba que ya es hora de volver a tu casa. Pronto será hora de comer.
+
+--Sí, vamos, comerás conmigo, y esta tarde saldremos otra vez. Dame la mano, no quiero que te separes de mí.
+
+Cuando llegaron a la casa, D. Francisco Penáguilas estaba en el patio, acompañado de dos caballeros. Marianela reconoció al ingeniero de las minas y al individuo que se había extraviado en la _Terrible_ la noche anterior.
+
+--Aquí están--dijo--el señor ingeniero y su hermano, el caballero de anoche.
+
+Miraban los tres hombres con visible interés al ciego que se acercaba.
+
+--Hace rato que te estamos esperando, hijo mío--dijo el padre tomando a su hijo de la mano y presentándole al doctor.
+
+--Entremos--dijo el ingeniero.
+
+--¡Benditos sean los hombres sabios y caritativos!--exclamó el padre, mirando a Teodoro--. Pasen ustedes, señores. Que sea bendito el instante en que ustedes entran en mi casa.
+
+--Veamos este caso--murmuró Golfín.
+
+Cuando Pablo y los dos hermanos entraron, D. Francisco se volvió hacia Mariquilla, que se había quedado en medio del patio inmóvil y asombrada, y le dijo con bondad:
+
+--Mira, Nela, más vale que te vayas. Mi hijo no puede salir esta tarde.
+
+Y luego, como viese que no se marchaba, añadió:
+
+--Puedes pasar a la cocina. Dorotea te dará alguna chuchería.

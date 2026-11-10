@@ -11,11 +11,11 @@ import { DEFAULT_TRIM, KDP_MAX_PAGES, KDP_MIN_PAGES, BLEED, kdpMinInside, kdpMin
 import { FlowBuilder, type FlowEnv } from "./blocks";
 import { alsoByPage, copyrightPage, dedicationPage, epigraphPage, halfTitlePage, partPage, titlePage, tocPages, type DisplayPage, type TocLine } from "./front";
 import { ParagraphSetter } from "./inline";
-import { offsetDraw, paginate, type FlowPage, type FootnoteSource } from "./paginate";
+import { emptyStats, offsetDraw, paginate, type FlowPage, type FootnoteSource } from "./paginate";
 import { fromTextStyle, Styler } from "./style";
-import type { Draw, Layout, LayoutPage, LayoutWarning, PageRole, TextPos, TocEntry } from "./types";
+import type { Draw, Layout, LayoutPage, LayoutWarning, PageRole, PageStats, Quality, TextPos, TocEntry } from "./types";
 
-export type { Layout, LayoutPage, LayoutWarning, Draw, TextDraw, ImageDraw, RectDraw, RuleDraw, Rgb, TocEntry, TextPos } from "./types";
+export type { PageStats, Quality, Layout, LayoutPage, LayoutWarning, Draw, TextDraw, ImageDraw, RectDraw, RuleDraw, Rgb, TocEntry, TextPos } from "./types";
 
 interface RawPage {
   role: PageRole;
@@ -24,6 +24,7 @@ interface RawPage {
   draws: Draw[];
   start?: TextPos;
   showFolio: boolean;
+  stats?: PageStats;
 }
 
 const PT = 72;
@@ -64,7 +65,26 @@ export function layoutBook(book: Book, fonts: FontSet): Layout {
     toc: result.toc,
     warnings: dedupe(warnings),
     bodyStart: result.bodyStart,
+    quality: measureQuality(pages),
   };
+}
+
+/** Sums the per-page stats of the finished book and counts the defects that need neighbouring pages. */
+export function measureQuality(pages: LayoutPage[]): Quality {
+  const q: Quality = { ...emptyStats(), pages: 0, shortPages: 0, unevenSpreads: 0, hyphenTurns: 0 };
+  const sum: (keyof PageStats)[] = ["lines", "loose", "veryLoose", "hyphens", "ladders", "short", "hyphenEnd", "orphans", "widows", "adjusted"];
+  const lastOfChapter = (i: number) => pages[i + 1]?.chapterId !== pages[i].chapterId;
+  pages.forEach((p, i) => {
+    const st = p.stats;
+    if (!st) return;
+    q.pages++;
+    for (const k of sum) q[k] += st[k];
+    if (st.short > 0) q.shortPages++;
+    if (p.recto && st.hyphenEnd) q.hyphenTurns++;
+    const next = pages[i + 1];
+    if (!p.recto && next?.stats && p.chapterId && next.chapterId === p.chapterId && !lastOfChapter(i) && !lastOfChapter(i + 1) && st.short !== next.stats.short) q.unevenSpreads++;
+  });
+  return q;
 }
 
 function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutPage[]; toc: TocEntry[]; warnings: LayoutWarning[]; bodyStart: number } {
@@ -133,10 +153,10 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
   const chapterPages = (ch: Chapter, matter: Matter, flow: FlowPage[]): RawPage[] =>
     flow.map((p, i) => {
       if (p.overflow) warnings.push({ severity: "warning", message: `Something in “${ch.titleText}” is taller than a page and was cut off.`, src: ch.src });
-      return { role: i === 0 ? "opener" : "body", matter, chapterId: ch.id, draws: p.draws, start: p.start, showFolio: i === 0 ? theme.folio.onOpeners : true };
+      return { role: i === 0 ? "opener" : "body", matter, chapterId: ch.id, draws: p.draws, start: p.start, showFolio: i === 0 ? theme.folio.onOpeners : true, stats: p.stats };
     });
 
-  const layChapter = (ch: Chapter): FlowPage[] => paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: ch.matter === "body" || ch.type === "prologue" })], capacity, foot);
+  const layChapter = (ch: Chapter): FlowPage[] => paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: ch.matter === "body" || ch.type === "prologue" })], capacity, foot, { unit: leading });
 
   // ── Body and back matter (numbered from 1 on a recto) ─────────
   const body: RawPage[] = [];
@@ -301,7 +321,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
       if (atFoot) draws.push(...fb.textLine(folio, folioStyle, width, "center", footerY, left));
       else draws.push(...fb.textLine(folio, folioStyle, width, recto ? "right" : "left", headerY, left));
     }
-    return { index, folio, showFolio: p.showFolio, recto, role: p.role, matter: p.matter, chapterId: p.chapterId, draws, start: p.start };
+    return { index, folio, showFolio: p.showFolio, recto, role: p.role, matter: p.matter, chapterId: p.chapterId, draws, start: p.start, stats: p.stats };
   });
 
   const toc: TocEntry[] = tocChapters.map((c) => ({

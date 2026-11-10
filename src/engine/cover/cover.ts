@@ -5,6 +5,7 @@
 
 import type { FontSet } from "../fonts";
 import { fromTextStyle, Styler, type RunStyle } from "../layout/style";
+import { emptyStats } from "../layout/paginate";
 import type { Draw, Layout, Rgb } from "../layout/types";
 import type { Book } from "../model";
 import { themeById, type TextStyle } from "../themes";
@@ -164,6 +165,7 @@ export function composeCover(book: Book, fonts: FontSet, pages: number, opts: Co
     toc: [],
     warnings: [],
     bodyStart: 0,
+    quality: { ...emptyStats(), pages: 0, shortPages: 0, unevenSpreads: 0, hyphenTurns: 0 },
   };
   return { layout, geometry: g, findings, barcode: bar ?? undefined };
 }

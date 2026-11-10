@@ -83,6 +83,40 @@ export interface TextPos {
   offset: number;
 }
 
+/** Typographic defects counted on one page of running text. */
+export interface PageStats {
+  /** Lines of body paragraphs. */
+  lines: number;
+  /** Lines whose spaces were stretched past their natural stretch (ratio above 1), and past twice that. */
+  loose: number;
+  veryLoose: number;
+  /** Lines ending in a hyphen. */
+  hyphens: number;
+  /** Times three hyphenated lines in a row were reached. */
+  ladders: number;
+  /** Whole lines the page is short of full; 0 on the last page of a flow. */
+  short: number;
+  /** 1 when the last line of the page ends in a hyphen. */
+  hyphenEnd: number;
+  /** 1 when the page ends on the first line of a longer paragraph (orphan), or starts on the last line of one (widow). */
+  orphans: number;
+  widows: number;
+  /** Paragraphs the page builder re-set with one line more or less. */
+  adjusted: number;
+}
+
+/** The page stats of the whole book, summed, plus counts that need neighbouring pages. */
+export interface Quality extends PageStats {
+  /** Pages that carry stats. */
+  pages: number;
+  /** Pages with `short > 0`. */
+  shortPages: number;
+  /** Facing pages of one chapter, neither the chapter's last, that end at different heights. */
+  unevenSpreads: number;
+  /** Right-hand pages that end on a hyphen. */
+  hyphenTurns: number;
+}
+
 export interface LayoutPage {
   /** 0-based physical page index. */
   index: number;
@@ -96,6 +130,7 @@ export interface LayoutPage {
   draws: Draw[];
   /** Where the page's text starts, for the EPUB page list. */
   start?: TextPos;
+  stats?: PageStats;
 }
 
 export interface TocEntry {
@@ -133,4 +168,5 @@ export interface Layout {
   warnings: LayoutWarning[];
   /** Folio of the first body page's physical index, for jumping in the preview. */
   bodyStart: number;
+  quality: Quality;
 }

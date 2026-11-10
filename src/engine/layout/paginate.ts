@@ -4,7 +4,7 @@
 
 import { INFINITE_PENALTY } from "../linebreak";
 import type { SourceRef } from "../model";
-import type { Draw, TextPos } from "./types";
+import type { Draw, PageStats, TextPos } from "./types";
 
 export interface VBox {
   type: "box";
@@ -17,6 +17,11 @@ export interface VBox {
   src?: SourceRef;
   /** Footnotes this box calls, which must land on the same page. */
   notes?: string[];
+  /** Quality of the line this box holds, for body paragraphs only. */
+  q?: { ratio: number; hyphen: boolean };
+  /** Line number inside its paragraph, from 1, and the paragraph's line count. */
+  para?: number;
+  paraLines?: number;
 }
 
 /** Where footnotes come from when they are set at the foot of the page. */
@@ -46,10 +51,16 @@ export interface FlowPage {
   /** Height of material on the page. */
   used: number;
   overflow: boolean;
+  stats: PageStats;
+}
+
+export interface PaginateOptions {
+  /** Line height of the body text, to count how many lines a page is short. */
+  unit?: number;
 }
 
 /** `capacity` can depend on the page, for a flow that starts below a heading. */
-export function paginate(items: VItem[], capacityOf: number | ((page: number) => number), foot?: FootnoteSource): FlowPage[] {
+export function paginate(items: VItem[], capacityOf: number | ((page: number) => number), foot?: FootnoteSource, opts: PaginateOptions = {}): FlowPage[] {
   const pages: FlowPage[] = [];
   const n = items.length;
   let i = 0;
@@ -96,7 +107,7 @@ export function paginate(items: VItem[], capacityOf: number | ((page: number) =>
       end = i;
       overflow = true;
     }
-    const page: FlowPage = { draws: [], used: 0, overflow };
+    const page: FlowPage = { draws: [], used: 0, overflow, stats: emptyStats() };
     let y = 0;
     for (let k = i; k <= end; k++) {
       const it = items[k];
@@ -121,10 +132,53 @@ export function paginate(items: VItem[], capacityOf: number | ((page: number) =>
         }
       }
     }
+    const final = j >= n || forced;
+    page.stats = pageStats(items, i, end, page.used, capacity, final, opts.unit, foot);
     pages.push(page);
     i = end + 1;
   }
   return pages;
+}
+
+export function emptyStats(): PageStats {
+  return { lines: 0, loose: 0, veryLoose: 0, hyphens: 0, ladders: 0, short: 0, hyphenEnd: 0, orphans: 0, widows: 0, adjusted: 0 };
+}
+
+function pageStats(items: VItem[], from: number, to: number, used: number, capacity: number, final: boolean, unit: number | undefined, foot?: FootnoteSource): PageStats {
+  const st = emptyStats();
+  const boxes: VBox[] = [];
+  for (let k = from; k <= to; k++) {
+    const it = items[k];
+    if (it.type === "box") boxes.push(it);
+  }
+  let run = 0;
+  for (const b of boxes) {
+    if (!b.q) {
+      run = 0;
+      continue;
+    }
+    st.lines++;
+    if (b.q.ratio > 1) st.loose++;
+    if (b.q.ratio > 2) st.veryLoose++;
+    if (b.q.hyphen) {
+      st.hyphens++;
+      if (++run === 3) st.ladders++;
+    } else run = 0;
+  }
+  const first = boxes[0];
+  const last = boxes[boxes.length - 1];
+  if (last?.q?.hyphen) st.hyphenEnd = 1;
+  if (last?.q && last.para === 1 && (last.paraLines ?? 1) > 1) st.orphans = 1;
+  if (first?.q && first.para === first.paraLines && (first.paraLines ?? 1) > 1) st.widows = 1;
+  if (unit && !final) {
+    let notes = 0;
+    if (foot) {
+      const ids = [...new Set(boxes.flatMap((b) => b.notes ?? []))];
+      if (ids.length) notes = foot.separator + ids.reduce((a, id) => a + foot.height(id), 0);
+    }
+    st.short = Math.max(0, Math.floor((capacity - used - notes + 0.01) / unit));
+  }
+  return st;
 }
 
 export function offsetDraw(d: Draw, dx: number, dy: number): Draw {

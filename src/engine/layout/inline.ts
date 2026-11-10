@@ -27,6 +27,8 @@ export interface SetLine {
   offset: number;
   overfull: boolean;
   hyphenated: boolean;
+  /** Adjustment ratio the line was set with: above 0 its spaces were stretched, below 0 squeezed. 0 on the last line and in unjustified text. */
+  ratio: number;
   /** Footnotes called from this line, in order. */
   notes: string[];
 }
@@ -402,7 +404,7 @@ export class ParagraphSetter {
           x += e.w + (r >= 0 ? r * e.stretch : r * e.shrink);
         }
       });
-      out.push({ pieces, offset: offset ?? 0, overfull: finalWidth > target + 0.5, hyphenated, notes });
+      out.push({ pieces, offset: offset ?? 0, overfull: finalWidth > target + 0.5, hyphenated, ratio: align === "justify" && !last ? r : 0, notes });
       start = br.position + 1;
     });
     return out;
