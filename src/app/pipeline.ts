@@ -11,6 +11,7 @@ import { preflightReport } from "../engine/preflight-report";
 import { epubBlockers, hasFeature, printBlockers, type ExportBlocker, type Plan } from "../engine/entitlements";
 import { bookSlug, writeEpub } from "../engine/epub";
 import type { FontSet } from "../engine/fonts";
+import { loadHyphenator } from "../engine/hyphenate";
 import { layoutBook, type Layout } from "../engine/layout/index";
 import type { Book, BookSettings } from "../engine/model";
 import { composeCover, type Cover } from "../engine/cover/cover";
@@ -29,7 +30,7 @@ export async function buildBook(source: VaultSource, manifestPath: string, fonts
   const t0 = performance.now();
   // Box sets always load so free users can preview them; exporting one needs Pro.
   const book = await loadBook(source, manifestPath, overrides, { boxSets: true });
-  const layout = layoutBook(book, fonts);
+  const layout = layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? await loadHyphenator(book.meta.language) : null });
   const audit = auditBook(book, { pageList: true });
   return { book, layout, audit, ms: Math.round(performance.now() - t0) };
 }
@@ -127,7 +128,7 @@ export async function exportEdition(source: VaultSource, manifestPath: string, f
 export async function buildBookEdition(source: VaultSource, manifestPath: string, fonts: FontSet, edition: Edition): Promise<Built> {
   const t0 = performance.now();
   const book = await loadBook(source, manifestPath, edition.settings, { boxSets: true, meta: { isbnPrint: edition.format === "print" ? edition.isbn : undefined, isbnEbook: edition.format === "epub" ? edition.isbn : undefined, edition: edition.edition } });
-  const layout = layoutBook(book, fonts);
+  const layout = layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? await loadHyphenator(book.meta.language) : null });
   return { book, layout, audit: auditBook(book, { pageList: true }), ms: Math.round(performance.now() - t0) };
 }
 

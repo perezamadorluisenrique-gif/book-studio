@@ -7,8 +7,8 @@ import { isManifestFrontmatter } from "../src/engine/manifest";
 import { createProject, addChapter, setChapterBody } from "../src/project/ops";
 import { bodyStartLine, projectToVault, safeName } from "../src/project/to-vault";
 import { fsVault } from "./helpers/fsVault";
-import { layoutBook } from "../src/engine/layout/index";
 import { testFonts } from "./helpers/fonts";
+import { layoutHyphenated } from "./helpers/layout";
 
 const mk = (o: Partial<Parameters<typeof createProject>[0]> = {}) => createProject({ id: "p", name: "Starter Book", now: 1, ...o });
 
@@ -102,8 +102,8 @@ describe("Starter Book template equivalence", () => {
     const fromProject = projectToVault(mk({ template: true }));
     const a = await loadBook(fromFolder, "Starter Book.md");
     const b = await loadBook(fromProject, fromProject.bookPath);
-    const pagesA = layoutBook(a, fonts).pages.length;
-    const pagesB = layoutBook(b, fonts).pages.length;
+    const pagesA = (await layoutHyphenated(a, fonts)).pages.length;
+    const pagesB = (await layoutHyphenated(b, fonts)).pages.length;
     expect(pagesB).toBe(pagesA);
     expect(pagesA).toBeGreaterThan(0);
   });

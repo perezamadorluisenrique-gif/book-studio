@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadBook } from "../src/engine/book";
 import type { FontSet } from "../src/engine/fonts";
+import { loadHyphenator } from "../src/engine/hyphenate";
 import { layoutBook, type Layout } from "../src/engine/layout/index";
 import { testFonts } from "./helpers/fonts";
 import { fsVault } from "./helpers/fsVault";
@@ -32,7 +33,7 @@ describe("golden pages", { timeout: 60_000 }, () => {
   for (const b of BOOKS) {
     it(`${b.name}: six fixed pages keep their text and positions`, async () => {
       const book = await loadBook(fsVault(new URL(b.dir, import.meta.url).pathname), b.manifest, {});
-      const layout = layoutBook(book, fonts);
+      const layout = layoutBook(book, fonts, { hyphenator: await loadHyphenator(book.meta.language) });
       const text = PAGES.map((p) => describePage(layout, p)).join("\n\n") + "\n";
       await expect(text).toMatchFileSnapshot(`./golden/${b.name}.txt`);
       expect(text.split("\n").length).toBeGreaterThan(100);
