@@ -826,10 +826,10 @@ describe("web app, import a manuscript", () => {
     await page.getByRole("button", { name: "My books" }).click();
     await page.getByLabel("Text file").setInputFiles(new URL("../tests/fixtures/docx/word-like.docx", import.meta.url).pathname);
     await page.getByRole("button", { name: "Import as a new book" }).click();
-    // The report lists what was kept and what was left out.
+    // The report lists the word count, what was kept and what was left out.
     const dialog = page.getByRole("dialog");
     await dialog.waitFor();
-    expect(await dialog.textContent()).toContain("1 table was left out");
+    expect(await dialog.textContent()).toContain("1 table kept as a table");
     expect(await dialog.textContent()).toContain("1 picture has no description");
     await page.getByRole("button", { name: "Open the book" }).click();
     await page.locator("#ed-text").waitFor();

@@ -52,3 +52,15 @@ describe("callouts", () => {
     expect(blocks[0]).not.toHaveProperty("callout");
   });
 });
+
+describe("paragraph alignment", () => {
+  it("reads {.center} and {.right} at the end of a paragraph and does not print them", async () => {
+    const { blocks } = await parseMarkdown("Plain.\n\nCentered line {.center}\n\nFirst\nsigned {.right}\n\nOwn line {.left} stays.", ctx());
+    const para = blocks.filter((b) => b.kind === "paragraph");
+    expect(para.map((b) => (b.kind === "paragraph" ? b.align : "x"))).toEqual([undefined, "center", "right", undefined]);
+    const text = (b: (typeof para)[number]) => (b.kind === "paragraph" ? b.inlines.map((i) => (i.kind === "text" ? i.text : "")).join("") : "");
+    expect(text(para[1])).toBe("Centered line");
+    expect(text(para[2])).toContain("signed");
+    expect(text(para[2])).not.toContain("{");
+  });
+});

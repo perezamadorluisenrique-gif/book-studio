@@ -97,7 +97,7 @@ function chapterLines(lines: string[], inside: boolean[]): Cut[] {
     if (!m) return;
     const rest = m[3].trim();
     if (rest.length > 0 && /[.!?]$/.test(rest) && rest.split(/\s+/).length > 8) return;
-    cuts.push({ line: i, title: l.trim().replace(/[\s.:\-–—]+$/, "") });
+    cuts.push({ line: i, title: l.trim().replace(/\s*\{\.(?:center|right)\}$/, "").replace(/[\s.:\-–—]+$/, "") });
   });
   return cuts;
 }

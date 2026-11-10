@@ -33,7 +33,7 @@ export interface ImageRef {
 }
 
 export type Block =
-  | { kind: "paragraph"; id: string; inlines: Inline[]; src: SourceRef }
+  | { kind: "paragraph"; id: string; inlines: Inline[]; src: SourceRef; /** Set with `{.center}` or `{.right}` at the end of the paragraph. */ align?: "center" | "right" }
   | { kind: "heading"; id: string; level: number; inlines: Inline[]; src: SourceRef }
   | { kind: "sceneBreak"; id: string; src: SourceRef }
   | { kind: "pageBreak"; id: string; src: SourceRef }

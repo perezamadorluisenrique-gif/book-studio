@@ -6,7 +6,7 @@ import { importDocx } from "../src/project/import-docx";
 import { parseXml } from "./docx-helper";
 
 const load = async (name: string) => new Uint8Array(await readFile(new URL(`./fixtures/docx/${name}.docx`, import.meta.url)));
-const FIXTURES = ["word-like", "pandoc", "libreoffice", "spanish-patterns", "tracked-and-extras"];
+const FIXTURES = ["word-like", "pandoc", "libreoffice", "spanish-patterns", "tracked-and-extras", "formatting"];
 
 describe("importDocx", () => {
   it.each(FIXTURES)("%s gives the expected Markdown, chapters and report", async (name) => {
@@ -28,6 +28,21 @@ describe("importDocx", () => {
     const declared = new Set(r.report.items.map((i) => i.code));
     if (r.report.words.missing.length) expect(["tables", "textBoxes", "equations"].some((c) => declared.has(c as never))).toBe(true);
     expect(r.report.words.source).toBeGreaterThan(0);
+  });
+
+  it("formatting.docx: the Markdown it makes is read back as a table, aligned paragraphs and styled text", async () => {
+    const { parseMarkdown } = await import("../src/engine/markdown");
+    const r = await importDocx(await load("formatting"), parseXml, "formatting.docx");
+    let n = 0;
+    const { blocks } = await parseMarkdown(r.chapters[0].body, { file: "a.md", lang: "en", smart: true, nextId: () => `b${++n}`, resolve: () => null, readNote: async () => "", warnings: [] });
+    const table = blocks.find((b) => b.kind === "table");
+    expect(table?.kind === "table" && [table.header.length, table.rows.length]).toEqual([3, 2]);
+    expect(blocks.flatMap((b) => (b.kind === "paragraph" && b.align ? [b.align] : []))).toEqual(["center", "right"]);
+    const styles = blocks.flatMap((b) => (b.kind === "paragraph" ? b.inlines : [])).flatMap((i) => (i.kind === "text" ? [i.style] : []));
+    expect(styles.some((x) => x.sub)).toBe(true);
+    expect(styles.some((x) => x.sup)).toBe(true);
+    expect(styles.some((x) => x.strike)).toBe(true);
+    expect(styles.some((x) => x.smallCaps)).toBe(true);
   });
 
   it("rejects a file that is not a .docx", async () => {

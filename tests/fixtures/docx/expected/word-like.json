@@ -31,7 +31,7 @@
     },
     {
       "title": "The storm",
-      "body": "It was a **very dark** night, and the *sea* was ***furious***.\n\n* * *\n\nA \\*star\\* and a\\_b and \\[link\\] and \\<tag\\> stay literal.\n\n## Second thoughts\n\n- First point\n- Second point\n\n1. Step one\n1. Step two\n\n> The sea does not forgive."
+      "body": "It was a **very dark** night, and the *sea* was ***furious***.\n\n* * *\n\nA \\*star\\* and a\\_b and \\[link\\] and \\<tag\\> stay literal.\n\n## Second thoughts\n\n- First point\n- Second point\n\n1. Step one\n1. Step two\n\n> The sea does not forgive.\n\n| a |  |\n| --- | --- |\n|  |  |"
     },
     {
       "title": "The morning",
@@ -62,13 +62,8 @@
     "footnotes": 0,
     "words": {
       "source": 64,
-      "book": 63,
-      "missing": [
-        {
-          "texto": "a",
-          "lugar": "Second thoughts"
-        }
-      ]
+      "book": 64,
+      "missing": []
     }
   }
 }
