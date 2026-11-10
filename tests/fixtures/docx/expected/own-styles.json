@@ -1,0 +1,40 @@
+{
+  "title": "own-styles",
+  "sections": [
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c1"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "own-styles",
+      "body": "Mi novela\n\nEl comienzo\n\nPrimer texto normal.\n\nEsta es una línea larga de texto pegado con saltos manuales número 1 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 2 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 3 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 4 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 5 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 6 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 7 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 8 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 9 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 10 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 11 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 12 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 13 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 14 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 15 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 16 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 17 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 18 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 19 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 20 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 21 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 22 sin puntuación Esta es una línea larga de texto pegado con saltos manuales número 23 sin puntuación.\n\nLa mitad\n\nSegundo texto normal.\n\nEl final\n\nÚltimo texto normal."
+    }
+  ],
+  "assets": [],
+  "report": {
+    "items": [],
+    "chapters": 1,
+    "images": 0,
+    "footnotes": 0,
+    "titleStyles": [
+      {
+        "id": "TituloCapitulo",
+        "name": "titulocapitulo",
+        "count": 3,
+        "examples": [
+          "El comienzo",
+          "La mitad"
+        ]
+      }
+    ],
+    "words": {
+      "source": 362,
+      "book": 362,
+      "missing": []
+    }
+  }
+}

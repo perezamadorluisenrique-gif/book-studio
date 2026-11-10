@@ -72,12 +72,19 @@ export function projectToVault(p: Project): ProjectVault {
     const chapters = section.chapterIds.map((id) => chapterById(p, id)).filter((c): c is ProjectChapter => !!c);
     if (!chapters.length) continue;
     lines.push(`## ${SECTION_HEADING[section.kind]}`, "");
-    chapters.forEach((c, i) => {
+    let number = 0;
+    chapters.forEach((c) => {
+      // A part is a divider in the book note, not a note of its own.
+      if (c.kind === "part" && section.kind === "body") {
+        lines.push(`### ${c.title.replace(/\s+/g, " ").trim()}`, "");
+        return;
+      }
+      number++;
       const dir = section.kind === "body" ? "Chapters/" : "";
       const name = unique(safeName(c.title, "Chapter"));
       files.set(`${dir}${name}.md`, chapterNote(c));
       chapterPaths[c.id] = `${dir}${name}.md`;
-      lines.push(section.kind === "body" ? `${i + 1}. [[${name}]]` : `- [[${name}]]`);
+      lines.push(section.kind === "body" ? `${number}. [[${name}]]` : `- [[${name}]]`);
     });
     lines.push("");
   }
