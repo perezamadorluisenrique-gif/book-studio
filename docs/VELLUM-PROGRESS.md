@@ -11,7 +11,7 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 | A | T1.2 Márgenes ópticos y letras elásticas | hecha (PR abierto) | |
 | A | T1.3 Páginas | hecha en parte (PR abierto) | |
 | A | T1.4 Guiones por idioma | hecho | PR de T1.4 |
-| B | T1.5 Ortotipografía | sin empezar | |
+| B | T1.5 Ortotipografía | hecho | PR de T1.5 |
 | B | T1.6 Velocidad | sin empezar | |
 | B | T2.0 Lo gratis nuevo | sin empezar | |
 | B | T2.1 Página de inicio | sin empezar | |
@@ -93,9 +93,10 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilo A, orden T2 (la siguiente del plan).
+Hilo B, orden T1.6 (velocidad).
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
 - 2026-11-10: T1.3 hecha en parte. `paginate` con `balance`: reparación de página por párrafo (±1 línea), parejas de páginas a la misma altura, arreglo del final de capítulo; `layChapter` con caché por paridad. Metas de páginas cortas y de dobles desiguales no alcanzadas (ver desviaciones).
 - 2026-11-10: T1.4 hecha. Patrones de guionado por idioma (es, en-us, en-gb, fr, de, it, pt, ca, gl, eu, nl) cargados bajo demanda en trozos aparte; penalización extra para guionar nombres propios; espacio duro y guion blando respetados. Leyendas: 28 páginas cortas (antes 32), loose 0; Oz sin cambios salvo hyphenTurns 1. Rendimiento: Oz 0,77 s, Leyendas 0,87 s. Pruebas locales: lint, typecheck, 342 tests, build, build:web, e2e 46/46.
+- 2026-11-10: T1.5 hecha. Raya de diálogo pegada, no se parte tras una raya inicial, espacios duros (tratamientos, número y unidad, pág./cap./n.º, siglo), siglos en versalitas, comillas anidadas, capitular admite la raya. EPUB ya tenía widows/orphans/hyphens. dialogo-es: 8 páginas cortas (antes 10). Idea ±1 en versos y citas: descartada; las páginas cortas de Leyendas son de prosa y la causa es que casi ningún párrafo admite ±1 línea con tolerancia 0,95 (con 1,3 sube «loose»).
