@@ -156,7 +156,17 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
       return { role: i === 0 ? "opener" : "body", matter, chapterId: ch.id, draws: p.draws, start: p.start, showFolio: i === 0 ? theme.folio.onOpeners : true, stats: p.stats };
     });
 
-  const layChapter = (ch: Chapter): FlowPage[] => paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: ch.matter === "body" || ch.type === "prologue" })], capacity, foot, { unit: leading });
+  // A chapter set on a right-hand page and on a left-hand page comes out differently, so each is kept apart.
+  const chapterCache = new Map<string, FlowPage[]>();
+  const layChapter = (ch: Chapter, firstRecto: boolean): FlowPage[] => {
+    const key = `${ch.id}|${firstRecto}`;
+    let hit = chapterCache.get(key);
+    if (!hit) {
+      hit = paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: ch.matter === "body" || ch.type === "prologue" })], capacity, foot, { unit: leading, balance: true, firstRecto });
+      chapterCache.set(key, hit);
+    }
+    return hit;
+  };
 
   // ── Body and back matter (numbered from 1 on a recto) ─────────
   const body: RawPage[] = [];
@@ -166,7 +176,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
   const placeChapter = (ch: Chapter, list: RawPage[], matter: Matter) => {
     if (startRecto) ensureRecto(list, matter);
     firstPage.set(ch.id, list.length);
-    list.push(...chapterPages(ch, matter, layChapter(ch)));
+    list.push(...chapterPages(ch, matter, layChapter(ch, list.length % 2 === 0)));
   };
   for (const ch of bodyChapters) {
     if (ch.type === "part") {
@@ -265,7 +275,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
     for (const ch of frontChapters) {
       if (startRecto) ensureRecto(front, "front");
       frontFirst.set(ch.id, front.length);
-      front.push(...chapterPages(ch, "front", layChapter(ch)));
+      front.push(...chapterPages(ch, "front", layChapter(ch, front.length % 2 === 0)));
     }
     if (front.length % 2 === 1) front.push(blank("front"));
     return { front, frontFirst, tocStart, tocCount };

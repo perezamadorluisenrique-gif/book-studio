@@ -183,7 +183,7 @@ export class ParagraphSetter {
     const { dropCap, indentFor, lineWidth, ragged, hyphens, build, common } = this.prepare(inlines, base, opts);
     if (ragged || lines < 1 || (dropCap && lines <= dropCap.lines)) return null;
     const items = build(true);
-    const r = breakParagraph(items, { ...common, tolerance: 1.3, lineCount: lines });
+    const r = breakParagraph(items, { ...common, tolerance: 0.95, lineCount: lines });
     if (!r) return null;
     return { lines: this.lines(items, r.breaks, lineWidth, indentFor, opts.align, !!opts.micro), dropCap, hyphenated: hyphens };
   }

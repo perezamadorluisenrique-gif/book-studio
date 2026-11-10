@@ -111,4 +111,13 @@ describe("print layout", { timeout: 30_000 }, () => {
     }
     expect(hung).toBeGreaterThan(0);
   });
+
+  it("leaves no widows or orphans and no uneven facing pages beyond the baseline in the samples", async () => {
+    const leyendas = layoutBook(await loadBook(fsVault(new URL("../sample/leyendas", import.meta.url).pathname), "Leyendas y rimas.md"), fonts);
+    for (const layout of [await layoutOz(), leyendas]) {
+      expect(layout.quality.widows).toBe(0);
+      expect(layout.quality.orphans).toBe(0);
+      expect(layout.quality.adjusted).toBeGreaterThan(0);
+    }
+  });
 });
