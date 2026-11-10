@@ -114,27 +114,38 @@ async function pages(): Promise<void> {
 // ── The app ──
 
 async function shoot(page: Page, name: string, clip?: { x: number; y: number; width: number; height: number }): Promise<void> {
+  await page.evaluate(() => document.getElementById("toasts")?.replaceChildren());
   save(name, await toWebp(await page.screenshot({ type: "png", clip }), 0.8));
 }
 
 async function app(): Promise<void> {
   const { server, url } = await serve("dist/web");
   try {
-    for (const [lang, locale, sample] of [["es", "es-ES", "leyendas"], ["en", "en-US", "oz"]] as const) {
+    for (const [lang, locale] of [["es", "es-ES"], ["en", "en-US"]] as const) {
       const context = await browser.newContext({ locale, viewport: { width: 1100, height: 720 }, deviceScaleFactor: 1 });
       const page = await context.newPage();
       // 1. The first screen: nothing saved yet, drop a Word file here.
       await page.goto(url);
       await page.locator(".land-drop").waitFor();
       await shoot(page, `landing-${lang}-step1.webp`);
-      // 2. The book with its style.
-      await page.goto(`${url}?sample=${sample}`);
+      // 2 and 3. A Word file dropped in, then the guide's style step and its download step.
+      const docx = readFileSync(new URL(`../tests/fixtures/docx/${lang === "es" ? "spanish-patterns" : "word-like"}.docx`, import.meta.url));
+      await page.locator("#land-drop").evaluate(async (el, bytes) => {
+        const dt = new DataTransfer();
+        dt.items.add(new File([new Uint8Array(bytes)], "manuscript.docx"));
+        el.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
+      }, [...docx]);
+      // The report of what the import left out may open a window on some files; close it.
+      await page.locator(".wiz-title").waitFor({ timeout: 60_000 });
+      await page.locator("#wiz-next").click();
+      await page.locator(".wiz-thumb canvas").nth(4).waitFor({ timeout: 30_000 });
       await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
-      await page.locator(".bs-page").nth(22).scrollIntoViewIfNeeded();
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(500);
       await shoot(page, `landing-${lang}-step2.webp`);
-      // 3. The downloads: the bar with the export buttons (the pages say 1100 × 220).
-      await shoot(page, `landing-${lang}-step3.webp`, { x: 0, y: 108, width: 1100, height: 220 });
+      await page.locator("#wiz-next").click();
+      await page.locator("#wiz-next").click();
+      await page.locator(".wiz-downloads").waitFor();
+      await shoot(page, `landing-${lang}-step3.webp`);
       await context.close();
     }
   } finally {

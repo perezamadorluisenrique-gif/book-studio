@@ -33,6 +33,10 @@ Source: KDP Help, "Set trim size, bleed, and margins", https://kdp.amazon.com/en
 - Book Studio supports 12 of KDP's 16 trims (not 8.25 × 6, 8.25 × 8.25, 8.5 × 8.5, 8.27 × 11.69).
 - Book Studio Pro (one-time purchase; sale page https://perezamadorluisenrique-gif.github.io/pro/book-studio/ and `/es/`, "Coming soon" until the payment link exists): the genre themes (Thriller, Romance, Fantasy), a back-of-book index, several editions in one export, box sets, the accessible-EPUB pack (accessibility metadata, image-description audit, conformance claim and report). Source: `PRO_FEATURES` in `src/engine/entitlements.ts`. Say "Pro adds …" once per page; never a price; never call anything that is free today a Pro feature.
 
+## First-book guide (2026-11-10)
+
+After a Word, Markdown or text file is dropped on the first screen, a four-step guide (upload, style, details, download) runs over the writing screen. It is free and ends with "Skip" or "Finish". A 60,000-word, 30-chapter Word file goes to a KDP-valid PDF in 4 clicks and about 6 seconds on a development machine (e2e "first-book guide"); say "minutes", not seconds, on the pages.
+
 ## Landing pages (2026-11-10)
 
 `/es/` and `/en/` are sales pages built by `tools/site.mjs` from `site/<lang>/index.md`. Their comparison table uses only the facts above; where this file has no fact about a competitor (cover, Spanish), it says "Its site doesn't say". Their before/after picture is the engine set in `plain` mode against the normal one, same book and same font (`tools/landing-shots.ts`): it shows what the engine adds, not a screenshot of any word processor. Never claim "editorial quality" or "same as Vellum".

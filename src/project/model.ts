@@ -27,6 +27,9 @@ export interface ProjectAsset {
   data: Uint8Array;
 }
 
+/** Where a person is in the first-book guide: its four steps, or "done" (finished or skipped). */
+export type Onboarding = 1 | 2 | 3 | 4 | "done";
+
 export interface Project {
   id: string;
   /** The name shown in the list of books. */
@@ -40,6 +43,14 @@ export interface Project {
   assets: ProjectAsset[];
   /** Milliseconds since 1970, set by whoever changes the project. */
   updatedAt: number;
+  /** The step of the first-book guide this book is at. Absent in books saved before the guide existed: they are "done". */
+  onboarding?: Onboarding;
+}
+
+/** The guide step of a project; books without one (older books, copies, imports from a folder) have no guide. */
+export function onboardingOf(p: Project): Onboarding {
+  const v = p.onboarding;
+  return v === 1 || v === 2 || v === 3 || v === 4 ? v : "done";
 }
 
 export const SECTION_ORDER: SectionKind[] = ["front", "body", "back"];

@@ -937,6 +937,138 @@ describe("web app, first screen", () => {
   }
 });
 
+/** A Word file of about `words` words in `chapters` chapters, made here with jszip (headings, then body paragraphs). */
+async function bigDocx(words: number, chapters: number): Promise<Buffer> {
+  const vocabulary = "la casa estaba vacía cuando llegó el viento del norte y las hojas caían sobre el camino mientras nadie hablaba de lo que había pasado en el pueblo aquella noche de invierno".split(" ");
+  const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const para = (text: string, style?: string) => `<w:p>${style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : ""}<w:r><w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
+  const perChapter = Math.floor(words / chapters);
+  let n = 0;
+  const body: string[] = [para("La noche larga", "Title"), para("Ana Soto", "Author")];
+  for (let c = 1; c <= chapters; c++) {
+    body.push(para(`Capítulo ${c}`, "Heading1"));
+    for (let w = 0; w < perChapter; w += 100) {
+      const text: string[] = [];
+      for (let k = 0; k < Math.min(100, perChapter - w); k++) text.push(vocabulary[n++ % vocabulary.length]);
+      body.push(para(`${text.join(" ")}.`));
+    }
+  }
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+  zip.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+  zip.file("word/document.xml", `<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body.join("")}</w:body></w:document>`);
+  return Buffer.from(await zip.generateAsync({ type: "uint8array" }));
+}
+
+async function dropFile(page: Page, name: string, data: Buffer): Promise<void> {
+  await page.locator("#land-drop").evaluate(async (el, [fileName, bytes]) => {
+    const dt = new DataTransfer();
+    dt.items.add(new File([new Uint8Array(bytes)], fileName));
+    el.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
+  }, [name, [...data]] as const);
+}
+
+describe("web app, first-book guide", () => {
+  it("takes a 60,000-word Word file to a KDP-valid PDF in four steps, four clicks and under a minute", async () => {
+    const context = await browser.newContext({ acceptDownloads: true, locale: "es-ES" });
+    const page = await context.newPage();
+    const docx = await bigDocx(60_000, 30);
+    await page.goto(base);
+    await page.locator("#land-drop").waitFor();
+    const t0 = Date.now();
+    await dropFile(page, "la-noche-larga.docx", docx);
+    // Step 1: the book is in. The guide's bar shows the four steps and where we are.
+    await page.getByRole("heading", { name: "Paso 1 de 4: Sube" }).waitFor({ timeout: 60_000 });
+    expect(await page.locator(".wiz-step").allTextContents()).toEqual(expect.arrayContaining([expect.stringContaining("Sube"), expect.stringContaining("Estilo"), expect.stringContaining("Datos"), expect.stringContaining("Descarga")]));
+    expect(await page.getByText("Tu manuscrito está dentro: 30 capítulos.").count()).toBe(1);
+    let clicks = 0;
+    const click = async (name: string | RegExp) => {
+      clicks++;
+      await page.getByRole("button", { name }).click();
+    };
+    await click("Siguiente");
+    await page.getByRole("heading", { name: "Paso 2 de 4: Estilo" }).waitFor();
+    await click("Siguiente");
+    await page.getByRole("heading", { name: "Paso 3 de 4: Datos" }).waitFor();
+    // Typing the title is not a click.
+    await page.getByLabel("Título", { exact: true }).fill("La noche larga");
+    await click("Siguiente");
+    await page.getByRole("heading", { name: "Paso 4 de 4: Descarga" }).waitFor();
+    clicks++;
+    const [download] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Descargar PDF de imprenta" }).click()]);
+    const r = await checkKdpPdf(new Uint8Array(await readFile(await download.path())), trimById("6x9")!, { bleed: false });
+    expect(r.errors).toEqual([]);
+    expect(r.pages).toBeGreaterThan(100);
+    const seconds = (Date.now() - t0) / 1000;
+    process.stdout.write(`Word to PDF in ${seconds.toFixed(1)} s, ${clicks} clicks, ${r.pages} pages\n`);
+    expect(clicks).toBeLessThanOrEqual(4);
+    expect(seconds).toBeLessThan(60);
+    // The book carries the title that was typed.
+    expect(await page.locator(".ch-pick").count()).toBe(30);
+    await context.close();
+  });
+
+  it("shows a real thumbnail for each free style, changes the book with the choice, remembers the step after a reload, and goes away on Skip", async () => {
+    const context = await browser.newContext({ locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.locator("#land-drop").waitFor();
+    await dropFile(page, "diary.docx", await bigDocx(3000, 3));
+    await page.getByRole("heading", { name: "Step 1 of 4: Upload" }).waitFor({ timeout: 60_000 });
+    await page.getByRole("button", { name: "Next" }).click();
+    await page.getByRole("heading", { name: "Step 2 of 4: Style" }).waitFor();
+    // Five free styles, each with a picture of the first page, and 6 × 9 chosen.
+    await page.locator(".wiz-thumb canvas").nth(4).waitFor({ timeout: 30_000 });
+    expect(await page.locator(".wiz-style input").count()).toBe(5);
+    expect(await page.locator(".wiz-thumb canvas").count()).toBe(5);
+    expect(await page.locator("#wiz-trim").inputValue()).toBe("6x9");
+    // Thumbnails are not blank: some pixels are dark.
+    const ink = await page.locator(".wiz-thumb canvas").first().evaluate((c) => {
+      const el = c as HTMLCanvasElement;
+      const data = el.getContext("2d")!.getImageData(0, 0, el.width, el.height).data;
+      let dark = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] < 200) dark++;
+      return dark;
+    });
+    expect(ink).toBeGreaterThan(50);
+    await page.getByLabel("Elegant").check();
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    // Reload: back on the same step, with the same style.
+    await page.waitForTimeout(800);
+    await page.reload();
+    await page.getByRole("button", { name: "My books" }).click().catch(() => undefined);
+    await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
+    await page.getByRole("heading", { name: "Step 2 of 4: Style" }).waitFor();
+    expect(await page.getByLabel("Elegant").isChecked()).toBe(true);
+    await page.getByRole("button", { name: "Skip the first book guide" }).click();
+    await page.locator(".wiz-box").waitFor({ state: "hidden" });
+    // Skipped for good: opening the book again shows no guide.
+    await page.reload();
+    await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
+    await page.locator("#ed-text").waitFor();
+    expect(await page.locator(".wiz-box").isHidden()).toBe(true);
+    await context.close();
+  });
+
+  for (const [label, viewport] of [["desktop", { width: 1280, height: 800 }], ["mobile 390 px", { width: 390, height: 844 }]] as const) {
+    it(`has no serious accessibility violations on the four steps, ${label}`, async () => {
+      const context = await browser.newContext({ viewport, locale: "en-US" });
+      const page = await context.newPage();
+      await page.goto(base);
+      await page.locator("#land-drop").waitFor();
+      await dropFile(page, "diary.docx", await bigDocx(2000, 2));
+      for (const [n, name] of [[1, "Upload"], [2, "Style"], [3, "Details"], [4, "Download"]] as const) {
+        await page.getByRole("heading", { name: `Step ${n} of 4: ${name}` }).waitFor({ timeout: 60_000 });
+        if (n === 2) await page.locator(".wiz-thumb canvas").nth(4).waitFor({ timeout: 30_000 });
+        const { violations } = await new AxeBuilder({ page }).include(".wiz-box").withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+        expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `step ${n}: ${v.id}`)).toEqual([]);
+        if (n < 4) await page.getByRole("button", { name: "Next" }).click();
+      }
+      await context.close();
+    });
+  }
+});
+
 describe("web app, offline", () => {
   it("writes a service worker that saves the app and the fonts, and a manifest that can be installed", async () => {
     const sw = await readFile("dist/web/sw.js", "utf8");

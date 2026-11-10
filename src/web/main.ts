@@ -14,6 +14,8 @@ import { projectFromText } from "../project/import-text";
 import { remoteLayout } from "./layout-remote";
 import { registerPwa } from "./pwa";
 import { showSearch } from "./search";
+import { themeThumbnail } from "./theme-thumbs";
+import { Wizard } from "./wizard";
 import { showVersions } from "./versions";
 import { makeSnapshot, restoreSnapshot, sameContent, contentOf, type SnapshotKind } from "../project/snapshots";
 import { replaceAll } from "../project/search";
@@ -334,6 +336,23 @@ const workspace = new Workspace($("workspace"), {
     store.set(key, Object.keys(rest).length ? rest : undefined);
   },
 });
+// The first-book guide: four steps over the writing screen for a book that was just imported from the first screen.
+const wizard = new Wizard($("wizard"), {
+  project: () => workspace.current,
+  change: (next, layout) => workspace.change(next, layout),
+  plan: () => license.plan(),
+  thumbnail: async (project, theme, trim, width) => themeThumbnail(project, theme, trim, await studio.fontSet(), width),
+  moreDetails: () => workspace.reveal("details"),
+  download: (kind) => void (kind === "pdf" ? studio.exportPdf() : kind === "cover" ? studio.exportCoverPdf() : studio.exportEpub()),
+  facts: () => studio.publishFacts(),
+  go: (place) => {
+    if (place === "problems") {
+      workspace.reveal("book");
+      studio.showProblems();
+    } else workspace.reveal(place);
+  },
+});
+studio.onBuilt = () => wizard.refresh();
 const studioParent = $("studio").parentElement as HTMLElement;
 const studioNext = $("studio").nextSibling;
 
@@ -360,6 +379,7 @@ const pageTitle = () => (locale === "en" ? PAGE_TITLE_EN : t("web.title"));
 
 async function open(next: Folder): Promise<void> {
   await workspace.close();
+  wizard.hide();
   await refreshing;
   placeStudio(false);
   current = null;
@@ -377,8 +397,9 @@ function showStudio(): void {
 }
 
 /** Open a saved book: the studio reads the notes generated from it. */
-async function openProject(project: Project): Promise<void> {
+async function openProject(project: Project, report?: string[]): Promise<void> {
   await workspace.close();
+  wizard.hide();
   await refreshing;
   folder = null;
   current = { project, vault: projectToVault(project) };
@@ -386,6 +407,7 @@ async function openProject(project: Project): Promise<void> {
   placeStudio(true);
   showStudio();
   workspace.open(project);
+  wizard.show(report);
   await refreshStudio();
 }
 
@@ -468,6 +490,7 @@ let showing = 0;
 async function showProjects(focus?: string): Promise<void> {
   const mine = ++showing;
   await workspace.close();
+  wizard.hide();
   if (mine !== showing) return;
   placeStudio(false);
   $("studio").hidden = true;
@@ -482,8 +505,8 @@ async function showProjects(focus?: string): Promise<void> {
         await putProject(p);
         return p;
       },
-      importManuscript: async ({ text, bytes, fileName, name }) => {
-        const opts = { id: crypto.randomUUID(), now: Date.now(), name, fileName, language: locale };
+      importManuscript: async ({ text, bytes, fileName, name, guide }) => {
+        const opts = { id: crypto.randomUUID(), now: Date.now(), name, fileName, language: locale, guide };
         if (bytes) {
           // The Word reader is loaded only when someone imports a .docx.
           const { importDocx } = await import("../project/import-docx");
@@ -499,7 +522,7 @@ async function showProjects(focus?: string): Promise<void> {
       },
       rename: async (p, name) => putProject(renameProject(p, name, Date.now())),
       remove: async (p) => deleteProject(p.id),
-      open: (p) => void openProject(p),
+      open: (p, report) => void openProject(p, report),
       ask: (d) => host.ask(d),
       notify: toast,
       backup: backupProject,
@@ -574,6 +597,7 @@ function applyPageText(): void {
   doc.title = current ? t("web.pageTitle", { name: current.project.name }) : folder && !folder.sample ? t("web.pageTitle", { name: folder.name }) : pageTitle();
   updateReopen(reopenDir);
   workspace.rerender();
+  wizard.show();
   if (!$("projects").hidden) void showProjects();
 }
 
@@ -588,6 +612,7 @@ async function changeLocale(next: Locale): Promise<void> {
   if (book) store.set("lastBook", book);
   studio.dispose();
   studio = new Studio(host, $("studio"), license);
+  studio.onBuilt = () => wizard.refresh();
   await refreshStudio();
 }
 

@@ -178,6 +178,8 @@ export interface ImportOptions {
   fileName?: string;
   /** The language used when the text does not say one. */
   language?: string;
+  /** Start the first-book guide (the four steps) on the new book. */
+  guide?: boolean;
 }
 
 /** A new project made from chapters that were already split (also used by the Word import). */
@@ -192,6 +194,7 @@ export function projectFromImport(imported: ImportedBook & { assets?: ProjectAss
     chapters: imported.chapters,
     assets: imported.assets ?? [],
     updatedAt: o.now,
+    ...(o.guide ? { onboarding: 1 as const } : {}),
   };
 }
 

@@ -297,6 +297,21 @@ export class Workspace {
     return this.project !== null;
   }
 
+  /** The project being edited, as it is now. */
+  get current(): Project | null {
+    return this.project;
+  }
+
+  /** Use a new version of the open book (from the first-book guide) and save it. `layout` lists the settings it changed. */
+  change(next: Project, layout?: string[]): void {
+    if (!this.project || next.id !== this.project.id) return;
+    // A step of the guide is saved at once (a reload right after must find it); typing waits for a pause.
+    const stepped = next.onboarding !== this.project.onboarding;
+    this.project = next;
+    if (layout) this.deps.layoutChanged(next, layout);
+    this.markDirty(stepped);
+  }
+
   /** Open the chapter that owns a note path at a line of that note (used by the Problems tab). */
   openSource(src: SourceRef): void {
     if (!this.project) return;

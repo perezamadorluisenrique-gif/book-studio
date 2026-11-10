@@ -11,10 +11,11 @@ export interface ProjectsDeps {
   list(): Promise<Project[]>;
   create(name: string, template: boolean): Promise<Project>;
   /** Make a book from a manuscript: pasted text, or a file (`bytes` for a .docx, `text` for .md/.txt). */
-  importManuscript(input: { text?: string; bytes?: Uint8Array; fileName: string; name: string }): Promise<{ project: Project; notes: string[]; report?: DocxReport }>;
+  importManuscript(input: { text?: string; bytes?: Uint8Array; fileName: string; name: string; guide?: boolean }): Promise<{ project: Project; notes: string[]; report?: DocxReport }>;
   rename(p: Project, name: string): Promise<void>;
   remove(p: Project): Promise<void>;
-  open(p: Project): void;
+  /** Open a book; `report` is what a Word import left out, for the first-book guide to show. */
+  open(p: Project, report?: string[]): void;
   ask(d: Dialog): Promise<"ok" | "cancel" | "extra">;
   notify(message: string): void;
   /** Download a copy of the book as a .zip. */
@@ -169,7 +170,7 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
   const importName = h("input", { attr: { type: "text", id: "imp-name", autocomplete: "off", value: "" } });
 
   /** Make a book from a file or from pasted text, say what was left out, and open it. */
-  async function importIt(file: File | undefined, pasted: string, title: string): Promise<void> {
+  async function importIt(file: File | undefined, pasted: string, title: string, guide = false): Promise<void> {
     try {
       const fileName = file?.name ?? "";
       if (/\.doc$/i.test(fileName)) {
@@ -187,9 +188,15 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
         deps.notify(t("imp.empty"));
         return;
       }
-      const { project, notes, report } = await deps.importManuscript({ text: bytes ? undefined : text, bytes, fileName, name: title });
+      const { project, notes, report } = await deps.importManuscript({ text: bytes ? undefined : text, bytes, fileName, name: title, guide });
       const done = tn("imp.done", project.chapters.length, { name: project.name });
       const extra = [notes.includes("intro") ? t("imp.intro") : "", ...(report ? reportLines(report) : [])].filter(Boolean);
+      // The first-book guide shows what was left out on its first step; the plain form asks in a window.
+      if (guide) {
+        deps.notify(done);
+        deps.open(project, extra);
+        return;
+      }
       if (extra.length) await deps.ask({ title: t("imp.reportTitle"), message: `${done}\n\n${extra.map((l) => `• ${l}`).join("\n")}`, ok: t("imp.reportOk") });
       else deps.notify(done);
       deps.open(project);
@@ -222,7 +229,7 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
   );
 
   // The first thing a person with no books sees: the promise, and a place to drop the manuscript.
-  const landing = projects.length ? null : drawLanding(deps, (file) => void importIt(file, "", ""));
+  const landing = projects.length ? null : drawLanding(deps, (file) => void importIt(file, "", "", true));
 
   const date = new Intl.DateTimeFormat(getLocale(), { dateStyle: "medium" });
   const list = h("ul", { cls: "proj-list", attr: { "aria-label": t("proj.listLabel") } });

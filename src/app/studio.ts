@@ -15,7 +15,7 @@ import type { BookChoice, StudioHost } from "./host";
 import type { LicenseManager } from "./license-manager";
 import { KdpPanel } from "./kdp-panel";
 import { t, tn } from "./ui-i18n";
-import { buildBook, ebookBlockers, exportEdition, exportEpub, exportPdf, exportReport, pdfBlockers, planEditions, spineWidth, type Built, type EpubChoices } from "./pipeline";
+import { buildBook, ebookBlockers, exportCover, exportEdition, exportEpub, exportPdf, exportReport, pdfBlockers, planEditions, spineWidth, type Built, type EpubChoices } from "./pipeline";
 
 type Tab = "preview" | "problems" | "kdp" | "accessibility";
 type Zoom = "page" | "fit" | "0.5" | "0.75" | "1" | "1.5" | "2";
@@ -218,6 +218,14 @@ export class Studio {
     return this.fonts;
   }
 
+  /** The book's fonts, loaded once (for the first-book guide's style thumbnails). */
+  fontSet(): Promise<FontSet> {
+    return this.loadFonts();
+  }
+
+  /** Called after each build of the book finishes and its screens are drawn. */
+  onBuilt: (() => void) | null = null;
+
   async build(): Promise<void> {
     if (this.building) {
       this.queued = true;
@@ -250,6 +258,7 @@ export class Studio {
       this.kdp.fontsNow = fonts;
       this.built = built;
       this.renderAll();
+      this.onBuilt?.();
     } catch (e) {
       console.error("Book Studio:", e);
       this.setStatus(t("build.failed", { error: e instanceof Error ? e.message : String(e) }), false, true);
@@ -331,6 +340,16 @@ export class Studio {
     await this.write(sample ? t("export.sampleWriting") : t("export.pdfWriting"), async () => {
       const out = await exportPdf(built, await this.loadFonts(), { sample });
       return { ...out, mime: "application/pdf" };
+    });
+  }
+
+  /** The full wraparound cover as a PDF (what the KDP tab's button makes). */
+  async exportCoverPdf(): Promise<void> {
+    const built = await this.ensureBuilt();
+    if (!built) return this.host.notify(t("export.openFirst"));
+    await this.write(t("kdp.writingCover"), async () => {
+      const out = await exportCover(built, await this.loadFonts());
+      return { name: out.name, mime: "application/pdf", data: out.data };
     });
   }
 
