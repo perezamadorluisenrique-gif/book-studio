@@ -1327,3 +1327,13 @@ button.mod-cta {
     max-height: none;
   }
 }
+
+.cv-note {
+  margin: 0;
+  color: var(--app-muted);
+}
+
+.cv-files {
+  display: grid;
+  gap: 6px;
+}

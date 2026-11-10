@@ -10,6 +10,7 @@ import JSZip from "jszip";
 import { chromium, type Browser, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { trimById } from "../src/engine/trims";
+import { imageSize } from "../src/project/cover-image";
 import { checkKdpPdf } from "../tools/kdp-check";
 import { serve } from "./serve";
 
@@ -1442,6 +1443,39 @@ describe("web app, cover designer", () => {
     await dialog.locator("#cv-zoom").fill("2");
     await dialog.locator("#cv-dim").fill("0.4");
     expect(await dialog.locator(".cv-checks").innerText()).toMatch(/ppi/);
+    await page.close();
+  });
+
+  it("downloads the cover PDF, a 1600 x 2560 JPG and a 1200 x 630 PNG, and uses the front for the EPUB", async () => {
+    const page = await (await browser.newContext({ locale: "en-US", acceptDownloads: true })).newPage();
+    await startBook(page, "Cover files");
+    const dialog = await openDesigner(page);
+    await dialog.locator("#cv-template").selectOption("dusk");
+    const get = async (id: string) => {
+      const [download] = await Promise.all([page.waitForEvent("download", { timeout: 60_000 }), dialog.locator(id).click()]);
+      return { name: download.suggestedFilename(), bytes: new Uint8Array(await readFile((await download.path()))) };
+    };
+    const pdf = await get("#cv-pdf");
+    expect(pdf.name).toMatch(/-cover-6x9-\d+p\.pdf$/);
+    const doc = await (await import("pdf-lib")).PDFDocument.load(pdf.bytes);
+    expect(doc.getPageCount()).toBe(1);
+    const jpg = await get("#cv-jpg");
+    expect(jpg.name).toMatch(/-front-cover\.jpg$/);
+    expect(imageSize(jpg.bytes)).toEqual({ width: 1600, height: 2560 });
+    const png = await get("#cv-png");
+    expect(png.name).toMatch(/-social\.png$/);
+    expect(imageSize(png.bytes)).toEqual({ width: 1200, height: 630 });
+
+    // Leaving the barcode space white is a choice that sticks.
+    await dialog.locator("#cv-barcode").selectOption("blank");
+    expect(await dialog.locator("#cv-barcode").inputValue()).toBe("blank");
+
+    await dialog.getByRole("button", { name: "Use this front cover for the EPUB" }).click();
+    await page.waitForTimeout(900);
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await page.getByRole("button", { name: "Check what is missing before publishing on KDP" }).click();
+    const todo = await page.getByRole("dialog", { name: "Publish checklist" }).locator(".pub-todo .pub-text").allTextContents();
+    expect(todo.some((x) => /cover/i.test(x))).toBe(false);
     await page.close();
   });
 

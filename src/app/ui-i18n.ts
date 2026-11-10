@@ -606,6 +606,18 @@ export const EN = {
   "cv.pictureBad": "This file is not a JPG or PNG picture.",
   "cv.pictureBig": "This picture is {mb} MB; the limit is {max} MB.",
   "cv.pictureAdded": "Picture added.",
+  "cv.files": "Back cover and files",
+  "cv.barcode": "Barcode",
+  "cv.barcode.isbn": "Draw the ISBN barcode (from the book details)",
+  "cv.barcode.blank": "Leave the space white for KDP's own barcode",
+  "cv.pdf": "Download the cover PDF",
+  "cv.jpg": "Download the front cover as JPG (1600 × 2560)",
+  "cv.png": "Download a picture for social media (1200 × 630)",
+  "cv.ebook": "Use this front cover for the EPUB",
+  "cv.ebookDone": "The EPUB will use this front cover.",
+  "cv.saved": "Saved: {where}",
+  "cv.failed": "The file could not be made: {error}",
+  "cv.backHelp": "The back cover text, author bio and photo come from the book details. Edit the texts here, or add a picture (a publisher logo, for example) on the back.",
 } as const;
 
 export type Key = keyof typeof EN;
@@ -1183,6 +1195,18 @@ export const ES: Record<Key, string> = {
   "cv.pictureBad": "Este archivo no es una imagen JPG o PNG.",
   "cv.pictureBig": "Esta imagen pesa {mb} MB; el límite es {max} MB.",
   "cv.pictureAdded": "Imagen añadida.",
+  "cv.files": "Contraportada y archivos",
+  "cv.barcode": "Código de barras",
+  "cv.barcode.isbn": "Dibujar el código de barras del ISBN (de los datos del libro)",
+  "cv.barcode.blank": "Dejar el hueco en blanco para el código de KDP",
+  "cv.pdf": "Descargar el PDF de la cubierta",
+  "cv.jpg": "Descargar la portada en JPG (1600 × 2560)",
+  "cv.png": "Descargar una imagen para redes (1200 × 630)",
+  "cv.ebook": "Usar esta portada en el EPUB",
+  "cv.ebookDone": "El EPUB usará esta portada.",
+  "cv.saved": "Guardado: {where}",
+  "cv.failed": "No se pudo hacer el archivo: {error}",
+  "cv.backHelp": "El texto de la contraportada, la biografía y la foto salen de los datos del libro. Edita los textos aquí o añade una imagen (un logotipo de editorial, por ejemplo) en la contraportada.",
 };
 
 type Params = Record<string, string | number>;

@@ -84,6 +84,8 @@ export interface CoverDesign {
   template?: string;
   background: CoverBackground;
   layers: CoverLayer[];
+  /** The ISBN barcode is drawn in the reserved box ("isbn", the default) or the box is left white for KDP's own ("blank"). */
+  barcode?: "isbn" | "blank";
 }
 
 export const PANELS: PanelId[] = ["back", "spine", "front"];
@@ -169,6 +171,7 @@ export function parseCoverDesign(raw: unknown): ParsedDesign {
   });
 
   const design: CoverDesign = { version: 1, background, layers };
+  if (o.barcode === "blank") design.barcode = "blank";
   if (typeof o.template === "string") design.template = o.template;
   return { design, problems };
 }
