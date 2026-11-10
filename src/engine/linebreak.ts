@@ -2,9 +2,19 @@
 // following the box/glue/penalty model TeX uses.
 
 export type KPItem<T = unknown> =
-  | { type: "box"; width: number; data?: T }
+  | {
+      type: "box";
+      width: number;
+      data?: T;
+      /** The box itself can grow or shrink by this much (letter expansion). */
+      stretch?: number;
+      shrink?: number;
+      /** How far its first / last character may hang into the margin at a line's start / end. */
+      pl?: number;
+      pr?: number;
+    }
   | { type: "glue"; width: number; stretch: number; shrink: number; data?: T }
-  | { type: "penalty"; width: number; penalty: number; flagged: boolean; data?: T };
+  | { type: "penalty"; width: number; penalty: number; flagged: boolean; data?: T; /** Hang of the penalty's own width (a hyphen) into the right margin. */ pr?: number };
 
 export const INFINITE_PENALTY = 10000;
 export const FIL = 100000;
@@ -63,12 +73,15 @@ export function breakParagraph<T>(items: KPItem<T>[], opts: KPOptions): { breaks
   const flaggedDemerits = opts.flaggedDemerits ?? 3000;
   const fitnessDemerits = opts.fitnessDemerits ?? 3000;
   const sum = { width: 0, stretch: 0, shrink: 0 };
+  // Optical margins: how far the end of a line that breaks at item i, and the start of the line after item i, hang into the margin.
+  const { rp, lp, lpFirst } = protrusion(items);
   let active: Node[] = [{ position: 0, line: 0, fitness: 1, totalWidth: 0, totalStretch: 0, totalShrink: 0, demerits: 0, ratio: 0, run: 0, prev: null }];
 
   const ratioFor = (a: Node, end: number, lineIndex: number): number => {
     let width = sum.width - a.totalWidth;
     const item = items[end];
     if (item.type === "penalty") width += item.width;
+    width -= rp[end] + (a.prev ? lp[a.position] : lpFirst);
     const target = opts.lineWidth(lineIndex);
     if (width < target) {
       const stretch = sum.stretch - a.totalStretch;
@@ -161,6 +174,8 @@ export function breakParagraph<T>(items: KPItem<T>[], opts: KPOptions): { breaks
     const item = items[index];
     if (item.type === "box") {
       sum.width += item.width;
+      sum.stretch += item.stretch ?? 0;
+      sum.shrink += item.shrink ?? 0;
     } else if (item.type === "glue") {
       if (index > 0 && items[index - 1].type === "box") tryBreak(index);
       sum.width += item.width;
@@ -178,6 +193,26 @@ export function breakParagraph<T>(items: KPItem<T>[], opts: KPOptions): { breaks
   const breaks: KPBreak[] = [];
   for (let n: Node | null = best; n && n.prev; n = n.prev) breaks.push({ position: n.position, ratio: n.ratio });
   return { breaks: breaks.reverse(), demerits: best.demerits };
+}
+
+/** Hang tables: `rp[i]` for a line breaking at item i, `lp[i]` for a line starting after item i, `lpFirst` for the first line. */
+function protrusion<T>(items: KPItem<T>[]): { rp: Float64Array; lp: Float64Array; lpFirst: number } {
+  const n = items.length;
+  const rp = new Float64Array(n);
+  const lp = new Float64Array(n);
+  let lastPr = 0;
+  for (let i = 0; i < n; i++) {
+    const it = items[i];
+    if (it.type === "box") lastPr = it.pr ?? 0;
+    else rp[i] = it.type === "penalty" && it.width > 0 ? (it.pr ?? 0) : lastPr;
+  }
+  let nextPl = 0;
+  for (let i = n - 1; i >= 0; i--) {
+    lp[i] = nextPl;
+    const it = items[i];
+    if (it.type === "box") nextPl = it.pl ?? 0;
+  }
+  return { rp, lp, lpFirst: nextPl };
 }
 
 /** First-fit breaking: used for ragged text and as the last resort for overfull material. */

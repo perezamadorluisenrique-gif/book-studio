@@ -12,6 +12,14 @@ describe("KDP check of a print PDF", async () => {
   const pdf = await exportPdf(built, fonts);
   const trim = trimById("6x9")!;
 
+  it("passes the English sample too, with letter expansion and hanging punctuation", async () => {
+    const oz = await buildBook(fsVault("sample/oz"), "The Wonderful Wizard of Oz.md", fonts);
+    const ozPdf = await exportPdf(oz, fonts);
+    const r = await checkKdpPdf(ozPdf.data, trim, { bleed: false, insideMarginPt: oz.layout.margins.inside });
+    expect(r.errors).toEqual([]);
+    expect(oz.layout.pages.some((p) => p.draws.some((d) => d.kind === "text" && d.scale !== undefined && d.scale !== 1))).toBe(true);
+  });
+
   it("passes the Spanish sample as exported", async () => {
     const r = await checkKdpPdf(pdf.data, trim, { bleed: false, insideMarginPt: built.layout.margins.inside });
     expect(r.errors).toEqual([]);

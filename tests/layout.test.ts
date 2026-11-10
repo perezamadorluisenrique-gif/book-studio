@@ -90,4 +90,25 @@ describe("print layout", { timeout: 30_000 }, () => {
     expect(layout.quality.ladders).toBe(0);
     expect(layout.quality.lines).toBeGreaterThan(3000);
   });
+
+  it("hangs hyphens into the right margin and keeps letter expansion within 2 %", async () => {
+    const layout = await layoutOz();
+    const textWidth = layout.widthPt - layout.margins.inside - layout.margins.outside;
+    let hung = 0;
+    for (const page of layout.pages) {
+      const left = page.recto ? layout.margins.inside : layout.margins.outside;
+      const right = left + textWidth;
+      const rows = new Map<number, { x: number; end: number; text: string }>();
+      for (const d of page.draws) {
+        if (d.kind !== "text") continue;
+        expect(d.scale ?? 1).toBeGreaterThanOrEqual(0.98 - 1e-9);
+        expect(d.scale ?? 1).toBeLessThanOrEqual(1.02 + 1e-9);
+        const end = d.x + fonts.width(d.face, d.text, d.size, d.tracking ?? 0) * (d.scale ?? 1);
+        const row = rows.get(d.y);
+        if (!row || end > row.end) rows.set(d.y, { x: d.x, end, text: d.text });
+      }
+      for (const row of rows.values()) if (row.text.endsWith("-") && row.end > right + 0.5 && row.end < right + 4) hung++;
+    }
+    expect(hung).toBeGreaterThan(0);
+  });
 });
