@@ -61,6 +61,8 @@ export interface RectDraw {
   strokeWidth?: number;
   /** Dash pattern in points, for guides. */
   dash?: number[];
+  /** How much of the fill shows, from 0 to 1; absent means solid. Covers use it to darken or lighten a picture. */
+  opacity?: number;
 }
 
 /** One step of a path: move, line, cubic curve or close. Coordinates are points, as everywhere else. */

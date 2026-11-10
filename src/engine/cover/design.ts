@@ -61,6 +61,13 @@ export interface ImageLayer extends LayerBase {
   fit: "cover" | "contain";
   /** Run the picture into the bleed on the sides of the panel that touch the edge of the sheet. */
   bleed?: boolean;
+  /** Crop: 1 fits the box, bigger zooms in (up to 4). */
+  zoom?: number;
+  /** Which part stays in view when the picture is cropped: 0 is the left or top, 1 the right or bottom. */
+  focusX?: number;
+  focusY?: number;
+  /** Darken (above 0) or lighten (below 0) the picture, from -0.8 to 0.8, with a veil of black or white. */
+  dim?: number;
 }
 
 export interface RectLayer extends LayerBase {
@@ -155,7 +162,7 @@ export function parseCoverDesign(raw: unknown): ParsedDesign {
         problems.push(`Layer ${id} was dropped: a picture layer needs a file name.`);
         return;
       }
-      layers.push({ ...box, kind: "image", target: str(l.target), alt: str(l.alt), fit: l.fit === "contain" ? "contain" : "cover", bleed: l.bleed === true || undefined });
+      layers.push({ ...box, kind: "image", target: str(l.target), alt: str(l.alt), fit: l.fit === "contain" ? "contain" : "cover", bleed: l.bleed === true || undefined, ...imageCrop(l) });
     } else {
       layers.push({ ...box, kind: "rect", color: color(l.color, "#000000"), bleed: l.bleed === true || undefined });
     }
@@ -164,6 +171,15 @@ export function parseCoverDesign(raw: unknown): ParsedDesign {
   const design: CoverDesign = { version: 1, background, layers };
   if (typeof o.template === "string") design.template = o.template;
   return { design, problems };
+}
+
+function imageCrop(l: Record<string, unknown>): Pick<ImageLayer, "zoom" | "focusX" | "focusY" | "dim"> {
+  const out: Pick<ImageLayer, "zoom" | "focusX" | "focusY" | "dim"> = {};
+  if (l.zoom !== undefined && num(l.zoom, 1) !== 1) out.zoom = clamp(num(l.zoom, 1), 1, 4);
+  if (l.focusX !== undefined && num(l.focusX, 0.5) !== 0.5) out.focusX = clamp(num(l.focusX, 0.5), 0, 1);
+  if (l.focusY !== undefined && num(l.focusY, 0.5) !== 0.5) out.focusY = clamp(num(l.focusY, 0.5), 0, 1);
+  if (l.dim !== undefined && num(l.dim, 0) !== 0) out.dim = clamp(num(l.dim, 0), -0.8, 0.8);
+  return out;
 }
 
 /** The design as the text kept in the project. Reading it through `parseCoverDesign` first gives every key a fixed place and drops file paths, so equal designs give equal text. */

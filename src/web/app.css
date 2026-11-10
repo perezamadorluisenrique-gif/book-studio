@@ -1155,3 +1155,175 @@ button.mod-cta {
     max-height: 55vh;
   }
 }
+
+/* Cover designer window (it reuses .pub-dialog) */
+.cv-dialog {
+  width: min(1320px, calc(100vw - 16px));
+  height: min(900px, calc(100vh - 16px));
+  max-height: calc(100vh - 16px);
+}
+
+.cv-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cv-top h2 {
+  margin: 0;
+}
+
+.cv-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cv-help {
+  margin: 6px 0 10px;
+  color: var(--app-muted);
+}
+
+.cv-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+}
+
+.cv-main {
+  min-width: 0;
+  overflow: auto;
+}
+
+.cv-stage {
+  position: relative;
+  margin: 0 auto;
+  box-shadow: 0 1px 8px rgb(0 0 0 / 25%);
+}
+
+.cv-canvas {
+  display: block;
+}
+
+.cv-handles {
+  position: absolute;
+  inset: 0;
+}
+
+.cv-handle {
+  position: absolute;
+  min-height: 0;
+  padding: 0;
+  border: 1px dashed transparent;
+  border-radius: 0;
+  background: transparent;
+  cursor: move;
+  touch-action: none;
+}
+
+.cv-handle.cv-rect {
+  cursor: pointer;
+}
+
+.cv-handle:hover {
+  border-color: rgb(106 76 147 / 70%);
+}
+
+.cv-handle:focus-visible,
+.cv-handle.is-selected {
+  border: 2px solid var(--app-accent);
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+}
+
+.cv-guide {
+  position: absolute;
+  background: #e91e8c;
+  pointer-events: none;
+}
+
+.cv-guide-x {
+  width: 1px;
+}
+
+.cv-guide-y {
+  height: 1px;
+}
+
+.cv-side {
+  display: grid;
+  gap: 12px;
+  max-height: calc(100vh - 150px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.cv-sec {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--app-line);
+}
+
+.cv-sec h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.cv-layers {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cv-layers button {
+  width: 100%;
+  text-align: left;
+}
+
+.cv-layers button.is-selected {
+  border-color: var(--app-accent);
+  box-shadow: inset 0 0 0 1px var(--app-accent);
+}
+
+.cv-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cv-field {
+  display: grid;
+  gap: 2px;
+}
+
+.cv-field textarea,
+.cv-field input[type="number"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cv-link {
+  padding: 0 4px;
+  font: inherit;
+  text-decoration: underline;
+  border: 0;
+  background: none;
+  color: var(--app-accent);
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .cv-body {
+    grid-template-columns: 1fr;
+  }
+
+  .cv-side {
+    max-height: none;
+  }
+}

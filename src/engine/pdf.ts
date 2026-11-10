@@ -94,6 +94,7 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
     const imageNames = new Map<string, string>();
     const ops: string[] = [];
     let shadingCount = 0;
+    let alphaCount = 0;
     let inText = false;
     let curFont = "";
     let curSize = -1;
@@ -155,6 +156,18 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
         endText();
         const paint = d.fill && d.stroke ? "B" : d.fill ? "f" : "S";
         ops.push("q");
+        if (d.opacity !== undefined && d.opacity < 1) {
+          const ctx = doc.context;
+          const resources = page.node.Resources();
+          let table = resources?.lookupMaybe(PDFName.of("ExtGState"), PDFDict);
+          if (resources && !table) {
+            table = ctx.obj({});
+            resources.set(PDFName.of("ExtGState"), table);
+          }
+          const gs = `GS${alphaCount++}`;
+          table?.set(PDFName.of(gs), ctx.obj({ Type: "ExtGState", ca: Math.max(0, d.opacity), CA: Math.max(0, d.opacity) }));
+          ops.push(`/${gs} gs`);
+        }
         if (d.fill) ops.push(`${d.fill.map(fmt).join(" ")} rg`);
         if (d.stroke || !d.fill) ops.push(`${(d.stroke ?? [0, 0, 0]).map(fmt).join(" ")} RG`, `${fmt(d.strokeWidth ?? 0.5)} w`);
         if (d.dash?.length) ops.push(`[${d.dash.map(fmt).join(" ")}] 0 d`);

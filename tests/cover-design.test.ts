@@ -2,9 +2,11 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildBook } from "../src/app/pipeline";
 import { composeCover } from "../src/engine/cover/cover";
+import { Painter } from "../src/engine/cover/paint";
+import { Styler } from "../src/engine/layout/style";
 import { parseCoverDesign, serializeCoverDesign, type CoverDesign } from "../src/engine/cover/design";
 import { coverGeometry } from "../src/engine/cover/geometry";
-import { layerBox, safeBox } from "../src/engine/cover/render-design";
+import { layerBox, renderDesign, safeBox } from "../src/engine/cover/render-design";
 import type { FontSet } from "../src/engine/fonts";
 import type { TextDraw } from "../src/engine/layout/types";
 import { trimById } from "../src/engine/trims";
@@ -181,5 +183,34 @@ describe("a project keeps its cover design", () => {
   it("writes nothing extra for a book without one", () => {
     const { coverDesign: _d, ...plain } = project;
     expect(projectToVault(plain).paths).not.toContain("Cover design.json");
+  });
+});
+
+describe("picture crop and dim", () => {
+  const img = { path: "Images/a.jpg", bytes: new Uint8Array(), mime: "image/jpeg" as const, width: 2000, height: 1000 };
+  const g = coverGeometry(trimById("6x9")!, 300, "white");
+  const draw = (extra: Record<string, unknown>) => {
+    const d = parseCoverDesign({ version: 1, background: { kind: "color", color: "#ffffff" }, layers: [{ id: "p", kind: "image", panel: "front", x: 0, y: 0, w: 1, h: 1, target: "a.jpg", fit: "cover", ...extra }] }).design;
+    for (const l of d.layers) if (l.kind === "image") l.path = img.path;
+    const styler = new Styler(fonts, "en");
+    return renderDesign(d, { geometry: g, images: new Map([[img.path, img]]), styler }, new Painter(styler, [0, 0, 0]));
+  };
+
+  it("zooms in and slides the picture by its focus", () => {
+    const plain = draw({}).draws.find((x) => x.kind === "image")!;
+    const zoomed = draw({ zoom: 2, focusX: 0 }).draws.find((x) => x.kind === "image")!;
+    if (plain.kind !== "image" || zoomed.kind !== "image") throw new Error("no image");
+    expect(zoomed.h).toBeCloseTo(plain.h * 2, 6);
+    // Focus 0 keeps the left edge of the picture at the left of the box.
+    expect(zoomed.x).toBeCloseTo(zoomed.clip!.x, 6);
+    // Zooming in makes it print at a lower resolution, so the warning follows.
+    expect(draw({ zoom: 4 }).findings.some((f) => /ppi/.test(f.message))).toBe(true);
+  });
+
+  it("darkens with a black veil and lightens with a white one", () => {
+    const veil = (dim: number) => draw({ dim }).draws.filter((x) => x.kind === "rect" && x.opacity !== undefined);
+    expect(veil(0)).toHaveLength(0);
+    expect(veil(0.4)[0]).toMatchObject({ fill: [0, 0, 0], opacity: 0.4 });
+    expect(veil(-0.5)[0]).toMatchObject({ fill: [1, 1, 1], opacity: 0.5 });
   });
 });

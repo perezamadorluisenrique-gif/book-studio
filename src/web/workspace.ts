@@ -26,6 +26,8 @@ export interface WorkspaceDeps {
   layoutChanged(p: Project, keys: string[]): void;
   /** The "Publish checklist" button was pressed. */
   publish(): void;
+  /** The "Design the cover" button was pressed. */
+  cover(opener: HTMLElement): void;
   /** The "Versions" and "Find and replace" buttons were pressed. */
   versions(): void;
   search(): void;
@@ -57,6 +59,7 @@ export class Workspace {
   private listBox = h("div", { cls: "ws-list" });
   private detailsButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-details-btn" }, on: { click: () => this.openDetails() } });
   private publishButton = h("button", { cls: "ws-details-btn ws-publish-btn", attr: { type: "button", id: "ws-publish-btn" }, on: { click: () => this.deps.publish() } });
+  private coverButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-cover-btn" }, on: { click: () => this.deps.cover(this.coverButton) } });
   private versionsButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-versions-btn" }, on: { click: () => this.deps.versions() } });
   private searchButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-search-btn" }, on: { click: () => this.deps.search() } });
   private wordButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-word-btn" }, on: { click: () => void this.exportWord() } });
@@ -83,7 +86,7 @@ export class Workspace {
       this.panels[id] = h("section", { cls: `ws-col ws-col-${id}`, attr: { id: `ws-panel-${id}` } });
     }
     this.panels.chapters.appendChild(this.listBox);
-    this.listBox.append(this.detailsButton, this.publishButton, this.searchButton, this.versionsButton, this.wordButton, this.backupButton, this.listInner);
+    this.listBox.append(this.detailsButton, this.coverButton, this.publishButton, this.searchButton, this.versionsButton, this.wordButton, this.backupButton, this.listInner);
     this.panels.write.append(this.editorBox, this.detailsBox);
     this.panels.book.appendChild(this.bookSlot);
     this.tabsEl.append(...TABS.map((id) => this.tabButtons[id]));
@@ -128,6 +131,8 @@ export class Workspace {
       },
       notify: (m) => this.deps.notify(m),
     });
+    this.coverButton.textContent = t("cv.open");
+    this.coverButton.setAttribute("aria-label", t("cv.openLabel"));
     this.versionsButton.textContent = t("ver.open");
     this.versionsButton.setAttribute("aria-label", t("ver.openLabel"));
     this.searchButton.textContent = t("find.open");
@@ -355,6 +360,13 @@ export class Workspace {
   private typed(body: string): void {
     if (!this.project || !this.active) return;
     this.project = setChapterBody(this.project, this.active, body, Date.now());
+    this.markDirty(false);
+  }
+
+  /** The cover designer made a new version of the project: keep it and save it. */
+  applyProject(next: Project): void {
+    if (!this.project || next.id !== this.project.id) return;
+    this.project = next;
     this.markDirty(false);
   }
 

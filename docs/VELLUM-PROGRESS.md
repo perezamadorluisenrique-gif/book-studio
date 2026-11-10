@@ -136,6 +136,10 @@ En la misma máquina y momento, `main` medía 816, 928, 594, 1036 y 601 ms. Capt
 - T4.2 (2026-11-10): 20 plantillas (8 gratis, 12 Pro) en `src/engine/cover/templates.ts`; 6 familias de fondo generativo en `generative.ts` (semilla = título + autor + variante, generador propio repetible); dos tipos de dibujo nuevos, `path` y `gradient`, en `types.ts`, `pdf.ts` (degradado con sombreado axial) y `canvas.ts`. Prueba: 20 plantillas × 3 formatos (5×8, 6×9, 8,5×11) × 3 grosores (120, 300, 600 páginas) sin avisos de zona segura, código de barras ni texto que no cabe, y contraste de 4,5 a 1 o más contra todo lo que hay debajo. Revisado a ojo en una hoja de contacto.
 - T4.2, desviaciones: el degradado y los patrones usan colores sólidos, sin transparencia (la transparencia llega con T4.3 si hace falta para oscurecer imágenes). Las plantillas con imagen (`picture-band`, `picture-card`) usan la portada del libro y, sin ella, quedan solo con el bloque de color. Con menos de 100 páginas el lomo es tan fino que el texto baja a 4–5 pt y puede avisar de que no cabe; es lo que debe pasar. Nombres en inglés y español en cada plantilla.
 
+- T4.3 (2026-11-10): el diseñador (`src/web/cover-editor.ts`, ventana «Diseñar la cubierta» en la lista de capítulos). Cubierta completa en un canvas con las guías (corte rojo, zona segura azul, lomo, código de barras negro) y un recuadro sobre cada capa para elegirla; se mueve con el ratón (con imán a bordes, márgenes y centro, línea rosa) o con las flechas (Mayús, más rápido), Supr la borra. Panel: plantilla (las Pro se pueden mirar pero no aplicar en el plan gratis: avisa y vuelve a la anterior), otro dibujo generativo, color de fondo, lista de capas, añadir texto o imagen en portada, contraportada o lomo, y propiedades (texto, tamaño, color, alineación; en imágenes zoom, recorte, claro/oscuro). Deshacer y rehacer (Ctrl+Z / Ctrl+Y y botones), hasta 100 pasos. Revisiones en vivo (fuera de zona segura, sobre el código de barras, no cabe, imagen bajo 300 ppp).
+- T4.3: la lógica pura está en `src/project/cover-ops.ts` (historial, mover, imán, capas) con 7 pruebas; el recorte y oscurecer, en el motor (`zoom`, `focusX/Y`, `dim` con velo negro o blanco: `RectDraw.opacity` nuevo en el PDF y el canvas). El diseño se guarda 500 ms después del último cambio y al cerrar. La imagen subida es un recurso del libro (`cover-art-N.jpg|png`).
+- T4.3, desviaciones: no hay asas para cambiar el tamaño de una capa con el ratón (hay `resizeLayer` en las operaciones, sin pantalla); las líneas finas (reglas y marcos) no tienen recuadro para señalarlas pero sí están en la lista de capas. «Alinear a guías» es el imán al mover, no un botón de alinear. No se probó con un lector de pantalla real, solo axe (sin fallos graves en escritorio y móvil de 390 px).
+
 Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Diario
@@ -144,7 +148,7 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilo D, órdenes T4.3 a T4.5 (editor de cubiertas). T4.1 y T4.2 hechas. Hilos A, B y C terminados.
+Hilo D, órdenes T4.4 y T4.5 (editor de cubiertas). T4.1 a T4.3 hechas. Hilos A, B y C terminados.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
@@ -158,3 +162,4 @@ Hilo D, órdenes T4.3 a T4.5 (editor de cubiertas). T4.1 y T4.2 hechas. Hilos A,
 - 2026-11-10: T2.2 hecha. Asistente de 4 pasos tras soltar el Word (sube, estilo con miniaturas, datos, descarga con lista de comprobación), con «Saltar» y paso guardado en el libro. Pruebas locales: lint, typecheck, 380 tests, build, build:web, e2e 57/57 (nuevas: del Word al PDF con 60.000 palabras en 4 clics, miniaturas y estilo, recarga y Saltar, axe en los 4 pasos en escritorio y móvil).
 - 2026-11-10: T4.1 hecha. Cubierta por capas con su JSON en el proyecto, `renderDesign` y avisos; números de KDP comprobados (barcode sin fuente). Pruebas locales: ver PR.
 - 2026-11-10: T4.2 hecha. 20 plantillas, 6 fondos generativos, dibujos `path` y `gradient`.
+- 2026-11-10: T4.3 hecha. Diseñador de cubiertas en la web con deshacer, imán, plantillas, imágenes y revisiones en vivo.

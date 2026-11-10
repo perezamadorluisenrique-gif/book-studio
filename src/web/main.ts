@@ -24,6 +24,7 @@ import { projectToVault, type ProjectVault } from "../project/to-vault";
 import type { Project } from "../project/model";
 import { fetchPost } from "./post";
 import { renderProjects } from "./projects";
+import { openCoverEditor } from "./cover-editor";
 import { showPublishChecklist } from "./publish";
 import { deleteProject, deleteSnapshot, getHandle, listProjects, listSnapshots, putProject, putSnapshot, setHandle } from "./store";
 import { Studio } from "../app/studio";
@@ -280,6 +281,18 @@ const workspace = new Workspace($("workspace"), {
   ask: (d) => host.ask(d),
   notify: toast,
   plan: () => license.plan(),
+  cover: (opener) =>
+    void openCoverEditor(
+      {
+        project: () => current?.project ?? null,
+        change: (next) => workspace.applyProject(next),
+        base: () => studio.coverBase(),
+        plan: () => license.plan(),
+        notify: toast,
+        ask: (d) => host.ask(d),
+      },
+      opener,
+    ),
   publish: () =>
     showPublishChecklist(
       {

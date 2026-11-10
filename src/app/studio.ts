@@ -265,6 +265,12 @@ export class Studio {
     }
   }
 
+  /** The book as last built with its fonts, for the cover designer; null when nothing is open. */
+  async coverBase(): Promise<{ built: Built; fonts: FontSet } | null> {
+    const built = await this.ensureBuilt();
+    return built ? { built, fonts: await this.loadFonts() } : null;
+  }
+
   private async ensureBuilt(): Promise<Built | null> {
     // An edit made just before exporting is still waiting for its rebuild: run it now.
     if (this.timer) await this.runScheduled();
