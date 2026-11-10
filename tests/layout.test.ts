@@ -26,7 +26,7 @@ function expectPrintable(layout: Layout): void {
   expect(Math.min(layout.margins.top, layout.margins.bottom, layout.margins.outside)).toBeGreaterThanOrEqual(0.25 * 72);
   for (const page of layout.pages) {
     for (const d of page.draws) {
-      if (d.kind === "rule") continue;
+      if (d.kind === "rule" || d.kind === "path") continue;
       // Everything sits inside the trim; nothing relies on bleed.
       expect(d.x).toBeGreaterThanOrEqual(0);
       expect(d.x).toBeLessThanOrEqual(layout.widthPt);

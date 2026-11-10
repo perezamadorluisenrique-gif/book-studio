@@ -4,11 +4,11 @@
 
 // Default import: the ES build exports only `default`, unlike its typings.
 import fontkit from "@pdf-lib/fontkit";
-import { PDFDocument, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import { PDFDict, PDFDocument, PDFName, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { parseFaceKey, type FontFile, type FontSet } from "./fonts";
 import { orientedMatrix } from "./images";
 import type { Book } from "./model";
-import type { Layout } from "./layout/types";
+import { gradientAxis, type Layout } from "./layout/types";
 
 interface SubsetEmbedder {
   font: { layout(text: string, features?: string[]): { glyphs: FkGlyph[]; positions: { xAdvance: number }[] }; unitsPerEm: number };
@@ -93,6 +93,7 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
     const fontNames = new Map<FontFile, string>();
     const imageNames = new Map<string, string>();
     const ops: string[] = [];
+    let shadingCount = 0;
     let inText = false;
     let curFont = "";
     let curSize = -1;
@@ -158,6 +159,29 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
         if (d.stroke || !d.fill) ops.push(`${(d.stroke ?? [0, 0, 0]).map(fmt).join(" ")} RG`, `${fmt(d.strokeWidth ?? 0.5)} w`);
         if (d.dash?.length) ops.push(`[${d.dash.map(fmt).join(" ")}] 0 d`);
         ops.push(`${fmt(d.x + offX)} ${fmt(H + b - d.y - d.h)} ${fmt(d.w)} ${fmt(d.h)} re`, paint, "Q");
+      } else if (d.kind === "path") {
+        endText();
+        const paint = d.fill && d.stroke ? "B" : d.fill ? "f" : "S";
+        const path = d.ops.map((o) => (o[0] === "Z" ? "h" : o[0] === "C" ? `${fmt(o[1] + offX)} ${fmt(H + b - o[2])} ${fmt(o[3] + offX)} ${fmt(H + b - o[4])} ${fmt(o[5] + offX)} ${fmt(H + b - o[6])} c` : `${fmt(o[1] + offX)} ${fmt(H + b - o[2])} ${o[0] === "M" ? "m" : "l"}`));
+        ops.push("q");
+        if (d.fill) ops.push(`${d.fill.map(fmt).join(" ")} rg`);
+        if (d.stroke || !d.fill) ops.push(`${(d.stroke ?? [0, 0, 0]).map(fmt).join(" ")} RG`, `${fmt(d.strokeWidth ?? 0.5)} w`);
+        ops.push(...path, paint, "Q");
+      } else if (d.kind === "gradient") {
+        endText();
+        const [x0, y0, x1, y1] = gradientAxis(d);
+        const ctx = doc.context;
+        const fn = ctx.register(ctx.obj({ FunctionType: 2, Domain: [0, 1], C0: d.from, C1: d.to, N: 1 }));
+        const shading = ctx.register(ctx.obj({ ShadingType: 2, ColorSpace: "DeviceRGB", Coords: [x0 + offX, H + b - y0, x1 + offX, H + b - y1], Function: fn, Extend: [true, true] }));
+        const resources = page.node.Resources();
+        let table = resources?.lookupMaybe(PDFName.of("Shading"), PDFDict);
+        if (resources && !table) {
+          table = ctx.obj({});
+          resources.set(PDFName.of("Shading"), table);
+        }
+        const name = `Sh${shadingCount++}`;
+        table?.set(PDFName.of(name), shading);
+        ops.push("q", `${fmt(d.x + offX)} ${fmt(H + b - d.y - d.h)} ${fmt(d.w)} ${fmt(d.h)} re W n`, `/${name} sh`, "Q");
       } else {
         endText();
         ops.push("q", "0 G", `${fmt(d.width)} w`, `${fmt(d.x1 + offX)} ${fmt(H + b - d.y1)} m`, `${fmt(d.x2 + offX)} ${fmt(H + b - d.y2)} l`, "S", "Q");

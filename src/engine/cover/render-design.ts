@@ -7,6 +7,7 @@ import { Styler, type RunStyle } from "../layout/style";
 import type { Draw } from "../layout/types";
 import type { CoverDesign, PanelId, TextLayer } from "./design";
 import { SAFE, SPINE_SAFE, SPINE_TEXT_MIN_PAGES, type Box, type CoverGeometry } from "./geometry";
+import { generativeDraws } from "./generative";
 import { fitSize, hexToRgb, Painter, pt } from "./paint";
 
 export interface DesignFinding {
@@ -115,7 +116,10 @@ export function renderDesign(design: CoverDesign, ctx: DesignContext, ink: Paint
   const findings: DesignFinding[] = [];
   const W = pt(g.width);
   const H = pt(g.height);
-  draws.push({ kind: "rect", x: 0, y: 0, w: W, h: H, fill: hexToRgb(design.background.color) });
+  const bgd = design.background;
+  if (bgd.kind === "gradient") draws.push({ kind: "gradient", x: 0, y: 0, w: W, h: H, from: hexToRgb(bgd.color), to: hexToRgb(bgd.to), angle: bgd.angle });
+  else draws.push({ kind: "rect", x: 0, y: 0, w: W, h: H, fill: hexToRgb(bgd.color) });
+  if (bgd.kind === "generative") draws.push(...generativeDraws(bgd.family, bgd.seed, bgd.palette, { x: 0, y: 0, w: W, h: H }));
 
   if (design.background.kind === "image") {
     const bg = design.background;

@@ -77,3 +77,14 @@ export function fitSize(max: number, min: number, fits: (size: number) => boolea
   return { size: min, fits: fits(min) };
 }
 
+
+/** WCAG contrast ratio between two colours, from 1 to 21. */
+export function contrastRatio(a: Rgb, b: Rgb): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+export const rgbToHex = ([r, g, b]: Rgb): string => "#" + [r, g, b].map((c) => Math.round(Math.min(1, Math.max(0, c)) * 255).toString(16).padStart(2, "0")).join("");
+
+/** `a` moved `t` (0 to 1) of the way to `b`. */
+export const mixRgb = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
