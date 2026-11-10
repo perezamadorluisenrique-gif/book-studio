@@ -246,7 +246,7 @@ export class Studio {
     await nextFrame();
     try {
       const fonts = await this.loadFonts();
-      const built = await buildBook(source, path, fonts, this.overrides(), { cache: this.layoutCache });
+      const built = await buildBook(source, path, fonts, this.overrides(), { cache: this.layoutCache, layout: this.host.layout?.bind(this.host) });
       if (this.disposed || path !== this.current) return;
       this.painter?.dispose();
       this.painter = new PagePainter(fonts, built.book.images);

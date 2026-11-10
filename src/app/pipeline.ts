@@ -26,12 +26,16 @@ export interface Built {
   ms: number;
 }
 
-/** `cache` carries what earlier builds of the same book learned, so a rebuild after an edit only sets what changed. */
-export async function buildBook(source: VaultSource, manifestPath: string, fonts: FontSet, overrides: Partial<BookSettings> = {}, opts: { cache?: LayoutCache } = {}): Promise<Built> {
+/**
+ * `cache` carries what earlier builds of the same book learned, so a rebuild after an edit only sets what changed.
+ * `layout` sets the pages elsewhere (a web worker); when it fails, they are set here.
+ */
+export async function buildBook(source: VaultSource, manifestPath: string, fonts: FontSet, overrides: Partial<BookSettings> = {}, opts: { cache?: LayoutCache; layout?: (book: Book) => Promise<Layout> } = {}): Promise<Built> {
   const t0 = performance.now();
   // Box sets always load so free users can preview them; exporting one needs Pro.
   const book = await loadBook(source, manifestPath, overrides, { boxSets: true });
-  const layout = layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? await loadHyphenator(book.meta.language) : null, cache: opts.cache });
+  const away = opts.layout ? await opts.layout(book).catch(() => null) : null;
+  const layout = away ?? layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? await loadHyphenator(book.meta.language) : null, cache: opts.cache });
   const audit = auditBook(book, { pageList: true });
   return { book, layout, audit, ms: Math.round(performance.now() - t0) };
 }

@@ -79,7 +79,7 @@ const plugin = {
 // that load when a book asks for them; the service worker keeps them for offline use.
 const web = {
   ...common,
-  entryPoints: { app: "src/web/main.ts" },
+  entryPoints: { app: "src/web/main.ts", "layout-worker": "src/web/layout-worker.ts" },
   format: "esm",
   splitting: true,
   outdir: "dist/web",
@@ -117,7 +117,7 @@ function copyWebStatic() {
 // those files, so each build replaces the old copy. The guides and the sample books are not part of it.
 function writeServiceWorker() {
   const chunks = existsSync("dist/web/chunks") ? listFiles("dist/web/chunks").map((f) => `chunks/${f}`) : [];
-  const files = ["app.js", ...chunks, "app.css", "studio.css", "app.webmanifest", ...listFiles("dist/web/icons").map((f) => `icons/${f}`), ...listFiles("dist/web/fonts").filter((f) => f.endsWith(".ttf")).map((f) => `fonts/${f}`)].sort();
+  const files = ["app.js", "layout-worker.js", ...chunks, "app.css", "studio.css", "app.webmanifest", ...listFiles("dist/web/icons").map((f) => `icons/${f}`), ...listFiles("dist/web/fonts").filter((f) => f.endsWith(".ttf")).map((f) => `fonts/${f}`)].sort();
   const hash = createHash("sha256");
   for (const f of ["index.html", ...files]) hash.update(f).update(readFileSync(join("dist/web", f)));
   const list = ["./", "index.html", ...files];

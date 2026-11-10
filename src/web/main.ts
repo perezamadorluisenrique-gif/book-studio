@@ -11,6 +11,7 @@ import { vaultToProjects, type ImportFiles, type ImportResult } from "../project
 import { createProject, renameProject } from "../project/ops";
 import { exportZip, importZip, zipName } from "../project/zip";
 import { projectFromText } from "../project/import-text";
+import { remoteLayout } from "./layout-remote";
 import { registerPwa } from "./pwa";
 import { showSearch } from "./search";
 import { showVersions } from "./versions";
@@ -222,6 +223,7 @@ const host: StudioHost = {
   kind: "web",
   source: () => (current ? current.vault : folder ? vaultFor(folder) : null),
   listBooks: () => (current ? Promise.resolve([{ path: current.vault.bookPath, title: current.vault.bookTitle }]) : folder ? findBooks(folder) : Promise.resolve([])),
+  layout: remoteLayout(new URL("layout-worker.js", doc.baseURI)),
   loadFont: async (f: FontFile) => {
     const res = await fetch(new URL(`fonts/${f}.ttf`, doc.baseURI));
     if (!res.ok) throw new Error(t("web.fontFailed", { font: f }));
