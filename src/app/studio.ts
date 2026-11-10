@@ -5,6 +5,7 @@
 import { FREE_EDITION, PRO_PREVIEW } from "../config";
 import { hasFeature, PRO_FEATURES, themeAllowed, trimAllowed, type ExportBlocker, type Plan } from "../engine/entitlements";
 import { FontSet } from "../engine/fonts";
+import { LayoutCache } from "../engine/layout/index";
 import type { BookSettings, SourceRef } from "../engine/model";
 import { THEMES } from "../engine/themes";
 import { TRIMS } from "../engine/trims";
@@ -50,6 +51,8 @@ export class Studio {
   private current: string | null = null;
   private built: Built | null = null;
   private fonts: Promise<FontSet> | null = null;
+  /** Words and chapters already set, kept between rebuilds so an edit only sets what changed. */
+  private layoutCache = new LayoutCache();
   private painter: PagePainter | null = null;
   private building: Promise<void> | null = null;
   private queued = false;
@@ -243,7 +246,7 @@ export class Studio {
     await nextFrame();
     try {
       const fonts = await this.loadFonts();
-      const built = await buildBook(source, path, fonts, this.overrides());
+      const built = await buildBook(source, path, fonts, this.overrides(), { cache: this.layoutCache, layout: this.host.layout?.bind(this.host) });
       if (this.disposed || path !== this.current) return;
       this.painter?.dispose();
       this.painter = new PagePainter(fonts, built.book.images);

@@ -49,6 +49,20 @@ describe("web app, sample book", () => {
     await page.close();
   });
 
+  it("sets the pages in a worker, and still shows the book when the worker can't start", async () => {
+    const page = await (await browser.newContext({ locale: "en-US" })).newPage();
+    await openSample(page);
+    expect(page.workers().some((w) => w.url().endsWith("/layout-worker.js"))).toBe(true);
+    await page.close();
+
+    const blocked = await (await browser.newContext({ locale: "en-US", serviceWorkers: "block" })).newPage();
+    await blocked.route("**/layout-worker.js", (route) => route.abort());
+    await openSample(blocked);
+    expect(await blocked.locator(".bs-page, canvas, svg").count()).toBeGreaterThan(0);
+    expect(blocked.workers().some((w) => w.url().endsWith("/layout-worker.js"))).toBe(false);
+    await blocked.close();
+  });
+
   it("exports an EPUB (a zip that starts with the mimetype entry)", async () => {
     const page = await (await browser.newContext({ acceptDownloads: true, locale: "en-US" })).newPage();
     await openSample(page);
@@ -840,7 +854,7 @@ describe("web app, offline", () => {
     expect(sw).not.toContain("__FILES__");
     expect(sw).toMatch(/const BUILD = "[0-9a-f]{12}"/);
     const files = JSON.parse(/const FILES = (\[.*\]);/.exec(sw)?.[1] ?? "[]") as string[];
-    for (const f of ["./", "index.html", "app.js", "app.css", "studio.css", "app.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "fonts/EBGaramond-Regular.ttf"]) expect(files, f).toContain(f);
+    for (const f of ["./", "index.html", "app.js", "layout-worker.js", "app.css", "studio.css", "app.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "fonts/EBGaramond-Regular.ttf"]) expect(files, f).toContain(f);
     expect(files.some((f) => f.startsWith("sample/") || f.startsWith("en/") || f.startsWith("es/"))).toBe(false);
     const res = await fetch(`${base}app.webmanifest`);
     expect(((await res.json()) as { name: string }).name).toBe("Book Studio");

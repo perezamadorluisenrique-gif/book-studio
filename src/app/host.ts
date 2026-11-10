@@ -2,7 +2,8 @@
 
 import type { VaultSource } from "../engine/book";
 import type { FontLoader } from "../engine/fonts";
-import type { SourceRef } from "../engine/model";
+import type { Layout } from "../engine/layout/index";
+import type { Book, SourceRef } from "../engine/model";
 
 export interface BookChoice {
   path: string;
@@ -36,6 +37,8 @@ export interface StudioHost {
   source(): VaultSource | null;
   listBooks(): Promise<BookChoice[]>;
   loadFont: FontLoader;
+  /** Sets the pages somewhere other than the page (a web worker), so a long book doesn't freeze it. Rejects when it can't; the studio then does it itself. */
+  layout?(book: Book): Promise<Layout>;
   /** Save an output; resolves to a message saying where, or null if cancelled. */
   save(file: OutputFile): Promise<string | null>;
   store: Store;

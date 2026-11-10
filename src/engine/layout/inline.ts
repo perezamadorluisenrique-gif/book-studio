@@ -110,7 +110,33 @@ const DASH_PENALTY = 100;
 /** How far the spaces of a paragraph re-set for the page builder may stretch: never a loose line. */
 const VARIANT_TOLERANCE = 0.95;
 
+/** A short text for the inline flags of a style, to tell styles apart in a cache key. */
+const STYLE_SIGS = new WeakMap<InlineStyle, string>();
+function styleSig(st: InlineStyle): string {
+  let sig = STYLE_SIGS.get(st);
+  if (sig === undefined) {
+    sig = `${st.italic ? "i" : ""}${st.bold ? "b" : ""}${st.code ? "c" : ""}${st.smallCaps ? "s" : ""}${st.strike ? "x" : ""}${st.sup ? "^" : ""}${st.sub ? "_" : ""}${st.href ?? ""}`;
+    STYLE_SIGS.set(st, sig);
+  }
+  return sig;
+}
+
+/** The parts of a run style that change how a word is turned into items. */
+function baseSig(b: RunStyle): string {
+  return `${b.family}|${b.size}|${b.bold ? 1 : 0}${b.italic ? 1 : 0}|${b.caps ?? "none"}|${b.uppercase ? 1 : 0}|${b.tracking ?? 0}|${b.oldstyle ? 1 : 0}`;
+}
+
+/** For an item list: how far each item's source offset lies from the `offset` its data holds (words are shared between paragraphs). */
+const BASES = new WeakMap<Item[], number[]>();
+
+/** Most words kept before the memo starts over. */
+const WORD_MEMO_LIMIT = 150_000;
+
 export class ParagraphSetter {
+  private words = new Map<string, Item[]>();
+  /** The paragraph `set` prepared last, for `variants` to pick up when asked right after for the same paragraph. */
+  private last: { inlines: Inline[]; base: RunStyle; opts: SetOptions; prep: ReturnType<ParagraphSetter["prepare"]> } | null = null;
+
   constructor(
     private styler: Styler,
     private hyphenator: Hyphenator | null,
@@ -135,7 +161,12 @@ export class ParagraphSetter {
     const firstIndent = dropCap ? 0 : (opts.indent ?? 0);
     const ragged = opts.align !== "justify";
     const hyphens = !ragged && !!opts.hyphenate && this.hyphenator !== null;
-    const build = (hyphenate: boolean) => this.items(working, base, { ...opts, hyphenate: hyphenate && hyphens }, firstIndent, ragged);
+    // Items for each way of hyphenating, made once: `set` and `variants` of the same paragraph share them.
+    const built: [Item[] | null, Item[] | null] = [null, null];
+    const build = (hyphenate: boolean): Item[] => {
+      const k = hyphenate ? 1 : 0;
+      return (built[k] ??= this.items(working, base, { ...opts, hyphenate: hyphenate && hyphens }, firstIndent, ragged));
+    };
     // What the line breaker is told besides the tolerance: no ladders of hyphens, no hyphen before the
     // last line, no last line shorter than two ems.
     const common: Omit<KPOptions, "tolerance"> = {
@@ -150,7 +181,9 @@ export class ParagraphSetter {
   }
 
   set(inlines: Inline[], base: RunStyle, opts: SetOptions): SetParagraph {
-    const { dropCap, indentFor, lineWidth, ragged, hyphens, build, common } = this.prepare(inlines, base, opts);
+    const prep = this.prepare(inlines, base, opts);
+    this.last = { inlines, base, opts, prep };
+    const { dropCap, indentFor, lineWidth, ragged, hyphens, build, common } = prep;
     let items = build(false);
     let breaks: KPBreak[] | null = null;
     let hyphenated = false;
@@ -189,9 +222,11 @@ export class ParagraphSetter {
   variants(inlines: Inline[], base: RunStyle, opts: SetOptions): (lines: number) => SetParagraph | null {
     type Prep = ReturnType<ParagraphSetter["prepare"]> & { items: Item[]; natural: number; stretch: number; shrink: number; slack: number; forced: boolean };
     let prep: Prep | null = null;
+    // Called right after `set` for the same paragraph: what `set` prepared is still good.
+    const shared = this.last && this.last.inlines === inlines && this.last.base === base && this.last.opts === opts ? this.last.prep : null;
     return (lines) => {
       if (!prep) {
-        const p = this.prepare(inlines, base, opts);
+        const p = shared ?? this.prepare(inlines, base, opts);
         const items = p.ragged ? [] : p.build(true);
         // Totals for a cheap test of whether the text can fill that many lines at all.
         let natural = 0;
@@ -278,6 +313,10 @@ export class ParagraphSetter {
     const items: Item[] = [];
     const styler = this.styler;
     const space = styler.width(" ", base);
+    const sig = baseSig(base);
+    const bases: number[] = [];
+    BASES.set(items, bases);
+    const micro = !!opts.micro && !ragged;
     const raggedStretch = base.size * 3;
     if (indent > 0) items.push({ type: "box", width: indent, data: { text: "", face: "", size: 0, tracking: 0, dy: 0, offset: 0 } });
     let words = 0;
@@ -308,13 +347,42 @@ export class ParagraphSetter {
       const name = words > 0 && /^\p{Lu}/u.test(text) && !/[.!?…]["'”’»)\]]*$/.test(prevWord);
       prevWord = text;
       words++;
-      this.wordItems(atom.pieces, base, smallCapsLead, !!opts.hyphenate, space, items, !!opts.micro && !ragged, name ? NAME_HYPHEN_PENALTY : HYPHEN_PENALTY);
+      this.cachedWord(atom.pieces, base, sig, smallCapsLead, !!opts.hyphenate, space, items, bases, micro, name ? NAME_HYPHEN_PENALTY : HYPHEN_PENALTY);
     }
     while (items.length && items[items.length - 1].type === "glue") items.pop();
     items.push({ type: "penalty", width: 0, penalty: INFINITE_PENALTY, flagged: false });
     items.push({ type: "glue", width: 0, stretch: ragged && opts.balance ? raggedStretch : FIL, shrink: 0 });
     items.push({ type: "penalty", width: 0, penalty: -INFINITE_PENALTY, flagged: false });
     return items;
+  }
+
+  /** `wordItems` through a memo: the same word in the same style comes out as the same items wherever it stands. */
+  private cachedWord(pieces: WordPiece[], base: RunStyle, sig: string, smallCapsLead: boolean, hyphenate: boolean, space: number, items: Item[], bases: number[], micro: boolean, hyphenPenalty: number): void {
+    const first = pieces[0].offset;
+    let key = `${sig}|${smallCapsLead ? 1 : 0}${hyphenate ? 1 : 0}${micro ? 1 : 0}|${hyphenPenalty}`;
+    for (const p of pieces) key += `\u0001${styleSig(p.style)}${p.note ? `\u0002${p.noteId}` : ""}\u0003${p.offset - first}\u0003${p.text}`;
+    let tpl = this.words.get(key);
+    if (!tpl) {
+      tpl = [];
+      this.wordItems(
+        pieces.map((p) => ({ ...p, offset: p.offset - first })),
+        base,
+        smallCapsLead,
+        hyphenate,
+        space,
+        tpl,
+        micro,
+        hyphenPenalty,
+      );
+      if (this.words.size >= WORD_MEMO_LIMIT) this.words.clear();
+      this.words.set(key, tpl);
+    }
+    // The items are shared; each remembers where this occurrence of the word starts.
+    while (bases.length < items.length) bases.push(0);
+    for (const it of tpl) {
+      items.push(it);
+      bases.push(first);
+    }
   }
 
   private wordItems(pieces: WordPiece[], base: RunStyle, smallCapsLead: boolean, hyphenate: boolean, space: number, items: Item[], micro: boolean, hyphenPenalty: number): void {
@@ -439,6 +507,7 @@ export class ParagraphSetter {
 
   private lines(items: Item[], breaks: KPBreak[], lineWidth: (i: number) => number, indentFor: (i: number) => number, align: Align, micro: boolean): SetLine[] {
     const fonts = this.styler.fonts;
+    const bases = BASES.get(items) ?? [];
     const out: SetLine[] = [];
     let start = 0;
     breaks.forEach((br, li) => {
@@ -460,7 +529,7 @@ export class ParagraphSetter {
         const it = items[i];
         if (it.type === "box") {
           const d = it.data as BoxData;
-          if (offset === undefined) offset = d.offset;
+          if (offset === undefined) offset = d.offset + (bases[i] ?? 0);
           if (d.noteId) notes.push(d.noteId);
           if (d.text) pushText(d);
           else els.push({ kind: "gap", w: it.width });

@@ -107,17 +107,27 @@ export function breakParagraph<T>(items: KPItem<T>[], opts: KPOptions): { breaks
     return r;
   };
 
+  const classes = maxRun > 0 ? maxRun + 1 : 1;
+  const slots = 4 * classes;
+  // The best way into each fitness class and hyphen-run length, reused for every group of every break.
+  const candNode: (Node | null)[] = new Array<Node | null>(slots).fill(null);
+  const candDemerits = new Float64Array(slots);
+  const candRatio = new Float64Array(slots);
+  const candRun = new Int32Array(slots);
+  const candFitness = new Int32Array(slots);
+  const last = items.length - 1;
+
   const tryBreak = (index: number) => {
     const item = items[index];
     const penalty = item.type === "penalty" ? item.penalty : 0;
     const flagged = item.type === "penalty" && item.flagged;
     const next: Node[] = [];
+    let after: { width: number; stretch: number; shrink: number } | null = null;
     let i = 0;
     while (i < active.length) {
       // Process active nodes in groups that share a line number (line widths may differ per line).
       // One candidate per fitness class and hyphen-run length, so a cheap node with a long run can't hide a dearer one that is free to hyphenate.
-      const classes = maxRun > 0 ? maxRun + 1 : 1;
-      const candidates: ({ node: Node; demerits: number; ratio: number; run: number; fitness: number } | null)[] = Array.from({ length: 4 * classes }, () => null);
+      candNode.fill(null);
       let groupLine = -1;
       while (i < active.length) {
         const a = active[i];
@@ -134,7 +144,7 @@ export function breakParagraph<T>(items: KPItem<T>[], opts: KPOptions): { breaks
           else d = (linePenalty + badness) ** 2;
           const prevItem = items[a.position];
           if (flagged && prevItem.type === "penalty" && prevItem.flagged) d += flaggedDemerits;
-          if (index === items.length - 1) {
+          if (index === last) {
             if (finalHyphenDemerits && prevItem.type === "penalty" && prevItem.flagged) d += finalHyphenDemerits;
             if (runtDemerits && a.line >= 1 && sum.width - a.totalWidth < lastLineMin) d += runtDemerits;
           }
@@ -143,25 +153,34 @@ export function breakParagraph<T>(items: KPItem<T>[], opts: KPOptions): { breaks
           d += a.demerits;
           const run = flagged ? a.run + 1 : 0;
           const key = fitness + 4 * (maxRun > 0 ? run : 0);
-          const c = candidates[key];
-          if (!c || d < c.demerits) candidates[key] = { node: a, demerits: d, ratio, run, fitness };
+          if (!candNode[key] || d < candDemerits[key]) {
+            candNode[key] = a;
+            candDemerits[key] = d;
+            candRatio[key] = ratio;
+            candRun[key] = run;
+            candFitness[key] = fitness;
+          }
         }
         i++;
       }
-      const after = sumAfter(index);
-      for (const c of candidates) {
-        if (!c) continue;
+      for (let key = 0; key < slots; key++) {
+        const from = candNode[key];
+        if (!from) continue;
+        const line = from.line + 1;
+        // With a line count asked for, a line past it, or its last line before the end, can never be part of the answer.
+        if (opts.lineCount !== undefined && (line > opts.lineCount || (line === opts.lineCount && index !== last))) continue;
+        after ??= sumAfter(index);
         next.push({
           position: index,
-          line: c.node.line + 1,
-          fitness: c.fitness,
+          line,
+          fitness: candFitness[key],
           totalWidth: after.width,
           totalStretch: after.stretch,
           totalShrink: after.shrink,
-          demerits: c.demerits,
-          ratio: c.ratio,
-          run: c.run,
-          prev: c.node,
+          demerits: candDemerits[key],
+          ratio: candRatio[key],
+          run: candRun[key],
+          prev: from,
         });
       }
     }
