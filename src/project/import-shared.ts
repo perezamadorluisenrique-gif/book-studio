@@ -220,7 +220,7 @@ export function finishImport(f: FinishInput): ImportedDocx {
     } else if (b.subtitle) {
       if (!subtitle) metaText.push(b.text);
       subtitle ??= plainMeta(b.text);
-    } else if (b.kind === "quote") lines.push(...b.text.split("  \n").map((l) => `> ${l}`), "");
+    } else if (b.kind === "quote") lines.push(...b.text.split("  \n").map((l, k, all) => `> ${l}${k < all.length - 1 ? "  " : ""}`), "");
     else if (b.kind === "list") {
       lines.push(`${"    ".repeat(Math.min(b.depth ?? 0, 4))}${b.ordered ? "1." : "-"} ${b.text.replace(/ {2}\n/g, " ")}`);
       const next = blocks.slice(idx + 1).find((x) => x.kind !== "skip");

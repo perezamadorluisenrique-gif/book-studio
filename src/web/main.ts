@@ -327,6 +327,7 @@ const workspace = new Workspace($("workspace"), {
       document.getElementById("ws-search-btn") ?? undefined,
     ),
   backup: (p) => backupProject(p),
+  exportWord: (p) => exportWordFile(p),
   // The preview bar remembers theme and trim per book; a choice made in the book form must not be hidden by an older one.
   layoutChanged: (project, keys) => {
     const key = `settings:project:${project.id}/${projectToVault(project).bookPath}`;
@@ -434,6 +435,15 @@ async function backupProject(p: Project): Promise<void> {
   download({ name: zipName(p), data, mime: "application/zip" });
   store.set(`backup:${p.id}`, Date.now());
   toast(t("proj.backupDone", { name: p.name }));
+}
+
+/** Download a book as a Word file. The .docx is made in the browser, like the PDF and the EPUB. */
+async function exportWordFile(p: Project): Promise<void> {
+  const { projectToDocx } = await import("../project/export-docx");
+  const data = await projectToDocx(p);
+  const name = zipName(p).replace(/\.zip$/i, ".docx");
+  download({ name, data, mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  toast(t("proj.wordDone", { name: p.name }));
 }
 
 const newId = () => crypto.randomUUID();

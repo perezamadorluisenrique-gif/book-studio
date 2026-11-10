@@ -31,6 +31,8 @@ export interface WorkspaceDeps {
   search(): void;
   /** Download a copy of the book as a .zip. */
   backup(p: Project): Promise<void>;
+  /** Download the book as a Word file (.docx). */
+  exportWord(p: Project): Promise<void>;
 }
 
 type Tab = "chapters" | "write" | "book";
@@ -57,6 +59,7 @@ export class Workspace {
   private publishButton = h("button", { cls: "ws-details-btn ws-publish-btn", attr: { type: "button", id: "ws-publish-btn" }, on: { click: () => this.deps.publish() } });
   private versionsButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-versions-btn" }, on: { click: () => this.deps.versions() } });
   private searchButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-search-btn" }, on: { click: () => this.deps.search() } });
+  private wordButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-word-btn" }, on: { click: () => void this.exportWord() } });
   private backupButton = h("button", { cls: "ws-details-btn", attr: { type: "button", id: "ws-backup-btn" }, on: { click: () => void this.backup() } });
   private listInner = h("div");
   private editorBox = h("div", { cls: "ws-editor" });
@@ -80,7 +83,7 @@ export class Workspace {
       this.panels[id] = h("section", { cls: `ws-col ws-col-${id}`, attr: { id: `ws-panel-${id}` } });
     }
     this.panels.chapters.appendChild(this.listBox);
-    this.listBox.append(this.detailsButton, this.publishButton, this.searchButton, this.versionsButton, this.backupButton, this.listInner);
+    this.listBox.append(this.detailsButton, this.publishButton, this.searchButton, this.versionsButton, this.wordButton, this.backupButton, this.listInner);
     this.panels.write.append(this.editorBox, this.detailsBox);
     this.panels.book.appendChild(this.bookSlot);
     this.tabsEl.append(...TABS.map((id) => this.tabButtons[id]));
@@ -132,6 +135,7 @@ export class Workspace {
     this.publishButton.textContent = t("pub.open");
     this.publishButton.setAttribute("aria-label", t("pub.openLabel"));
     this.backupButton.textContent = t("proj.backup");
+    this.wordButton.textContent = t("proj.word");
     this.detailsButton.textContent = t("dt.open");
     this.detailsButton.setAttribute("aria-label", t("dt.openLabel"));
     this.tabsEl.setAttribute("aria-label", t("ws.tabs"));
@@ -155,6 +159,17 @@ export class Workspace {
     await this.flush();
     try {
       await this.deps.backup(this.project);
+    } catch (e) {
+      this.deps.notify(t("proj.failed", { error: e instanceof Error ? e.message : String(e) }));
+    }
+  }
+
+  /** Save the latest words, then download the book as a Word file. */
+  private async exportWord(): Promise<void> {
+    if (!this.project) return;
+    await this.flush();
+    try {
+      await this.deps.exportWord(this.project);
     } catch (e) {
       this.deps.notify(t("proj.failed", { error: e instanceof Error ? e.message : String(e) }));
     }

@@ -16,7 +16,7 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 | B | T2.0 Lo gratis nuevo | hecha (falta el PR de la lista de Pro en la web, otro repositorio) | PR «every trim, the full cover and footnotes are free» |
 | B | T2.1 Página de inicio | hecha | PR «landing page and drop-your-Word first screen» |
 | B | T2.2 Asistente de 4 pasos | hecha | PR «four-step first-book wizard» |
-| C | T3.1 a T3.5 Word sin pérdidas | sin empezar | |
+| C | T3.1 a T3.5 Word sin pérdidas | hechas (T3.1 a T3.4 ya fusionadas, T3.5 en su PR) | PR «Word sin pérdidas» y «export the book back to Word» |
 | D | T4.1 a T4.5 Editor de cubiertas | sin empezar | |
 | E | T5.1 a T5.5 Estilos y paridad | sin empezar | |
 | F | T6.1 a T6.3 Lanzamiento | sin empezar | |
@@ -124,6 +124,10 @@ En la misma máquina y momento, `main` medía 816, 928, 594, 1036 y 601 ms. Capt
 - T2.2, e2e «del Word al PDF»: un `.docx` de 60.000 palabras en 30 capítulos (hecho en la prueba con `jszip`) pasa por los 4 pasos con **4 clics** (Siguiente ×3 y Descargar PDF; el título se escribe) y sale un PDF de 186 páginas que pasa `checkKdpPdf`. Tiempo medido en esta máquina: 5,0 a 5,9 s de la caída del archivo a la descarga (el límite de la prueba es 60 s). Vídeo de 35 s: `/mnt/project-files/book-studio-vellum/t22-del-word-al-pdf.webm`.
 - T2.2: las capturas de los pasos 2 y 3 de la portada (`site/img/landing-*-step2/3.webp`) son ahora del asistente.
 - Arreglo de paso: «Mis libros» no se vuelve a dibujar si ya está a la vista, para no borrar lo que se acaba de escribir.
+- Hilo C (T3.1 a T3.5, 2026-11-10): el lector de Word, el de ODT y el de RTF comparten `import-shared.ts` (tipos, `finishImport`, informe y garantía de palabras). `importFile` (`import-file.ts`) elige el lector por extensión. Fixtures: 30 archivos en `tests/fixtures/docx/` (README lista lo no cubierto).
+- T3.1: la garantía de palabras cuenta las palabras del archivo y las del libro y lista cada párrafo que no llegó; el informe dice «✓ N palabras en tu Word, N en tu libro». Sin pérdidas en los 30 archivos de prueba.
+- T3.5 (exportar): `projectToDocx` (`src/project/export-docx.ts`) escribe un .docx desde el Markdown del libro (títulos, citas, listas, tablas, notas al pie, enlaces, imágenes con su descripción, alineación, versalitas, tachado). Prueba de ida y vuelta (`tests/export-docx.test.ts`): exportar y volver a importar da el mismo Markdown en los 5 libros del banco, con una forma única para lo equivalente (`_x_`/`*x*`, saltos de escena, números de lista, rótulos de notas, nombres de imagen). Botón «Descargar en Word» en la lista de capítulos de la web (el .docx se arma en el navegador, con carga diferida).
+- T3.5, arreglo en la importación: un salto de línea dentro de una cita (versos citados) se perdía; ahora se conserva. Desviación: el .docx exportado se comprobó leyéndolo con nuestro propio lector y con el XML bien formado, no abriéndolo en Word ni en LibreOffice; queda sin verificar que Word lo abra sin avisos.
 
 Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
@@ -133,7 +137,7 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilo C, órdenes T3.1 a T3.5 (Word sin pérdidas). Antes de empezar: leer `src/project/import-docx.ts` entero y `tests/fixtures/docx/README.md`. Hilo B terminado.
+Hilo D, órdenes T4.1 a T4.5 (editor de cubiertas). Hilos A, B y C terminados.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
