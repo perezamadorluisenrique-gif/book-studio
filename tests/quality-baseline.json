@@ -23,14 +23,14 @@
   },
   "dialogo-es": {
     "pages": 82,
-    "shortPages": 10,
+    "shortPages": 8,
     "unevenSpreads": 0,
     "ladders": 0,
     "veryLoose": 0,
     "loose": 1,
     "widows": 0,
     "orphans": 0,
-    "hyphenTurns": 2
+    "hyphenTurns": 1
   },
   "ensayo-es": {
     "pages": 82,

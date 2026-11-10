@@ -97,7 +97,7 @@ type Atom = { kind: "word"; pieces: WordPiece[] } | { kind: "space" } | { kind: 
 
 const SPACE_RE = /[\s\u2000-\u2006\u2008-\u200A\u205F\u3000]/u;
 const NBSP_RE = /[\u00A0\u202F\u2007]/;
-const DROP_RE = /^([“‘"'«‹¡¿([]*)([\p{L}\p{N}])/u;
+const DROP_RE = /^([“‘"'«‹¡¿—([]*)([\p{L}\p{N}])/u;
 /** How far each character hangs into the margin, as a fraction of its own width. */
 const HANG_RIGHT: Record<string, number> = { "-": 0.7, ",": 0.7, ".": 0.7, ":": 0.4, ";": 0.4, "’": 0.6, "”": 0.6, "'": 0.6, '"': 0.6, "»": 0.3, "!": 0.2, "?": 0.2, "–": 0.3, "—": 0.2 };
 const HANG_LEFT: Record<string, number> = { "‘": 0.6, "“": 0.6, "'": 0.6, '"': 0.6, "«": 0.3, "¿": 0.1, "¡": 0.1, "(": 0.1 };
@@ -289,7 +289,7 @@ export class ParagraphSetter {
       const ch = word[i];
       if (i > 0 && i < word.length - 1) {
         if (ch === "-" && /\p{L}/u.test(word[i - 1]) && /\p{L}/u.test(word[i + 1])) points.set(i + 1, "explicit");
-        else if ((ch === "—" || ch === "–") && i < word.length - 1) points.set(i + 1, "dash");
+        else if ((ch === "—" || ch === "–") && i > 0 && i < word.length - 1) points.set(i + 1, "dash");
         else if (ch === "/" && anyCode) points.set(i + 1, "zw");
       }
       if (ch === "­") points.set(i, "hyphen");
