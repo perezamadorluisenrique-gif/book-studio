@@ -27,13 +27,18 @@ const NUMBER_WORDS =
 const CHAPTER_LINE = new RegExp(`^\\s*(cap[ií]tulo|chapter)\\s+(\\d{1,3}|[ivxlcdm]{1,7}|${NUMBER_WORDS})\\b[\\s.:\\-–—]*(.*)$`, "i");
 
 const FRONT: [RegExp, string | undefined][] = [
-  [/^(dedication|dedicatoria)$/i, "dedication"],
+  [/^(dedication|dedicatoria|dedicat[oó]rias?)$/i, "dedication"],
+  [/^(introduction|introducci[oó]n|introdu[cç][aã]o)$/i, undefined],
   [/^(foreword|prefacio|preface|pr[ée]face|vorwort)$/i, undefined],
 ];
 const BACK: [RegExp, string | undefined][] = [
   [/^(about the author|acerca del autor|sobre el autor|sobre la autora|acerca de la autora)$/i, "about-the-author"],
   [/^(acknowledge?ments|agradecimientos|afterword|postfacio|appendix|ap[eé]ndice|glossary|glosario|bibliography|bibliograf[ií]a|references|colophon)\b/i, undefined],
 ];
+
+const PART_WORDS = `${NUMBER_WORDS}|primera|segunda|tercera|cuarta|quinta|sexta|s[eé]ptima|octava|novena|d[eé]cima`;
+/** "Parte I", "Part Two", "Parte 3: El mar", "Primera parte", "First part". */
+export const PART_TITLE = new RegExp(`^\\s*(?:(?:parte|part)\\s+(?:\\d{1,2}|[ivxlcdm]{1,6}|${PART_WORDS})\\b|(?:${PART_WORDS})\\s+(?:parte|part)\\b)[\\s.:\\-–—]*`, "i");
 
 function classify(title: string): { kind: SectionKind; section?: string } {
   const t = title.trim();
@@ -134,6 +139,14 @@ export function importText(raw: string, fileName = ""): ImportedBook {
       notes.push("title-heading");
     }
   }
+  // A book in parts: "# Part I" lines with "## Chapter" lines below them. Both start a chapter; the parts are marked below.
+  if (cuts.filter((c) => PART_TITLE.test(c.title)).length >= 2) {
+    const h2 = headings(lines, inside, 2);
+    if (h2.length) {
+      cuts = [...cuts, ...h2].sort((a, b) => a.line - b.line);
+      notes.push("parts");
+    }
+  }
   let how = "heading";
   if (!cuts.length) {
     cuts = chapterLines(lines, inside);
@@ -148,6 +161,8 @@ export function importText(raw: string, fileName = ""): ImportedBook {
     const c = classify(name);
     const chapter: ProjectChapter = { id, title: name || "Untitled", body: tidy(body) };
     if (c.section) chapter.kind = c.section;
+    // A part has no text of its own: it is the divider before its chapters. One with text stays a chapter.
+    else if (PART_TITLE.test(name) && !chapter.body.trim() && c.kind === "body") chapter.kind = "part";
     chapters.push(chapter);
     sections[c.kind].push(id);
   };

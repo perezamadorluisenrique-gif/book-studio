@@ -1046,6 +1046,8 @@ describe("web app, first-book guide", () => {
     await page.reload();
     await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
     await page.locator("#ed-text").waitFor();
+    // The guide may take a moment to draw or to hide itself: wait for it to be gone.
+    await page.locator(".wiz-box").waitFor({ state: "hidden" });
     expect(await page.locator(".wiz-box").isHidden()).toBe(true);
     await context.close();
   });

@@ -511,7 +511,15 @@ async function showProjects(focus?: string): Promise<void> {
           // The Word reader is loaded only when someone imports a .docx.
           const { importDocx } = await import("../project/import-docx");
           const { projectFromImport } = await import("../project/import-text");
-          const imported = await importDocx(bytes, (xml) => new DOMParser().parseFromString(xml, "application/xml"), fileName);
+          const parse = (xml: string) => new DOMParser().parseFromString(xml, "application/xml");
+          let imported = await importDocx(bytes, parse, fileName);
+          // A Word file with its own styles for chapter titles: ask once, then read it again with them as titles.
+          const own = imported.report.titleStyles;
+          if (own.length) {
+            const names = own.map((x) => `«${x.name}» (${x.examples.map((e) => `“${e}”`).join(", ")})`).join("; ");
+            const answer = await host.ask({ title: t("imp.styles.title"), message: t("imp.styles.message", { names }), ok: t("imp.styles.yes"), cancel: t("imp.styles.no") });
+            if (answer === "ok") imported = await importDocx(bytes, parse, fileName, { titleStyles: own.map((x) => x.id) });
+          }
           const project = projectFromImport(imported, opts);
           await putProject(project);
           return { project, notes: imported.notes, report: imported.report };

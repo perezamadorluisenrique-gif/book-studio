@@ -1,0 +1,88 @@
+{
+  "sections": [
+    {
+      "kind": "front",
+      "chapterIds": [
+        "c1"
+      ]
+    },
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c2",
+        "c3",
+        "c4",
+        "c5",
+        "c6",
+        "c7",
+        "c8"
+      ]
+    },
+    {
+      "kind": "back",
+      "chapterIds": [
+        "c9",
+        "c10"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "Dedicatoria",
+      "kind": "dedication",
+      "body": "Para quien dejó la luz encendida."
+    },
+    {
+      "title": "Prólogo",
+      "body": "Todo empezó con dos espacios y una tormenta."
+    },
+    {
+      "title": "Parte I: El mar",
+      "kind": "part",
+      "body": ""
+    },
+    {
+      "title": "Capítulo uno",
+      "body": "El faro estaba vacío.\n\n* * *\n\nAl día siguiente volvió.\n\n* * *\n\nOtra mañana.\n\n* * *\n\nY otra más.\n\n* * *\n\nFin de la escena.\n\nLa mar es honda  \ny el cielo es breve  \nnadie vuelve del olvido"
+    },
+    {
+      "title": "Capítulo dos",
+      "body": "Segundo capítulo."
+    },
+    {
+      "title": "Parte II",
+      "kind": "part",
+      "body": ""
+    },
+    {
+      "title": "Capítulo tres",
+      "body": "Tercer capítulo."
+    },
+    {
+      "title": "Epílogo",
+      "body": "Años después."
+    },
+    {
+      "title": "Agradecimientos",
+      "body": "Gracias a todos."
+    },
+    {
+      "title": "Sobre el autor",
+      "kind": "about-the-author",
+      "body": "Ana escribe junto al mar."
+    }
+  ],
+  "assets": [],
+  "report": {
+    "items": [],
+    "chapters": 10,
+    "images": 0,
+    "footnotes": 0,
+    "titleStyles": [],
+    "words": {
+      "source": 77,
+      "book": 77,
+      "missing": []
+    }
+  }
+}

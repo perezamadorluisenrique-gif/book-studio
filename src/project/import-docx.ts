@@ -21,6 +21,8 @@ export interface DocxReport {
   chapters: number;
   images: number;
   footnotes: number;
+  /** Styles of your own that look like chapter titles; the screen asks once, then imports again with `titleStyles`. */
+  titleStyles: { id: string; name: string; count: number; examples: string[] }[];
   /** The word-count guarantee: words in the Word file, words in the book, and what is missing. */
   words: WordCheck;
 }
@@ -78,6 +80,10 @@ interface Ctx {
   pendingNotes: string[];
   inNote: boolean;
   pendingImages: { asset: ProjectAsset; path: string }[];
+  /** Style ids the person said are chapter titles. */
+  titleStyles: Set<string>;
+  /** Every body paragraph with its style, to look for a style of chapter titles. */
+  paras: { style: string; text: string; heading: boolean }[];
 }
 
 const bump = (c: Ctx, code: ReportCode, n = 1): void => void c.counts.set(code, (c.counts.get(code) ?? 0) + n);
@@ -236,7 +242,7 @@ function render(c: Ctx, segs: Seg[]): string {
   for (const s of segs) {
     if (!s.text) continue;
     const last = merged[merged.length - 1];
-    if (last && last.b === s.b && last.i === s.i && (last.x ?? "") === (s.x ?? "") && !s.text.startsWith("\uE000") && !last.text.endsWith("\uE000")) last.text += s.text;
+    if (last && last.b === s.b && last.i === s.i && (last.x ?? "") === (s.x ?? "") && !s.text.startsWith("\uE000") && !last.text.startsWith("\uE000")) last.text += s.text;
     else merged.push({ ...s });
   }
   let out = "";
@@ -270,7 +276,7 @@ function render(c: Ctx, segs: Seg[]): string {
   return out.replace(/ {3,}\n/g, "  \n");
 }
 
-const SCENE = /^\s*(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,}|#|[⁂❦])\s*$/;
+const SCENE = /^\s*(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,}|\*|#|~|[⁂❦])\s*$/;
 const LEADING = /^(\s*)(#{1,6}\s|[-+]\s|\d+[.)]\s|>)/;
 
 interface Block {
@@ -313,11 +319,12 @@ function paragraphBlock(c: Ctx, p: El): Block[] {
 
   pieces.forEach((piece, idx) => {
     if (idx > 0) blocks.push({ kind: "pageBreak", text: "" });
-    const text = render(c, piece).trim();
+    const text = cleanText(render(c, piece).trim());
     if (!text) return;
     const heading = /^heading\s*(\d)$/i.exec(style) ?? /^t[ií]tulo\s*(\d)$/i.exec(style);
     const outline = attr(child(ppr, "outlineLvl"), "val");
-    const level = heading ? Number(heading[1]) : outline !== null && /^\d$/.test(outline) && Number(outline) < 6 ? Number(outline) + 1 : 0;
+    const level = c.titleStyles.has(styleId) ? 1 : heading ? Number(heading[1]) : outline !== null && /^\d$/.test(outline) && Number(outline) < 6 ? Number(outline) + 1 : 0;
+    if (idx === 0) c.paras.push({ style: styleId, text: text.replace(/\\([\\*_[\]<>`])/g, "$1").replace(/\*+/g, ""), heading: level > 0 });
     if (level) return void blocks.push({ kind: "heading", level, text: text.replace(/\*+/g, "").replace(/\\([\\*_[\]<>`])/g, "$1").replace(/\s+/g, " ").trim() });
     if (style === "title" || style === "título") return void blocks.push({ kind: "paragraph", text, title: true });
     if (style === "author" || style === "autor") return void blocks.push({ kind: "paragraph", text, author: true });
@@ -337,6 +344,53 @@ function paragraphBlock(c: Ctx, p: El): Block[] {
   });
   void breaks;
   return blocks;
+}
+
+const END_PUNCT = /[.!?…:;»"”’)\]]$/;
+
+/**
+ * Tidy a paragraph: double spaces become one, and lines cut by hand in the middle of a sentence are joined
+ * (only when more than 20 in a row end without punctuation and the lines are long, so poems keep their lines).
+ */
+function cleanText(text: string): string {
+  const lines = text.split("  \n").map((l) => l.replace(/[ \t]{2,}/g, " ").trim());
+  if (lines.length <= 20) return lines.join("  \n");
+  const out: string[] = [];
+  let group: string[] = [];
+  const flush = (): void => {
+    const long = group.reduce((n, l) => n + l.length, 0) / group.length >= 45;
+    if (group.length > 20 && long) out.push(group.join(" "));
+    else out.push(...group);
+    group = [];
+  };
+  for (const l of lines) {
+    group.push(l);
+    if (END_PUNCT.test(l.replace(/[*_\\]+$/, ""))) flush();
+  }
+  if (group.length) flush();
+  return out.join("  \n");
+}
+
+const KNOWN_STYLE = /^(?:(?:normal|default|body text|first paragraph|compact|text body|texto|cuerpo|sin espaciado|no spacing|standard|predeterminado|estándar|title|subtitle|author|date|abstract|t[ií]tulo|subt[ií]tulo|autor|fecha)(?: \(web\)| independiente| de cuerpo| principal)?|(?:heading|block|quote|cita|list|lista|footnote|nota|endnote|header|footer|encabezado|pie|caption|leyenda|toc|index|[ií]ndice|table|tabla|hyperlink|macro|comment|balloon|revision|plain text|texto sin)\b.*)$/i;
+
+/** Own styles that look like chapter titles: short paragraphs, each followed by a paragraph of another style. */
+function titleStyleCandidates(c: Ctx): NonNullable<ImportedDocx["report"]["titleStyles"]> {
+  const by = new Map<string, { n: number; followed: number; len: number; max: number; examples: string[] }>();
+  c.paras.forEach((p, k) => {
+    if (!p.style || p.heading) return;
+    const name = c.styles.get(p.style) ?? p.style.toLowerCase();
+    if (KNOWN_STYLE.test(name) || KNOWN_STYLE.test(p.style)) return;
+    const e = by.get(p.style) ?? { n: 0, followed: 0, len: 0, max: 0, examples: [] };
+    e.n++;
+    e.len += p.text.length;
+    e.max = Math.max(e.max, p.text.length);
+    if (c.paras[k + 1] && c.paras[k + 1].style !== p.style) e.followed++;
+    if (e.examples.length < 2) e.examples.push(p.text.slice(0, 40));
+    by.set(p.style, e);
+  });
+  const out: ReturnType<typeof titleStyleCandidates> = [];
+  for (const [id, e] of by) if (e.n >= 2 && e.max <= 80 && e.followed / e.n >= 0.8) out.push({ id, name: c.styles.get(id) ?? id, count: e.n, examples: e.examples });
+  return out;
 }
 
 function lineSafe(text: string): string {
@@ -492,7 +546,7 @@ function tableRows(c: Ctx, tbl: El): string[] {
 }
 
 /** Read the .docx and give back chapters, pictures and a report. */
-export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = ""): Promise<ImportedDocx> {
+export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = "", options: { titleStyles?: string[] } = {}): Promise<ImportedDocx> {
   if (bytes.byteLength > MAX_DOCX_BYTES) throw new Error("docx.tooBig");
   let zip: JSZip;
   try {
@@ -527,18 +581,28 @@ export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = 
     pendingNotes: [],
     inNote: false,
     pendingImages: [],
+    titleStyles: new Set(options.titleStyles ?? []),
+    paras: [],
   };
   if (zip.file("word/comments.xml")) bump(c, "comments", 0);
 
   // Walk the body in order.
   const blocks: Block[] = [];
   const notesAfter: Map<number, string[]> = new Map();
+  let emptyRun = 0;
   const walk = (parent: El): void => {
     for (const node of kids(parent)) {
       const n = node.localName;
       if (n === "p") {
         c.pendingNotes = [];
         const found = paragraphBlock(c, node);
+        if (!found.length) emptyRun++;
+        else {
+          // Two or more empty paragraphs in a row between text are a scene break.
+          const prev = blocks[blocks.length - 1];
+          if (emptyRun >= 2 && prev && ["paragraph", "quote", "list", "table"].includes(prev.kind) && ["paragraph", "quote", "list"].includes(found[0].kind) && !found[0].title && !found[0].author) blocks.push({ kind: "paragraph", text: "* * *" });
+          emptyRun = 0;
+        }
         blocks.push(...found);
         if (c.pendingNotes.length && found.length) notesAfter.set(blocks.length - 1, [...c.pendingNotes]);
         for (const tb of Array.from(node.getElementsByTagNameNS(W, "txbxContent"))) {
@@ -550,6 +614,7 @@ export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = 
           }
         }
       } else if (n === "tbl") {
+        emptyRun = 0;
         const rows = tableRows(c, node);
         if (rows.length) {
           bump(c, "tables");
@@ -567,6 +632,7 @@ export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = 
   // Which heading level starts a chapter: the highest one the document uses (1, 2 or 3).
   const levels = blocks.filter((b) => b.kind === "heading").map((b) => b.level ?? 1);
   const top = levels.length ? Math.min(...levels) : 1;
+  const titleStyles = levels.length || c.titleStyles.size ? [] : titleStyleCandidates(c);
 
   const lines: string[] = [];
   let title: string | undefined;
@@ -638,6 +704,6 @@ export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = 
     language: book.language ?? langCode,
     assets,
     markdown,
-    report: { items, chapters: book.chapters.length, images: assets.length, footnotes: c.noteOrder.size, words: checkWords(sourceParagraphs(c, body), markdown, metaText) },
+    report: { items, chapters: book.chapters.length, images: assets.length, footnotes: c.noteOrder.size, titleStyles, words: checkWords(sourceParagraphs(c, body), markdown, metaText) },
   };
 }

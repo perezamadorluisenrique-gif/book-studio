@@ -6,7 +6,7 @@ import { importDocx } from "../src/project/import-docx";
 import { parseXml } from "./docx-helper";
 
 const load = async (name: string) => new Uint8Array(await readFile(new URL(`./fixtures/docx/${name}.docx`, import.meta.url)));
-const FIXTURES = ["word-like", "pandoc", "libreoffice", "spanish-patterns", "tracked-and-extras", "formatting"];
+const FIXTURES = ["word-like", "pandoc", "libreoffice", "spanish-patterns", "tracked-and-extras", "formatting", "structure", "own-styles"];
 
 describe("importDocx", () => {
   it.each(FIXTURES)("%s gives the expected Markdown, chapters and report", async (name) => {
@@ -43,6 +43,24 @@ describe("importDocx", () => {
     expect(styles.some((x) => x.sup)).toBe(true);
     expect(styles.some((x) => x.strike)).toBe(true);
     expect(styles.some((x) => x.smallCaps)).toBe(true);
+  });
+
+  it("own-styles.docx: offers its own style as chapter titles, and splits the book when told to", async () => {
+    const plain = await importDocx(await load("own-styles"), parseXml, "own-styles.docx");
+    expect(plain.report.titleStyles.map((x) => x.id)).toEqual(["TituloCapitulo"]);
+    const split = await importDocx(await load("own-styles"), parseXml, "own-styles.docx", { titleStyles: ["TituloCapitulo"] });
+    expect(split.report.titleStyles).toEqual([]);
+    expect(split.chapters.map((c) => c.title)).toEqual(["Untitled", "El comienzo", "La mitad", "El final"]);
+    expect(split.report.words.missing).toEqual([]);
+  });
+
+  it("structure.docx: scene breaks, verse lines and cleanup", async () => {
+    const r = await importDocx(await load("structure"), parseXml, "structure.docx");
+    const body = r.chapters.find((c) => c.title === "Capítulo uno")?.body ?? "";
+    expect(body.match(/\* \* \*/g)).toHaveLength(4);
+    expect(body).toContain("La mar es honda  \ny el cielo es breve  \nnadie vuelve del olvido");
+    expect(body).not.toMatch(/ {2,}[^\n]/);
+    expect(r.chapters.map((c) => c.kind ?? "")).toEqual(["dedication", "", "part", "", "", "part", "", "", "", "about-the-author"]);
   });
 
   it("rejects a file that is not a .docx", async () => {

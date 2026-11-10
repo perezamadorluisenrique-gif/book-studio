@@ -121,3 +121,22 @@ describe("chapter places", () => {
     }
   });
 });
+
+describe("parts", () => {
+  it("a chapter of kind part becomes a part page in the book, not a note", async () => {
+    const { importText, projectFromImport } = await import("../src/project/import-text");
+    const imported = importText("# Parte I: El mar\n\n## Uno\n\nTexto uno.\n\n## Dos\n\nTexto dos.\n\n# Parte II\n\n## Tres\n\nTexto tres.\n");
+    expect(imported.chapters.map((c) => [c.title, c.kind])).toEqual([["Parte I: El mar", "part"], ["Uno", undefined], ["Dos", undefined], ["Parte II", "part"], ["Tres", undefined]]);
+    const v = projectToVault(projectFromImport(imported, { id: "p", now: 1 }));
+    expect(v.paths.some((p) => /Parte/.test(p) && p !== v.bookPath)).toBe(false);
+    const book = await loadBook(v, v.bookPath);
+    expect(book.chapters.map((c) => [c.type, c.titleText])).toEqual([["part", "El mar"], ["chapter", "Uno"], ["chapter", "Dos"], ["part", "Parte II"], ["chapter", "Tres"]]);
+    expect(book.chapters.filter((c) => c.number !== undefined).map((c) => c.number)).toEqual([1, 2, 3]);
+  });
+
+  it("a part with text of its own stays a chapter", async () => {
+    const { importText } = await import("../src/project/import-text");
+    const { chapters } = importText("# Part One\n\nAn epigraph.\n\n# Part Two\n\n## A\n\nText.\n");
+    expect(chapters.find((c) => c.title === "Part One")?.kind).toBeUndefined();
+  });
+});
