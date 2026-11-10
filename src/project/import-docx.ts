@@ -7,48 +7,20 @@
 // Pure code: the caller gives the XML parser (the browser's DOMParser; tests use xmldom).
 
 import JSZip from "jszip";
-import { countWords, importText, words, type ImportedBook } from "./import-text";
+import { words } from "./import-text";
+import { cleanText, finishImport, render,  MAX_PART_BYTES, type Block, type ImportedDocx, type Seg, type ReportCode, type SourcePara } from "./import-shared";
 import type { ProjectAsset } from "./model";
+
+export type { DocxReport, ImportedDocx, ReportCode, WordCheck } from "./import-shared";
 
 export type ParseXml = (xml: string) => Document;
 
-/** What was left out or worth a look. Codes are turned into sentences by the screen. */
-export type ReportCode = "mergedCells" | "tables" | "textBoxes" | "equations" | "comments" | "deletions" | "insertions" | "toc" | "oldPictures" | "unsupportedImages" | "imagesNoAlt";
-
-export interface DocxReport {
-  /** Each code with how many times it happened (only those that did). */
-  items: { code: ReportCode; count: number }[];
-  chapters: number;
-  images: number;
-  footnotes: number;
-  /** Styles of your own that look like chapter titles; the screen asks once, then imports again with `titleStyles`. */
-  titleStyles: { id: string; name: string; count: number; examples: string[] }[];
-  /** The word-count guarantee: words in the Word file, words in the book, and what is missing. */
-  words: WordCheck;
-}
-
-export interface WordCheck {
-  source: number;
-  book: number;
-  /** Paragraphs of the Word file whose text is not in the book: the start of the text and the nearest heading before it. */
-  missing: { texto: string; lugar: string }[];
-}
-
-export interface ImportedDocx extends ImportedBook {
-  assets: ProjectAsset[];
-  report: DocxReport;
-  /** The Markdown the chapters were cut from (useful for tests and for debugging). */
-  markdown: string;
-}
-
 export const MAX_DOCX_BYTES = 40 * 1024 * 1024;
-const MAX_PART_BYTES = 60 * 1024 * 1024;
 
 const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 const A = "http://schemas.openxmlformats.org/drawingml/2006/main";
 const WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing";
-const PAGE_BREAK = "<!-- pagebreak -->";
 
 type El = Element;
 
@@ -57,14 +29,6 @@ const child = (e: El | null | undefined, name: string): El | null => (e ? (kids(
 const attr = (e: El | null | undefined, name: string): string | null => (e ? (e.getAttributeNS(W, name) ?? e.getAttribute(`w:${name}`)) : null);
 /** A toggle such as <w:b/> is on unless it says val="0" or "false". */
 const on = (e: El | null): boolean => !!e && !["0", "false", "off"].includes((attr(e, "val") ?? "").toLowerCase());
-
-interface Seg {
-  text: string;
-  b: boolean;
-  i: boolean;
-  /** Extra looks: s strike-through, c small caps, u superscript, d subscript. */
-  x?: string;
-}
 
 interface Ctx {
   parse: ParseXml;
@@ -139,9 +103,6 @@ function readRels(doc: Document | null): Map<string, string> {
 
 // ── Text of a paragraph ──
 
-const MARKDOWN_SPECIAL = /([\\*_[\]<>`])/g;
-const escapeText = (s: string): string => s.replace(MARKDOWN_SPECIAL, "\\$1");
-
 function imageFor(c: Ctx, drawing: El): string {
   const blip = drawing.getElementsByTagNameNS(A, "blip")[0];
   const id = blip?.getAttributeNS(R, "embed") ?? blip?.getAttribute("r:embed");
@@ -188,7 +149,10 @@ function runSegments(c: Ctx, p: El, out: Seg[], fmt = { b: false, i: false }): v
           else if (!type || type === "textWrapping") out.push({ text: "\uE000BR", b: false, i: false });
         } else if (k === "drawing") out.push({ text: `\uE000RAW${imageFor(c, part)}\uE000`, b: false, i: false });
         else if (k === "pict" || k === "object") {
-          if (!part.getElementsByTagNameNS(W, "txbxContent").length) bump(c, "oldPictures");
+          // A horizontal rule drawn as an old-format shape is a scene break.
+          const rule = Array.from(part.getElementsByTagName("*")).some((e) => e.localName === "rect" && (e.getAttribute("o:hr") === "t" || e.getAttributeNS("urn:schemas-microsoft-com:office:office", "hr") === "t"));
+          if (rule) out.push({ text: "\uE000RAW* * *\uE000", b: false, i: false });
+          else if (!part.getElementsByTagNameNS(W, "txbxContent").length) bump(c, "oldPictures");
         }
         else if (k === "footnoteReference" || k === "endnoteReference") {
           const id = attr(part, "id") ?? "";
@@ -233,64 +197,6 @@ function paragraphSegs(c: Ctx, p: El): Seg[] {
   const segs: Seg[] = [];
   runSegments(c, p, segs);
   return segs;
-}
-
-/** Join segments into Markdown: adjacent text with the same bold/italic shares one pair of marks. */
-function render(c: Ctx, segs: Seg[]): string {
-  void c;
-  const merged: Seg[] = [];
-  for (const s of segs) {
-    if (!s.text) continue;
-    const last = merged[merged.length - 1];
-    if (last && last.b === s.b && last.i === s.i && (last.x ?? "") === (s.x ?? "") && !s.text.startsWith("\uE000") && !last.text.startsWith("\uE000")) last.text += s.text;
-    else merged.push({ ...s });
-  }
-  let out = "";
-  for (const s of merged) {
-    if (s.text === "\uE000PB") {
-      out += "\uE000PB\uE000";
-      continue;
-    }
-    if (s.text === "\uE000BR") {
-      out += "  \n";
-      continue;
-    }
-    const raw = /^\uE000RAW([\s\S]*)\uE000$/.exec(s.text);
-    if (raw) {
-      out += raw[1];
-      continue;
-    }
-    const lead = /^\s*/.exec(s.text)?.[0] ?? "";
-    const tail = s.text.length > lead.length ? (/\s*$/.exec(s.text)?.[0] ?? "") : "";
-    const core = s.text.slice(lead.length, s.text.length - tail.length);
-    const mark = s.b && s.i ? "***" : s.b ? "**" : s.i ? "*" : "";
-    let body = core ? `${mark}${escapeText(core)}${mark}` : "";
-    if (core && s.x) {
-      if (s.x.includes("s")) body = `~~${body}~~`;
-      if (s.x.includes("c")) body = `<span class="sc">${body}</span>`;
-      if (s.x.includes("u")) body = `<sup>${body}</sup>`;
-      if (s.x.includes("d")) body = `<sub>${body}</sub>`;
-    }
-    out += core ? `${lead}${body}${tail}` : lead + tail;
-  }
-  return out.replace(/ {3,}\n/g, "  \n");
-}
-
-const SCENE = /^\s*(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,}|\*|#|~|[⁂❦])\s*$/;
-const LEADING = /^(\s*)(#{1,6}\s|[-+]\s|\d+[.)]\s|>)/;
-
-interface Block {
-  kind: "heading" | "paragraph" | "quote" | "list" | "pageBreak" | "skip" | "table";
-  level?: number;
-  text: string;
-  ordered?: boolean;
-  depth?: number;
-  title?: boolean;
-  subtitle?: boolean;
-  author?: boolean;
-  align?: "center" | "right";
-  /** Markdown lines of a table. */
-  rows?: string[];
 }
 
 function paragraphBlock(c: Ctx, p: El): Block[] {
@@ -346,31 +252,6 @@ function paragraphBlock(c: Ctx, p: El): Block[] {
   return blocks;
 }
 
-const END_PUNCT = /[.!?…:;»"”’)\]]$/;
-
-/**
- * Tidy a paragraph: double spaces become one, and lines cut by hand in the middle of a sentence are joined
- * (only when more than 20 in a row end without punctuation and the lines are long, so poems keep their lines).
- */
-function cleanText(text: string): string {
-  const lines = text.split("  \n").map((l) => l.replace(/[ \t]{2,}/g, " ").trim());
-  if (lines.length <= 20) return lines.join("  \n");
-  const out: string[] = [];
-  let group: string[] = [];
-  const flush = (): void => {
-    const long = group.reduce((n, l) => n + l.length, 0) / group.length >= 45;
-    if (group.length > 20 && long) out.push(group.join(" "));
-    else out.push(...group);
-    group = [];
-  };
-  for (const l of lines) {
-    group.push(l);
-    if (END_PUNCT.test(l.replace(/[*_\\]+$/, ""))) flush();
-  }
-  if (group.length) flush();
-  return out.join("  \n");
-}
-
 const KNOWN_STYLE = /^(?:(?:normal|default|body text|first paragraph|compact|text body|texto|cuerpo|sin espaciado|no spacing|standard|predeterminado|estándar|title|subtitle|author|date|abstract|t[ií]tulo|subt[ií]tulo|autor|fecha)(?: \(web\)| independiente| de cuerpo| principal)?|(?:heading|block|quote|cita|list|lista|footnote|nota|endnote|header|footer|encabezado|pie|caption|leyenda|toc|index|[ií]ndice|table|tabla|hyperlink|macro|comment|balloon|revision|plain text|texto sin)\b.*)$/i;
 
 /** Own styles that look like chapter titles: short paragraphs, each followed by a paragraph of another style. */
@@ -391,10 +272,6 @@ function titleStyleCandidates(c: Ctx): NonNullable<ImportedDocx["report"]["title
   const out: ReturnType<typeof titleStyleCandidates> = [];
   for (const [id, e] of by) if (e.n >= 2 && e.max <= 80 && e.followed / e.n >= 0.8) out.push({ id, name: c.styles.get(id) ?? id, count: e.n, examples: e.examples });
   return out;
-}
-
-function lineSafe(text: string): string {
-  return SCENE.test(text.replace(/\\\*/g, "*")) ? "* * *" : text.replace(LEADING, (_m, sp: string, mark: string) => `${sp}\\${mark}`);
 }
 
 // ── Word-count guarantee ──
@@ -439,11 +316,6 @@ function headingText(c: Ctx, p: El): string | null {
   return null;
 }
 
-interface SourcePara {
-  text: string;
-  place: string;
-}
-
 /** Every paragraph of the body, the tables, the text boxes and the notes that the book uses. */
 function sourceParagraphs(c: Ctx, body: El): SourcePara[] {
   const out: SourcePara[] = [];
@@ -466,43 +338,6 @@ function sourceParagraphs(c: Ctx, body: El): SourcePara[] {
     }
   }
   return out;
-}
-
-/** The book's Markdown without its own syntax, so only words are left. */
-function plainWords(markdown: string): string {
-  return markdown
-    .replace(/<!-- pagebreak -->/g, "")
-    .replace(/!\[(?:\\.|[^\]\\])*\]\(<[^>]*>\)/g, "")
-    .replace(/\[((?:\\.|[^\]\\])*)\]\(<[^>]*>\)/g, "$1")
-    .replace(/\[\^\d+\]:?/g, "")
-    .replace(/(?<!\\)<\/?(?:sup|sub|span|br)[^>]*>/g, (m) => (m.startsWith("<br") ? "\n\n" : ""))
-    .replace(/\{\.(?:center|right)\}/g, "")
-    .replace(/\\\|/g, " ")
-    .replace(/\|/g, "\n\n")
-    .replace(/^[ \t]*(?:\d+\.|-|>)[ \t]/gm, "");
-}
-
-const norm = (s: string): string => words(s).join(" ").toLowerCase();
-
-function checkWords(source: SourcePara[], markdown: string, extra: string[]): WordCheck {
-  const plain = plainWords(markdown);
-  const blocks = new Set<string>();
-  for (const block of plain.split(/\n{2,}/)) {
-    blocks.add(norm(block));
-    for (const line of block.split("\n")) blocks.add(norm(line));
-  }
-  const whole = ` ${norm(plain)} ${extra.map(norm).join(" ")} `;
-  for (const e of extra) blocks.add(norm(e));
-  const missing: WordCheck["missing"] = [];
-  let sourceWords = 0;
-  for (const para of source) {
-    sourceWords += countWords(para.text);
-    const n = norm(para.text);
-    // A short paragraph must be a block of its own: inside a longer text it could match by chance.
-    if (blocks.has(n) || (n.split(" ").length >= 6 && whole.includes(` ${n} `))) continue;
-    missing.push({ texto: para.text.length > 80 ? `${para.text.slice(0, 77)}…` : para.text, lugar: para.place });
-  }
-  return { source: sourceWords, book: countWords(plain) + extra.reduce((n, e) => n + countWords(e), 0), missing };
 }
 
 function insideTextBox(tb: El, root: El): boolean {
@@ -629,60 +464,14 @@ export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = 
   if (!body) throw new Error("docx.notDocx");
   walk(body);
 
-  // Which heading level starts a chapter: the highest one the document uses (1, 2 or 3).
   const levels = blocks.filter((b) => b.kind === "heading").map((b) => b.level ?? 1);
-  const top = levels.length ? Math.min(...levels) : 1;
   const titleStyles = levels.length || c.titleStyles.size ? [] : titleStyleCandidates(c);
-
-  const lines: string[] = [];
-  let title: string | undefined;
-  let subtitle: string | undefined;
-  let author: string | undefined;
-  const metaText: string[] = [];
-  blocks.forEach((b, idx) => {
-    const extra = notesAfter.get(idx);
-    if (b.kind === "skip") return;
-    if (b.kind === "pageBreak") lines.push(PAGE_BREAK, "");
-    else if (b.kind === "heading") lines.push(`${"#".repeat(Math.min(4, Math.max(1, (b.level ?? 1) - top + 1)))} ${b.text}`, "");
-    else if (b.title) {
-      if (!title) metaText.push(b.text);
-      title ??= b.text.replace(/\\([\\*_[\]<>`])/g, "$1").replace(/\*+/g, "");
-    } else if (b.author) {
-      if (!author) metaText.push(b.text);
-      author ??= b.text.replace(/\\([\\*_[\]<>`])/g, "$1").replace(/\*+/g, "");
-    }
-    else if (b.subtitle) subtitle ??= b.text.replace(/\\([\\*_[\]<>`])/g, "$1").replace(/\*+/g, "");
-    else if (b.kind === "quote") lines.push(...b.text.split("  \n").map((l) => `> ${l}`), "");
-    else if (b.kind === "list") {
-      lines.push(`${"    ".repeat(Math.min(b.depth ?? 0, 4))}${b.ordered ? "1." : "-"} ${b.text.replace(/ {2}\n/g, " ")}`);
-      const next = blocks.slice(idx + 1).find((x) => x.kind !== "skip");
-      if (next?.kind !== "list" || next.ordered !== b.ordered) lines.push("");
-    } else if (b.kind === "table") lines.push(...(b.rows ?? []), "");
-    else {
-      const safe = b.text.split("  \n").length > 1 ? b.text : lineSafe(b.text);
-      lines.push(b.align && safe !== "* * *" ? `${safe} {.${b.align}}` : safe, "");
-    }
-    if (extra) {
-      for (const e of extra) {
-        const [num, text] = e.split("\uE000");
-        lines.push(`[^${num}]: ${text}`, "");
-      }
-    }
-  });
-  // Page breaks next to a chapter start, or at the ends of the book, add nothing: drop them.
-  let markdown = lines.join("\n").replace(/\uE000PB\uE000/g, "").replace(/\n{3,}/g, "\n\n");
-  markdown = markdown
-    .split("\n")
-    .filter((l, i, a) => !(l === PAGE_BREAK && (/^#{1,} /.test(a[i + 2] ?? "") || i === 0)))
-    .join("\n");
 
   for (const { asset, path } of c.pendingImages) {
     const f = zip.file(path);
     if (f) asset.data = await f.async("uint8array");
   }
-  const assets = c.assets.filter((a) => a.data.byteLength > 0);
 
-  const book = importText(markdown, fileName);
   const core = await textOf(zip, "docProps/core.xml");
   let coreTitle: string | undefined;
   let creator: string | undefined;
@@ -692,18 +481,5 @@ export async function importDocx(bytes: Uint8Array, parse: ParseXml, fileName = 
     coreTitle = pick("http://purl.org/dc/elements/1.1/", "title");
     creator = pick("http://purl.org/dc/elements/1.1/", "creator");
   }
-  void subtitle;
-  const langCode = lang ? /^[a-z]{2,3}/i.exec(lang)?.[0]?.toLowerCase() : undefined;
-  const items = (["tables", "mergedCells", "textBoxes", "equations", "comments", "deletions", "insertions", "toc", "oldPictures", "unsupportedImages", "imagesNoAlt"] as ReportCode[])
-    .map((code) => ({ code, count: c.counts.get(code) ?? 0 }))
-    .filter((i) => i.count > 0);
-  return {
-    ...book,
-    title: title ?? coreTitle ?? book.title,
-    author: book.author ?? author ?? creator,
-    language: book.language ?? langCode,
-    assets,
-    markdown,
-    report: { items, chapters: book.chapters.length, images: assets.length, footnotes: c.noteOrder.size, titleStyles, words: checkWords(sourceParagraphs(c, body), markdown, metaText) },
-  };
+  return finishImport({ blocks, notesAfter, fileName, assets: c.assets, counts: c.counts, footnotes: c.noteOrder.size, source: sourceParagraphs(c, body), titleStyles, meta: { title: coreTitle, creator, lang } });
 }

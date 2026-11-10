@@ -1,0 +1,39 @@
+{
+  "language": "en",
+  "sections": [
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c1"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "Findings",
+      "body": "Results were mixed[^1] across sites[^2].\n\n[^1]: The first study was small.\n\n[^2]: See the appendix.\n\n| Site | Result | Result |\n| --- | --- | --- |\n| North | Up | Flat |\n\nEnd of report."
+    }
+  ],
+  "assets": [],
+  "report": {
+    "items": [
+      {
+        "code": "tables",
+        "count": 1
+      },
+      {
+        "code": "mergedCells",
+        "count": 1
+      }
+    ],
+    "chapters": 1,
+    "images": 0,
+    "footnotes": 2,
+    "titleStyles": [],
+    "words": {
+      "source": 22,
+      "book": 23,
+      "missing": []
+    }
+  }
+}

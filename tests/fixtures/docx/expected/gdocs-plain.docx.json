@@ -1,0 +1,40 @@
+{
+  "language": "es",
+  "sections": [
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c1",
+        "c2",
+        "c3"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "Untitled",
+      "body": "**LA ISLA DEL FARO** {.center}\n\nAna Soto {.center}"
+    },
+    {
+      "title": "CAPÍTULO I",
+      "body": "El barco salió al amanecer. Nadie despidió a los viajeros.\n\n* * *\n\nPor la tarde llegaron a la isla."
+    },
+    {
+      "title": "CAPÍTULO II",
+      "body": "La isla tenía un solo camino.\n\nFin {.right}"
+    }
+  ],
+  "assets": [],
+  "report": {
+    "items": [],
+    "chapters": 3,
+    "images": 0,
+    "footnotes": 0,
+    "titleStyles": [],
+    "words": {
+      "source": 34,
+      "book": 34,
+      "missing": []
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "sections": [
+    {
+      "kind": "front",
+      "chapterIds": [
+        "c2"
+      ]
+    },
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c1",
+        "c3",
+        "c4",
+        "c5",
+        "c6",
+        "c7",
+        "c8",
+        "c9"
+      ]
+    },
+    {
+      "kind": "back",
+      "chapterIds": [
+        "c10",
+        "c11"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "Untitled",
+      "body": "**La casa del viento** {.center}\n\nMarta Ruiz {.center}"
+    },
+    {
+      "title": "Dedicatoria",
+      "kind": "dedication",
+      "body": "A quienes esperaron junto a la ventana."
+    },
+    {
+      "title": "Prólogo",
+      "body": "Todo empezó con una carta sin remite.[^1]\n\n[^1]: Nunca se supo quién la envió."
+    },
+    {
+      "title": "Parte I: La llegada",
+      "kind": "part",
+      "body": ""
+    },
+    {
+      "title": "Capítulo uno",
+      "body": "El tren llegó tarde. Marta bajó con una maleta y un paraguas *roto*.\n\n————— {.center}\n\nA la mañana siguiente, el pueblo olía a **pan** recién hecho.\n\nLa mar es honda  \ny el cielo es breve  \nnadie vuelve del olvido\n\n«Quien no arriesga, no gana», decía el abuelo."
+    },
+    {
+      "title": "Capítulo dos",
+      "body": "Había tres reglas en la casa:\n\n\\1. No abrir la puerta del sótano.\n\n\\2. No tocar el reloj.\n\n\\3. No preguntar por el abuelo.\n\nUn cuadrado morado"
+    },
+    {
+      "title": "Parte II: La partida",
+      "kind": "part",
+      "body": ""
+    },
+    {
+      "title": "Capítulo tres",
+      "body": "| Hora | Lugar |\n| --- | --- |\n| Seis | Estación |\n| Siete | Plaza |"
+    },
+    {
+      "title": "Epílogo",
+      "body": "Años después, la casa seguía en pie."
+    },
+    {
+      "title": "Agradecimientos",
+      "body": "Gracias a Lucía y a Pedro."
+    },
+    {
+      "title": "Sobre el autor",
+      "kind": "about-the-author",
+      "body": "Marta Ruiz vive junto al mar."
+    }
+  ],
+  "assets": [],
+  "report": {
+    "items": [
+      {
+        "code": "tables",
+        "count": 1
+      },
+      {
+        "code": "unsupportedImages",
+        "count": 1
+      }
+    ],
+    "chapters": 11,
+    "images": 0,
+    "footnotes": 1,
+    "titleStyles": [],
+    "words": {
+      "source": 144,
+      "book": 144,
+      "missing": []
+    }
+  }
+}

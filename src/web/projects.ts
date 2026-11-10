@@ -5,12 +5,13 @@ import { append, clear, h } from "../app/dom";
 import type { Dialog } from "../app/host";
 import { t, tn, getLocale } from "../app/ui-i18n";
 import type { DocxReport } from "../project/import-docx";
+import { DOCUMENT_EXTENSION } from "../project/import-file";
 import type { Project } from "../project/model";
 
 export interface ProjectsDeps {
   list(): Promise<Project[]>;
   create(name: string, template: boolean): Promise<Project>;
-  /** Make a book from a manuscript: pasted text, or a file (`bytes` for a .docx, `text` for .md/.txt). */
+  /** Make a book from a manuscript: pasted text, or a file (`bytes` for a .docx, .odt or .rtf, `text` for .md/.txt). */
   importManuscript(input: { text?: string; bytes?: Uint8Array; fileName: string; name: string; guide?: boolean }): Promise<{ project: Project; notes: string[]; report?: DocxReport }>;
   rename(p: Project, name: string): Promise<void>;
   remove(p: Project): Promise<void>;
@@ -34,7 +35,7 @@ export interface ProjectsDeps {
   persisted(): Promise<boolean>;
 }
 
-const ACCEPT = ".md,.markdown,.txt,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const ACCEPT = ".md,.markdown,.txt,.docx,.odt,.rtf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,application/rtf,text/rtf";
 
 /** The headline, a drop zone for the manuscript and a link to a sample, for a person who has no books yet. */
 function drawLanding(deps: ProjectsDeps, give: (file: File) => void): { el: HTMLElement; drop: HTMLElement; input: HTMLInputElement } {
@@ -42,7 +43,7 @@ function drawLanding(deps: ProjectsDeps, give: (file: File) => void): { el: HTML
   const drop = h("div", { cls: "land-drop", attr: { role: "button", tabindex: "0", id: "land-drop" } }, h("strong", { text: t("land.drop") }), h("span", { text: t("land.dropHint") }));
   const take = (file: File | undefined) => {
     if (!file) return;
-    if (/\.(docx|md|markdown|txt)$/i.test(file.name)) give(file);
+    if (/\.(docx|odt|rtf|md|markdown|txt)$/i.test(file.name)) give(file);
     else deps.notify(t("land.badFile"));
   };
   drop.addEventListener("click", () => input.click());
@@ -97,7 +98,7 @@ function reportLines(r: DocxReport): string[] {
 
 function fail(deps: ProjectsDeps, e: unknown): void {
   const m = e instanceof Error ? e.message : String(e);
-  deps.notify(m === "docx.notDocx" || m === "docx.tooBig" ? t(m) : t("proj.failed", { error: m }));
+  deps.notify(m === "docx.notDocx" || m === "docx.tooBig" || m === "odt.notOdt" || m === "rtf.notRtf" ? t(m) : t("proj.failed", { error: m }));
 }
 
 // Each call draws the screen after reading the list; when two overlap, only the last one draws, so the form
@@ -184,7 +185,7 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
         deps.notify(t("imp.oldDoc"));
         return;
       }
-      const isDocx = /\.docx$/i.test(fileName);
+      const isDocx = DOCUMENT_EXTENSION.test(fileName);
       const text = file && !isDocx ? await file.text() : file ? "" : pasted;
       if (!file && !text.trim()) {
         deps.notify(t("imp.empty"));

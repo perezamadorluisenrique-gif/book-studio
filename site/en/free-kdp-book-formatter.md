@@ -46,7 +46,7 @@ The EPUB 3 uses semantic XHTML, a navigable table of contents, landmarks, embedd
 
 ## How you write the book
 
-You write in any Markdown editor. Obsidian works well. One "book note" lists your chapters as links, and the app does the rest. [From Markdown to a book](guide:markdown-to-book) shows the format. In the web app you can also write the chapters right in your browser, or import a Word (.docx), Markdown or text file; tables, text boxes and comments are left out, and a report says what. If you want the whole path in order, follow [how to format a book for KDP](guide:format-a-book-for-kdp).
+You write in any Markdown editor. Obsidian works well. One "book note" lists your chapters as links, and the app does the rest. [From Markdown to a book](guide:markdown-to-book) shows the format. In the web app you can also write the chapters right in your browser, or import a Word (.docx), LibreOffice (.odt), .rtf, Markdown or text file; tables and text boxes are kept, comments are left out, and a report counts the words in your file and in your book so you can see nothing was lost. If you want the whole path in order, follow [how to format a book for KDP](guide:format-a-book-for-kdp).
 
 ## Check the output before you trust it
 

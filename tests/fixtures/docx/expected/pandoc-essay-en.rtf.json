@@ -1,0 +1,54 @@
+{
+  "sections": [
+    {
+      "kind": "front",
+      "chapterIds": [
+        "c2"
+      ]
+    },
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c1",
+        "c3",
+        "c4"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "Untitled",
+      "body": "**Notes on Slow Reading** {.center}\n\nJonah Hale {.center}"
+    },
+    {
+      "title": "Introduction",
+      "body": "Reading slowly is a *skill*, not a speed setting.[^1] See [the archive](<https://example.org/archive>) for more.\n\n[^1]: Not everyone agrees."
+    },
+    {
+      "title": "The Method",
+      "body": "## Three habits\n\n• Read aloud.\n\n– Even one page.\n\n• Keep a **pencil** nearby.\n\n• Stop when tired.\n\n## A short table\n\n| Habit | Minutes |\n| --- | --- |\n| Aloud | 10 |\n| Notes | 5 |\n\nSlow is smooth, and smooth is fast."
+    },
+    {
+      "title": "Conclusion",
+      "body": "Start tomorrow. Start small."
+    }
+  ],
+  "assets": [],
+  "report": {
+    "items": [
+      {
+        "code": "tables",
+        "count": 1
+      }
+    ],
+    "chapters": 4,
+    "images": 0,
+    "footnotes": 1,
+    "titleStyles": [],
+    "words": {
+      "source": 61,
+      "book": 61,
+      "missing": []
+    }
+  }
+}

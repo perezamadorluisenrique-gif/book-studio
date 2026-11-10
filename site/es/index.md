@@ -16,7 +16,7 @@ beforeAfter:
   studio: { img: img/landing-es-studio.webp, alt: "La misma página de las Leyendas de Bécquer maquetada por Book Studio: espacios parejos, palabras partidas con guion donde toca y márgenes limpios." }
   caption: "El mismo libro, la misma letra y el mismo motor; cambia solo la maquetación. A la izquierda, líneas llenadas una a una sin guiones, como hace un procesador de textos. A la derecha, el corte de líneas de Knuth–Plass (el de TeX) con guiones en español y microtipografía."
 steps:
-  - { title: "1. Sube tu Word", text: "Arrastra tu archivo .docx (o .md o .txt). Se lee en tu navegador y se convierte en capítulos, con sus notas al pie e imágenes.", img: img/landing-es-step1.webp, alt: "Pantalla inicial de Book Studio con una zona para soltar el archivo de Word." }
+  - { title: "1. Sube tu Word", text: "Arrastra tu archivo .docx (o .odt, .rtf, .md o .txt). Se lee en tu navegador y se convierte en capítulos, con sus notas al pie e imágenes.", img: img/landing-es-step1.webp, alt: "Pantalla inicial de Book Studio con una zona para soltar el archivo de Word." }
   - { title: "2. Elige un estilo", text: "Cinco estilos gratis y todos los formatos de KDP. La vista previa se rehace al instante, página por página.", img: img/landing-es-step2.webp, alt: "Book Studio mostrando la vista previa a doble página de un libro con su estilo." }
   - { title: "3. Descarga y publica", text: "El PDF de imprenta, la cubierta completa y el EPUB, con una lista de comprobación para KDP.", img: img/landing-es-step3.webp, alt: "Los botones para descargar el PDF de imprenta, la cubierta y el EPUB." }
 compare:

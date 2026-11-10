@@ -819,6 +819,22 @@ describe("web app, import a manuscript", () => {
     await context.close();
   });
 
+  it.each(["lo-novel-es.odt", "lo-novel-es.rtf"])("imports a LibreOffice file (%s) with the word count and its parts", async (file) => {
+    const context = await browser.newContext({ locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByLabel("Text file").setInputFiles(new URL(`../tests/fixtures/docx/${file}`, import.meta.url).pathname);
+    await page.getByRole("button", { name: "Import as a new book" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor();
+    expect(await dialog.textContent()).toMatch(/✓ 141 words in your Word, 141 in your book/);
+    await page.getByRole("button", { name: "Open the book" }).click();
+    await page.locator("#ed-text").waitFor();
+    expect(await page.locator(".ch-pick").allTextContents()).toContain("Parte I: La llegada");
+    await context.close();
+  });
+
   it("imports a Word file with a report, keeps the picture, and exports a PDF and an EPUB", async () => {
     const context = await browser.newContext({ acceptDownloads: true, locale: "en-US" });
     const page = await context.newPage();
@@ -904,7 +920,7 @@ describe("web app, first screen", () => {
     await page.goto(base);
     await page.locator("#land-drop").waitFor();
     await page.locator("input[type=file][aria-label='Choose your manuscript']").setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: Buffer.from("x") });
-    await page.getByText("Drop a Word (.docx), .md or .txt file.").waitFor();
+    await page.getByText("Drop a Word (.docx), .odt, .rtf, .md or .txt file.").waitFor();
     await page.locator("input[type=file][aria-label='Choose your manuscript']").setInputFiles({ name: "diary.md", mimeType: "text/markdown", buffer: Buffer.from("# One\n\na\n\n# Two\n\nb\n") });
     await page.locator("#ed-text").waitFor();
     expect(await page.locator(".ch-pick").allTextContents()).toEqual(["One", "Two"]);

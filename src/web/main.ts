@@ -508,17 +508,17 @@ async function showProjects(focus?: string): Promise<void> {
       importManuscript: async ({ text, bytes, fileName, name, guide }) => {
         const opts = { id: crypto.randomUUID(), now: Date.now(), name, fileName, language: locale, guide };
         if (bytes) {
-          // The Word reader is loaded only when someone imports a .docx.
-          const { importDocx } = await import("../project/import-docx");
+          // The readers (Word, LibreOffice, RTF) are loaded only when someone imports that kind of file.
+          const { importFile } = await import("../project/import-file");
           const { projectFromImport } = await import("../project/import-text");
           const parse = (xml: string) => new DOMParser().parseFromString(xml, "application/xml");
-          let imported = await importDocx(bytes, parse, fileName);
+          let imported = await importFile(bytes, parse, fileName);
           // A Word file with its own styles for chapter titles: ask once, then read it again with them as titles.
           const own = imported.report.titleStyles;
           if (own.length) {
             const names = own.map((x) => `«${x.name}» (${x.examples.map((e) => `“${e}”`).join(", ")})`).join("; ");
             const answer = await host.ask({ title: t("imp.styles.title"), message: t("imp.styles.message", { names }), ok: t("imp.styles.yes"), cancel: t("imp.styles.no") });
-            if (answer === "ok") imported = await importDocx(bytes, parse, fileName, { titleStyles: own.map((x) => x.id) });
+            if (answer === "ok") imported = await importFile(bytes, parse, fileName, { titleStyles: own.map((x) => x.id) });
           }
           const project = projectFromImport(imported, opts);
           await putProject(project);

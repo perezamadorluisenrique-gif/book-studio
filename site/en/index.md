@@ -16,7 +16,7 @@ beforeAfter:
   studio: { img: img/landing-en-studio.webp, alt: "The same passage of The Wonderful Wizard of Oz set by Book Studio: even spaces, hyphens where they belong and clean margins." }
   caption: "Same book, same typeface, same engine; only the typesetting changes. On the left, lines filled one at a time with no hyphens, as a word processor does. On the right, Knuth–Plass line breaking (the algorithm TeX uses) with hyphenation and microtypography."
 steps:
-  - { title: "1. Upload your Word file", text: "Drop your .docx (or .md or .txt). It is read in your browser and turned into chapters, with their footnotes and pictures.", img: img/landing-en-step1.webp, alt: "Book Studio's first screen with a place to drop your Word file." }
+  - { title: "1. Upload your Word file", text: "Drop your .docx (or .odt, .rtf, .md or .txt). It is read in your browser and turned into chapters, with their footnotes and pictures.", img: img/landing-en-step1.webp, alt: "Book Studio's first screen with a place to drop your Word file." }
   - { title: "2. Pick a style", text: "Five free styles and every KDP trim size. The preview redraws at once, page by page.", img: img/landing-en-step2.webp, alt: "Book Studio showing a facing-pages preview of a book in its style." }
   - { title: "3. Download and publish", text: "The print PDF, the full cover and the EPUB, with a checklist for KDP.", img: img/landing-en-step3.webp, alt: "The buttons to download the print PDF, the cover and the EPUB." }
 compare:

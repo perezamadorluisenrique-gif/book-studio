@@ -1,0 +1,36 @@
+{
+  "title": "Los días",
+  "author": "Luis Pérez",
+  "sections": [
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c1",
+        "c2"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "Capítulo 1",
+      "body": "Texto del capítulo 1 con acentos: año, ñandú."
+    },
+    {
+      "title": "Capítulo 2",
+      "body": "Texto del capítulo 2 con acentos: año, ñandú."
+    }
+  ],
+  "assets": [],
+  "report": {
+    "items": [],
+    "chapters": 2,
+    "images": 0,
+    "footnotes": 0,
+    "titleStyles": [],
+    "words": {
+      "source": 20,
+      "book": 20,
+      "missing": []
+    }
+  }
+}
