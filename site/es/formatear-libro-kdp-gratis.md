@@ -46,7 +46,7 @@ El EPUB 3 usa XHTML semántico, un índice navegable, marcadores de estructura (
 
 ## Cómo escribes el libro
 
-Escribes en cualquier editor de Markdown, por ejemplo Obsidian. Una «nota de libro» enlaza tus capítulos y la app hace el resto. [De Markdown a libro](guide:markdown-a-libro) muestra el formato. En la app web también puedes escribir los capítulos directamente en el navegador o importar un archivo de Word (.docx), Markdown o texto; las tablas, los cuadros de texto y los comentarios se dejan fuera y un informe te dice cuáles. Si prefieres el camino completo en orden, sigue [cómo formatear un libro para KDP](guide:como-formatear-un-libro-para-kdp).
+Escribes en cualquier editor de Markdown, por ejemplo Obsidian. Una «nota de libro» enlaza tus capítulos y la app hace el resto. [De Markdown a libro](guide:markdown-a-libro) muestra el formato. En la app web también puedes escribir los capítulos directamente en el navegador o importar un archivo de Word (.docx), LibreOffice (.odt), .rtf, Markdown o texto; las tablas y los cuadros de texto se conservan, los comentarios se dejan fuera y un informe cuenta las palabras de tu archivo y de tu libro para que veas que no se perdió nada. Si prefieres el camino completo en orden, sigue [cómo formatear un libro para KDP](guide:como-formatear-un-libro-para-kdp).
 
 ## Comprueba el resultado antes de fiarte
 

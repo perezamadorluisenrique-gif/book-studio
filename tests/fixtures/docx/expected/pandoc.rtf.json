@@ -1,0 +1,41 @@
+{
+  "title": "Pandoc Book",
+  "author": "Pat",
+  "sections": [
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c1",
+        "c2"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "One",
+      "body": "Plain text with a footnote.[^1] And a [link](<https://example.com/page>) and code.\n\n[^1]: First note, with *italics*.\n\n> A quoted line.\n\n## A section\n\n- alpha\n    - nested\n- beta\n\n1. first\n1. second\n\n*A red dot*"
+    },
+    {
+      "title": "Two",
+      "body": "Second chapter has *emphasis* and **strong** and a second note.[^2]\n\n[^2]: Second note."
+    }
+  ],
+  "assets": [],
+  "report": {
+    "items": [
+      {
+        "code": "unsupportedImages",
+        "count": 1
+      }
+    ],
+    "chapters": 2,
+    "images": 0,
+    "footnotes": 2,
+    "titleStyles": [],
+    "words": {
+      "source": 44,
+      "book": 44,
+      "missing": []
+    }
+  }
+}

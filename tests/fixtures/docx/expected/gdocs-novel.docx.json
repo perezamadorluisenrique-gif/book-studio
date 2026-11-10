@@ -1,0 +1,44 @@
+{
+  "title": "The Orchard",
+  "subtitle": "A small book of days",
+  "language": "en",
+  "sections": [
+    {
+      "kind": "body",
+      "chapterIds": [
+        "c1",
+        "c2",
+        "c3"
+      ]
+    }
+  ],
+  "chapters": [
+    {
+      "title": "Chapter One",
+      "body": "The trees **were** ***already*** bare, and the *wind* had a plan.\n\n- Apples\n- Pears\n    - Plums, early\n\n1. First step\n1. Second step\n\n![A purple square](<docx-image-1.png>)\n\n[Read the orchard guide](<https://example.org/guide>)"
+    },
+    {
+      "title": "Chapter Two",
+      "body": "Winter closed the gate."
+    },
+    {
+      "title": "Chapter Three",
+      "body": "Spring, at last."
+    }
+  ],
+  "assets": [
+    "docx-image-1.png image/png bytes"
+  ],
+  "report": {
+    "items": [],
+    "chapters": 3,
+    "images": 1,
+    "footnotes": 0,
+    "titleStyles": [],
+    "words": {
+      "source": 43,
+      "book": 43,
+      "missing": []
+    }
+  }
+}

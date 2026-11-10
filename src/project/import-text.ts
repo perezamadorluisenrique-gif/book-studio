@@ -13,6 +13,8 @@ export interface ImportedBook {
   /** The book's title when the text gives one (front matter or a lone "# " heading). */
   title?: string;
   author?: string;
+  /** The subtitle, when the file gives one apart from the title. */
+  subtitle?: string;
   language?: string;
   chapters: ProjectChapter[];
   sections: ProjectSection[];
@@ -213,7 +215,7 @@ export function projectFromImport(imported: ImportedBook & { assets?: ProjectAss
   return {
     id: o.id,
     name,
-    meta: { title: name, author: imported.author ?? "", language: imported.language ?? o.language ?? "en" },
+    meta: { title: name, author: imported.author ?? "", language: imported.language ?? o.language ?? "en", ...(imported.subtitle ? { subtitle: imported.subtitle } : {}) },
     settings: { theme: "classic", trim: "6x9" },
     sections: imported.sections,
     chapters: imported.chapters,

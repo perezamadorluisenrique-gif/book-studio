@@ -11,5 +11,12 @@ Test inputs for `tests/import-docx.test.ts`; the expected results are in `expect
 - `structure.docx`: hand-written XML in Spanish: dedication, prologue, parts with chapters below them, epilogue, acknowledgments, about the author; double spaces, a tab at the start, two empty paragraphs and `***`, `~`, `*` as scene breaks, and a verse with manual line breaks.
 - `own-styles.docx`: no headings, but a style of its own (`TituloCapitulo`) for three chapter titles, and a paragraph of 23 lines cut by hand.
 
-Not covered: a file saved by Google Docs or by Microsoft Word itself (neither was available when these were made). Add one when you have it.
-Regenerate the expected files with `npx vitest run tests/import-docx.test.ts -u` and read the diff.
+Files made by other programs (T3.4), read by `importFile` and tested in `tests/import-sources.test.ts` (expected results in `expected/<file>.json`):
+
+- `pandoc-novel-es.*`, `pandoc-essay-en.*` (docx, odt, rtf): made by pandoc from two Markdown books (a Spanish novel with parts, scene break, verse, list, picture and table; an English essay with nested lists, table, footnote and link).
+- `lo-novel-es.*`, `lo-essay-en.*` (docx, odt, rtf): the pandoc Word files opened and saved again by LibreOffice. `lo-word-like.docx` is `word-like.docx` saved by LibreOffice.
+- `word-like.odt/.rtf`, `pandoc.odt/.rtf`, `spanish-patterns.odt/.rtf`: LibreOffice's ODT and RTF versions of the earlier Word fixtures.
+- `gdocs-novel.docx`, `gdocs-notes.docx`, `gdocs-plain.docx`: hand-written XML with the known habits of Google Docs exports (styles named `Heading1`, lists with `numId` and no style, a picture in `wp:anchor`, text split in many runs, a Title and Subtitle, footnotes, merged cells, a Spanish file with no styles at all). Not a real Google Docs download.
+
+Not covered: a file saved by Microsoft Word itself or downloaded from Google Docs (neither was available when these were made). Add one when you have it. RTF pictures are not read.
+Regenerate the expected files with `npx vitest run tests/import-docx.test.ts tests/import-sources.test.ts -u` and read the diff.
