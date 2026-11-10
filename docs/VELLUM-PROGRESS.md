@@ -9,7 +9,7 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 | A | T0 Banco de pruebas de calidad | hecha (PR abierto) | |
 | A | T1.1 Líneas | hecha (PR abierto) | |
 | A | T1.2 Márgenes ópticos y letras elásticas | hecha (PR abierto) | |
-| A | T1.3 Páginas | hecha en parte (PR abierto) | |
+| A | T1.3 Páginas | hecha: metas alcanzadas el 2026-11-10 (cierre del paginado) | PR «page builder that searches each chapter» |
 | A | T1.4 Guiones por idioma | hecho | PR de T1.4 |
 | B | T1.5 Ortotipografía | hecho | PR de T1.5 |
 | B | T1.6 Velocidad | sin empezar | |
@@ -73,6 +73,18 @@ Capturas antes y después (Leyendas, dobles páginas con el motor de T1.1 y con 
 | ensayo-es | 82 | 2299 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 401 | 919 |
 | largo-de | 60 | 1724 | 2 | 0 | 0 | 0 | 2 | 0 | 0 | 3 | 268 | 528 |
 
+### 2026-11-10, cierre del paginado (T1.3)
+
+| Book | Pages | Lines | Short pages | Uneven spreads | Ladders | Very loose | Loose | Widows | Orphans | Hyphen turns | Hyphens | Long pages | Layout ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| oz | 140 | 3196 | 2 | 0 | 0 | 0 | 7 | 0 | 0 | 0 | 55 | 14 | 917 |
+| leyendas | 124 | 3471 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 228 | 26 | 1222 |
+| dialogo-es | 82 | 2122 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 208 | 2 | 1018 |
+| ensayo-es | 82 | 2287 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 391 | 2 | 1869 |
+| largo-de | 60 | 1718 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 | 265 | 0 | 929 |
+
+En la misma máquina y momento, `main` medía 816, 928, 594, 1036 y 601 ms. Captura de una doble página una línea larga: `docs/vellum/t13-closed-leyendas-long-spread.png`.
+
 ## Desviaciones del plan
 
 - T0: las cifras del banco no coinciden del todo con la medición externa de la sección 2 (Oz: 43 páginas cortas de 142 frente a 28 de 91; Leyendas: 36 frente a 33, escaleras 11 frente a 9, huecos muy grandes 4 frente a 13). Las dobles páginas desiguales sí coinciden (15 y 25). Se usan las definiciones exactas de la orden; la línea base nueva es la del banco, no la de la sección 2.
@@ -84,6 +96,11 @@ Capturas antes y después (Leyendas, dobles páginas con el motor de T1.1 y con 
 - T1.3 (**metas no alcanzadas**): `shortPages` baja de 39 a 22 en Oz y de 36 a 32 en Leyendas (la orden pedía 6 o menos en cada libro); `unevenSpreads` baja de 14 a 3 en Oz y de 22 a 6 en Leyendas (la orden pedía 0); `widows` y `orphans` ya eran 0. Queda corto porque las variantes de «una línea más o menos» solo valen con `tolerance` 0,95: con 1,3 (el valor de la orden) las páginas cortas bajan algo más (Oz 14, Leyendas 24) pero `loose` sube de 7 a 30 en Oz y de 1 a 19 en Leyendas, que es peor. Falta sobre todo en los diálogos de Oz (párrafos de 1 o 2 líneas, que no admiten ±1) y en los versos de Leyendas (bloques que no se parten). Ideas para cerrarlo: T1.4 (más puntos de guion en español abre más variantes) y permitir ±1 también en versos y citas.
 - T1.3: la orden dice sin `group` cuando hay capitular; se dejó el `group` también en párrafos con capitular, porque las páginas de apertura se quedaban 1 línea cortas sin candidatos. Además `paginate` reintenta hasta 3 arreglos por página (el mejor de cada ronda, mientras el coste baje) y, en la pareja de páginas, prueba reducir por separado la izquierda y la derecha (hasta 2 líneas cada una), no solo las dos a la vez.
 - T1.3: `hyphenTurns` de Oz sube de 0 a 1 (una página derecha llena que acaba en guion y no tiene arreglo de ±1 línea). Resto de cifras iguales o mejores que la línea base de T1.2.
+
+- Cierre del paginado (T1.3, 2026-11-10): `paginate` ya no decide página a página; busca el reparto más barato de cada capítulo (camino de coste mínimo, una doble página por paso). Costes por página: línea corta 100, línea larga 30, doble página desigual 1000 por línea, página final de menos de 4 líneas 150, página derecha que acaba en guion 60, párrafo recompuesto 3, línea de espacio añadida 15.
+- Demostrado con números: con solo las variantes de ±1 línea (tolerancia 0,95 o 1) el óptimo del capítulo es Oz 20 páginas cortas y Leyendas 24 con 3 desiguales; la meta de 6 era inalcanzable por esa vía. Lo que la cierra son dos libertades nuevas, las dos de oficio: una doble página puede bajar **una línea de más, las dos páginas a la vez** (`maxLong`, solo si la línea extra queda a más del margen mínimo de KDP y a 0,9 líneas o más del folio, que en esas páginas baja una línea), y el **espacio sobre un título intermedio puede crecer** hasta 1,5 líneas para que la última línea llegue al pie.
+- La métrica se endurece, no se afloja: `PageStats.long` y `Quality.longPages` cuentan las páginas largas, y una doble página con una página larga y la otra no cuenta como desigual. Las 3 páginas cortas que quedan: en Oz, una apertura de capítulo seguida de un párrafo de 3 líneas y la página anterior a una imagen; en Leyendas, una página de versos antes de un título.
+- Rendimiento: sube un 25 a 35 % en Oz y Leyendas y hasta un 80 % en `ensayo-es` (dentro de la regla del doble). Casi todo el tiempo extra es componer las variantes de ±1 línea de cada párrafo; `ParagraphSetter.variants()` ya comparte los elementos y descarta sin componer lo imposible. Para T1.6: reutilizar los elementos de `set()` y pedir variantes solo cerca de las páginas con problema.
 
 Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
@@ -100,3 +117,4 @@ Hilo B, orden T1.6 (velocidad).
 - 2026-11-10: T1.3 hecha en parte. `paginate` con `balance`: reparación de página por párrafo (±1 línea), parejas de páginas a la misma altura, arreglo del final de capítulo; `layChapter` con caché por paridad. Metas de páginas cortas y de dobles desiguales no alcanzadas (ver desviaciones).
 - 2026-11-10: T1.4 hecha. Patrones de guionado por idioma (es, en-us, en-gb, fr, de, it, pt, ca, gl, eu, nl) cargados bajo demanda en trozos aparte; penalización extra para guionar nombres propios; espacio duro y guion blando respetados. Leyendas: 28 páginas cortas (antes 32), loose 0; Oz sin cambios salvo hyphenTurns 1. Rendimiento: Oz 0,77 s, Leyendas 0,87 s. Pruebas locales: lint, typecheck, 342 tests, build, build:web, e2e 46/46.
 - 2026-11-10: T1.5 hecha. Raya de diálogo pegada, no se parte tras una raya inicial, espacios duros (tratamientos, número y unidad, pág./cap./n.º, siglo), siglos en versalitas, comillas anidadas, capitular admite la raya. EPUB ya tenía widows/orphans/hyphens. dialogo-es: 8 páginas cortas (antes 10). Idea ±1 en versos y citas: descartada; las páginas cortas de Leyendas son de prosa y la causa es que casi ningún párrafo admite ±1 línea con tolerancia 0,95 (con 1,3 sube «loose»).
+- 2026-11-10: paginado cerrado. Búsqueda por capítulo en `paginate`, dobles páginas una línea largas, espacio elástico sobre títulos. Oz 2 páginas cortas y 0 desiguales; Leyendas 1 y 0; los otros tres libros 0 y 0. Pruebas locales: lint, typecheck, 355 tests, build, build:web (KDP check de Oz y Leyendas), e2e 46/46.

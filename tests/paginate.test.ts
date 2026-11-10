@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { loadBook } from "../src/engine/book";
-import { NO_BREAK, paginate, type ParaGroup, type VBox, type VItem } from "../src/engine/layout/paginate";
+import { measureQuality } from "../src/engine/layout/index";
+import { emptyStats, NO_BREAK, paginate, type ParaGroup, type VBox, type VItem } from "../src/engine/layout/paginate";
+import type { LayoutPage } from "../src/engine/layout/types";
 import { testFonts } from "./helpers/fonts";
 import { layoutHyphenated } from "./helpers/layout";
 import { memVault } from "./helpers/memVault";
@@ -74,6 +76,50 @@ describe("paginate with paragraph repair", () => {
     // The greedy rule alone: P4 can't be split, so page 1 stops at 9 lines; no paragraph is re-set.
     expect(pages.map((p) => p.used)).toEqual([90, 100]);
     expect(pages.every((p) => p.stats.adjusted === 0)).toBe(true);
+  });
+});
+
+describe("paginate: a pair a line long and space that grows", () => {
+  // Left: 3+3+5 = 11 lines, with breaks after 6, 8 and 9. Right: 4+4+3 = 11, with breaks after 2, 4, 6 and 8.
+  const pair = (): VItem[] => flow(para(3), para(3), para(5), para(4), para(4), para(3), para(3), para(3));
+
+  it("leaves a pair short when it may not run long", () => {
+    const [left, right] = paginate(pair(), CAP, undefined, { ...opts, firstRecto: false });
+    expect(left.stats.short + right.stats.short).toBeGreaterThan(0);
+    expect(left.stats.long + right.stats.long).toBe(0);
+  });
+
+  it("runs both pages of a pair one line long instead of leaving them short", () => {
+    const [left, right] = paginate(pair(), CAP, undefined, { ...opts, firstRecto: false, maxLong: 1 });
+    expect([left.used, right.used]).toEqual([110, 110]);
+    expect([left.stats.short, right.stats.short]).toEqual([0, 0]);
+    expect([left.stats.long, right.stats.long]).toEqual([1, 1]);
+  });
+
+  it("never runs a page more than the lines it was allowed", () => {
+    const pages = paginate(pair(), CAP, undefined, { ...opts, firstRecto: false, maxLong: 1 });
+    expect(Math.max(...pages.map((p) => p.used))).toBeLessThanOrEqual(CAP + H);
+  });
+
+  it("grows the space above a heading to bring the last line to the foot", () => {
+    // 3 lines, a space, 2 + 3 lines: 9 lines of height, and the next paragraph (3 lines) can't be split.
+    const items = (stretch?: number): VItem[] => [...para(3), { type: "space", height: H, stretch }, ...para(2), ...para(3), ...para(3), ...para(3)];
+    const fixed = paginate(items(), CAP, undefined, opts);
+    expect(fixed[0].used).toBe(90);
+    expect(fixed[0].stats.short).toBe(1);
+    const grown = paginate(items(15), CAP, undefined, opts);
+    expect(grown[0].used).toBe(100);
+    expect(grown[0].stats.short).toBe(0);
+    // Without balancing the space keeps its height.
+    expect(paginate(items(15), CAP, undefined, { unit: H })[0].used).toBe(90);
+  });
+
+  it("counts a pair as uneven when only one of its pages runs long", () => {
+    const page = (index: number, long: number): LayoutPage => ({ index, folio: String(index), showFolio: true, recto: index % 2 === 0, role: "body", matter: "body", chapterId: "c", draws: [], stats: { ...emptyStats(), long } });
+    const even = measureQuality([page(1, 1), page(2, 1), page(3, 0), page(4, 0)]);
+    expect(even.unevenSpreads).toBe(0);
+    expect(even.longPages).toBe(2);
+    expect(measureQuality([page(1, 1), page(2, 0), page(3, 0), page(4, 0)]).unevenSpreads).toBe(1);
   });
 });
 

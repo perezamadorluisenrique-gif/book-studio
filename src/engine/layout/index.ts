@@ -76,8 +76,8 @@ export function layoutBook(book: Book, fonts: FontSet, options: LayoutOptions = 
 
 /** Sums the per-page stats of the finished book and counts the defects that need neighbouring pages. */
 export function measureQuality(pages: LayoutPage[]): Quality {
-  const q: Quality = { ...emptyStats(), pages: 0, shortPages: 0, unevenSpreads: 0, hyphenTurns: 0 };
-  const sum: (keyof PageStats)[] = ["lines", "loose", "veryLoose", "hyphens", "ladders", "short", "hyphenEnd", "orphans", "widows", "adjusted"];
+  const q: Quality = { ...emptyStats(), pages: 0, shortPages: 0, longPages: 0, unevenSpreads: 0, hyphenTurns: 0 };
+  const sum: (keyof PageStats)[] = ["lines", "loose", "veryLoose", "hyphens", "ladders", "short", "long", "hyphenEnd", "orphans", "widows", "adjusted"];
   const lastOfChapter = (i: number) => pages[i + 1]?.chapterId !== pages[i].chapterId;
   pages.forEach((p, i) => {
     const st = p.stats;
@@ -85,9 +85,10 @@ export function measureQuality(pages: LayoutPage[]): Quality {
     q.pages++;
     for (const k of sum) q[k] += st[k];
     if (st.short > 0) q.shortPages++;
+    if (st.long > 0) q.longPages++;
     if (p.recto && st.hyphenEnd) q.hyphenTurns++;
     const next = pages[i + 1];
-    if (!p.recto && next?.stats && p.chapterId && next.chapterId === p.chapterId && !lastOfChapter(i) && !lastOfChapter(i + 1) && st.short !== next.stats.short) q.unevenSpreads++;
+    if (!p.recto && next?.stats && p.chapterId && next.chapterId === p.chapterId && !lastOfChapter(i) && !lastOfChapter(i + 1) && st.long - st.short !== next.stats.long - next.stats.short) q.unevenSpreads++;
   });
   return q;
 }
@@ -108,6 +109,12 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
   const leading = (theme.body.leading * bodySize) / theme.body.size;
   const width = pageW - inside - outside;
   const capacity = Math.floor((pageH - top - bottom) / leading + 0.001) * leading;
+  // Lowest baseline a folio at the foot may have, and where it goes on a facing pair that runs a line long.
+  const footLimit = pageH - minOut * PT - theme.folio.style.size * 0.3;
+  const longFooterY = Math.min(pageH - bottom + leading * 2.6, footLimit);
+  // A facing pair may run one line past the foot when that line stays clear of the trim and of the folio below it.
+  const longEnd = top + capacity + leading;
+  const maxLong = pageH - longEnd >= minOut * PT + leading && longFooterY - longEnd >= leading * 0.9 ? 1 : 0;
   const warnings: LayoutWarning[] = [];
   const styler = new Styler(fonts, lang);
   const hyphenate = settings.hyphenate && theme.body.hyphenate;
@@ -167,7 +174,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
     const key = `${ch.id}|${firstRecto}`;
     let hit = chapterCache.get(key);
     if (!hit) {
-      hit = paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: ch.matter === "body" || ch.type === "prologue" })], capacity, foot, { unit: leading, balance: true, firstRecto });
+      hit = paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: ch.matter === "body" || ch.type === "prologue" })], capacity, foot, { unit: leading, balance: true, firstRecto, maxLong });
       chapterCache.set(key, hit);
     }
     return hit;
@@ -315,7 +322,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
   const rh = fromTextStyle(theme.runningHead, theme.body.oldstyle);
   const folioStyle = fromTextStyle(theme.folio.style, theme.body.oldstyle);
   const headerY = Math.max(top - leading * 1.15, minOut * PT + rh.size * 0.75);
-  const footerY = Math.min(pageH - bottom + leading * 1.6, pageH - minOut * PT - folioStyle.size * 0.3);
+  const footerY = Math.min(pageH - bottom + leading * 1.6, footLimit);
   const authorLine = meta.authors.join(lang.startsWith("es") ? " y " : " & ");
 
   const pages: LayoutPage[] = raw.map((p, index) => {
@@ -333,7 +340,8 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
     }
     if (p.showFolio) {
       const atFoot = theme.folio.position === "bottom-center" || p.role === "opener" || p.role === "toc";
-      if (atFoot) draws.push(...fb.textLine(folio, folioStyle, width, "center", footerY, left));
+      // On a pair that runs a line long the folio moves down with the text.
+      if (atFoot) draws.push(...fb.textLine(folio, folioStyle, width, "center", p.stats?.long ? longFooterY : footerY, left));
       else draws.push(...fb.textLine(folio, folioStyle, width, recto ? "right" : "left", headerY, left));
     }
     return { index, folio, showFolio: p.showFolio, recto, role: p.role, matter: p.matter, chapterId: p.chapterId, draws, start: p.start, stats: p.stats };

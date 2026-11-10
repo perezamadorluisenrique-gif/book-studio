@@ -288,11 +288,12 @@ export class FlowBuilder {
           if (theme.body.justify && boxes.length) {
             // The page builder may ask for this paragraph in one line more or less to fill a page.
             const cache = new Map<number, VBox[] | null>();
+            const variant = this.env.setter.variants(b.inlines, frame.base, setOpts);
             boxes[0].group = {
               size: boxes.length,
               alt: (delta) => {
                 if (!cache.has(delta)) {
-                  const v = this.env.setter.variant(b.inlines, frame.base, setOpts, set.lines.length + delta);
+                  const v = variant(set.lines.length + delta);
                   const alt = v ? this.lineBoxes(v, lineOpts) : null;
                   if (alt?.length) alt[0].group = { size: alt.length, alt: () => null, adjusted: true };
                   cache.set(delta, alt?.length ? alt : null);
@@ -379,7 +380,8 @@ export class FlowBuilder {
     const h = this.slotHeight(rs.size);
     const set = this.setText(inlines, rs, frame.width, ts.align);
     const boxes = this.lineBoxes(set, { left: frame.left, blockId: id, src, height: h, baseline: h - (this.L - this.baseline), keepWithNext: true, keepTogether: true });
-    return [{ type: "space", height: this.L }, ...boxes];
+    // The space above a heading may grow, so a page that would end short reaches the foot.
+    return [{ type: "space", height: this.L, stretch: this.L * 1.5 }, ...boxes];
   }
 
   private code(text: string, id: string, src: SourceRef | undefined, frame: Frame): VItem[] {

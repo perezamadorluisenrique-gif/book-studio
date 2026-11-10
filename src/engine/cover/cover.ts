@@ -165,7 +165,7 @@ export function composeCover(book: Book, fonts: FontSet, pages: number, opts: Co
     toc: [],
     warnings: [],
     bodyStart: 0,
-    quality: { ...emptyStats(), pages: 0, shortPages: 0, unevenSpreads: 0, hyphenTurns: 0 },
+    quality: { ...emptyStats(), pages: 0, shortPages: 0, longPages: 0, unevenSpreads: 0, hyphenTurns: 0 },
   };
   return { layout, geometry: g, findings, barcode: bar ?? undefined };
 }

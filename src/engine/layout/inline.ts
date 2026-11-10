@@ -107,6 +107,8 @@ const HYPHEN_PENALTY = 50;
 /** A capitalised word in mid-sentence is probably a name; splitting one reads worse. */
 const NAME_HYPHEN_PENALTY = 150;
 const DASH_PENALTY = 100;
+/** How far the spaces of a paragraph re-set for the page builder may stretch: never a loose line. */
+const VARIANT_TOLERANCE = 0.95;
 
 export class ParagraphSetter {
   constructor(
@@ -180,14 +182,55 @@ export class ParagraphSetter {
     return { lines, dropCap, hyphenated };
   }
 
-  /** The same justified paragraph set in exactly `lines` lines, for the page builder to try; `null` when that can't be done. */
+  /**
+   * The same justified paragraph set in exactly `lines` lines, for the page builder to try; `null` when that
+   * can't be done. The returned function shares the paragraph's items between calls.
+   */
+  variants(inlines: Inline[], base: RunStyle, opts: SetOptions): (lines: number) => SetParagraph | null {
+    type Prep = ReturnType<ParagraphSetter["prepare"]> & { items: Item[]; natural: number; stretch: number; shrink: number; slack: number; forced: boolean };
+    let prep: Prep | null = null;
+    return (lines) => {
+      if (!prep) {
+        const p = this.prepare(inlines, base, opts);
+        const items = p.ragged ? [] : p.build(true);
+        // Totals for a cheap test of whether the text can fill that many lines at all.
+        let natural = 0;
+        let stretch = 0;
+        let shrink = 0;
+        let widest = 0;
+        let forced = false;
+        items.forEach((it, k) => {
+          if (it.type === "penalty") {
+            widest = Math.max(widest, it.width);
+            if (it.penalty === -INFINITE_PENALTY && k < items.length - 1) forced = true;
+            return;
+          }
+          if (it.type === "glue" && it.stretch >= FIL / 2) return;
+          natural += it.width;
+          stretch += it.stretch ?? 0;
+          shrink += it.shrink ?? 0;
+          if (it.type === "glue") widest = Math.max(widest, it.width);
+        });
+        prep = { ...p, items, natural, stretch, shrink, slack: widest + base.size, forced };
+      }
+      const ready: Prep = prep;
+      const { dropCap, indentFor, lineWidth, ragged, hyphens, common, items } = ready;
+      if (ragged || lines < 1 || (dropCap && lines <= dropCap.lines)) return null;
+      if (!ready.forced) {
+        let room = 0;
+        for (let k = 0; k < lines - 1; k++) room += lineWidth(k);
+        // Too little text to fill all the lines but the last, or too much to fit in all of them.
+        if (ready.natural + VARIANT_TOLERANCE * ready.stretch + lines * ready.slack < room) return null;
+        if (ready.natural - ready.shrink - lines * ready.slack > room + lineWidth(lines - 1)) return null;
+      }
+      const r = breakParagraph(items, { ...common, tolerance: VARIANT_TOLERANCE, lineCount: lines });
+      if (!r) return null;
+      return { lines: this.lines(items, r.breaks, lineWidth, indentFor, opts.align, !!opts.micro), dropCap, hyphenated: hyphens };
+    };
+  }
+
   variant(inlines: Inline[], base: RunStyle, opts: SetOptions, lines: number): SetParagraph | null {
-    const { dropCap, indentFor, lineWidth, ragged, hyphens, build, common } = this.prepare(inlines, base, opts);
-    if (ragged || lines < 1 || (dropCap && lines <= dropCap.lines)) return null;
-    const items = build(true);
-    const r = breakParagraph(items, { ...common, tolerance: 0.95, lineCount: lines });
-    if (!r) return null;
-    return { lines: this.lines(items, r.breaks, lineWidth, indentFor, opts.align, !!opts.micro), dropCap, hyphenated: hyphens };
+    return this.variants(inlines, base, opts)(lines);
   }
 
   private extractDropCap(atoms: Atom[], base: RunStyle, dc: NonNullable<SetOptions["dropCap"]>) {
