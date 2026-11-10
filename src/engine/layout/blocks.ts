@@ -88,7 +88,7 @@ export class FlowBuilder {
   }
 
   /** Lines of a set paragraph as boxes, with widow and orphan control. */
-  lineBoxes(set: SetParagraph, opts: { left: number; blockId: string; src?: SourceRef; height?: number; baseline?: number; keepWithNext?: boolean; keepTogether?: boolean }): VBox[] {
+  lineBoxes(set: SetParagraph, opts: { left: number; blockId: string; src?: SourceRef; height?: number; baseline?: number; keepWithNext?: boolean; keepTogether?: boolean; body?: boolean }): VBox[] {
     const h = opts.height ?? this.L;
     const b = opts.baseline ?? this.baseline;
     const n = set.lines.length;
@@ -107,7 +107,13 @@ export class FlowBuilder {
       if (set.lines[k].overfull) {
         this.env.warn({ severity: "warning", message: "A line is too long for the measure and sticks into the margin.", src: opts.src });
       }
-      boxes.push({ type: "box", height: h, draws, breakAfter, start: { blockId: opts.blockId, offset: set.lines[k].offset }, src: opts.src, notes: set.lines[k].notes.length ? set.lines[k].notes : undefined });
+      const box: VBox = { type: "box", height: h, draws, breakAfter, start: { blockId: opts.blockId, offset: set.lines[k].offset }, src: opts.src, notes: set.lines[k].notes.length ? set.lines[k].notes : undefined };
+      if (opts.body) {
+        box.q = { ratio: set.lines[k].ratio, hyphen: set.lines[k].hyphenated };
+        box.para = line;
+        box.paraLines = n;
+      }
+      boxes.push(box);
     }
     return boxes;
   }
@@ -275,7 +281,7 @@ export class FlowBuilder {
             leadInWords: frame.nested ? 0 : state.leadIn,
             noteNumber: this.env.noteNumber,
           });
-          items.push(...this.lineBoxes(set, { left: frame.left, blockId: b.id, src: b.src }));
+          items.push(...this.lineBoxes(set, { left: frame.left, blockId: b.id, src: b.src, body: true }));
           state.noIndent = false;
           state.leadIn = 0;
           state.dropCap = false;

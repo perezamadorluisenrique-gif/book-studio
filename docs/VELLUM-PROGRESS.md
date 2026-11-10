@@ -6,7 +6,7 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 
 | Hilo | Orden | Estado | PR |
 |---|---|---|---|
-| A | T0 Banco de pruebas de calidad | sin empezar | |
+| A | T0 Banco de pruebas de calidad | hecha (PR abierto) | |
 | A | T1.1 Líneas | sin empezar | |
 | A | T1.2 Márgenes ópticos y letras elásticas | sin empezar | |
 | A | T1.3 Páginas | sin empezar | |
@@ -30,9 +30,23 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 
 Desde T0, pegar aquí la tabla de `npm run quality` tras cada orden.
 
+### 2026-11-10, T0 (punto de partida del banco)
+
+| Book | Pages | Lines | Short pages | Uneven spreads | Ladders | Very loose | Loose | Widows | Orphans | Hyphen turns | Hyphens | Layout ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| oz | 142 | 3220 | 43 | 15 | 0 | 5 | 92 | 0 | 0 | 2 | 138 | 326 |
+| leyendas | 128 | 3486 | 36 | 25 | 11 | 4 | 62 | 0 | 0 | 3 | 421 | 352 |
+| dialogo-es | 82 | 2132 | 17 | 12 | 27 | 1 | 54 | 0 | 0 | 5 | 458 | 307 |
+| ensayo-es | 86 | 2312 | 12 | 7 | 40 | 0 | 36 | 0 | 0 | 6 | 714 | 457 |
+| largo-de | 62 | 1742 | 6 | 6 | 38 | 6 | 166 | 0 | 0 | 2 | 572 | 273 |
+
+
 ## Desviaciones del plan
 
-Ninguna todavía. Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
+- T0: las cifras del banco no coinciden del todo con la medición externa de la sección 2 (Oz: 43 páginas cortas de 142 frente a 28 de 91; Leyendas: 36 frente a 33, escaleras 11 frente a 9, huecos muy grandes 4 frente a 13). Las dobles páginas desiguales sí coinciden (15 y 25). Se usan las definiciones exactas de la orden; la línea base nueva es la del banco, no la de la sección 2.
+- T0: los libros de prueba salen de Project Gutenberg (Marianela, Ariel, Die Verwandlung); las 47 notas al pie de `ensayo-es` son de prueba, generadas a partir del propio texto.
+
+Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Diario
 
@@ -41,3 +55,4 @@ Ninguna todavía. Apuntar aquí lo que se hizo distinto y por qué, y las metas 
 ## Siguiente paso
 
 Hilo A, orden T0.
+- 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.

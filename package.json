@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "sample": "esbuild tools/render-sample.ts --bundle --platform=node --format=esm --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\" --outfile=out/render-sample.mjs --log-level=warning && node out/render-sample.mjs",
+    "quality": "esbuild tools/quality.ts --bundle --platform=node --format=esm --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\" --outfile=out/quality.mjs --log-level=warning && node out/quality.mjs",
     "downloads": "esbuild tools/downloads.ts --bundle --platform=node --format=esm --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\" --outfile=out/downloads.mjs --log-level=warning && node out/downloads.mjs",
     "epubcheck": "bash tools/epubcheck.sh",
     "version": "node version-bump.mjs && git add manifest.json versions.json CHANGELOG.md",
