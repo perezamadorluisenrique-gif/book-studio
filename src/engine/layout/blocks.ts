@@ -5,7 +5,7 @@ import { chapterLabel } from "../i18n";
 import { formatPages, type IndexEntry } from "../index-terms";
 import type { Block, Chapter, ImageAsset, Inline, Note, SourceRef } from "../model";
 import type { Theme, TextStyle } from "../themes";
-import type { Align, ParagraphSetter, SetParagraph } from "./inline";
+import type { Align, ParagraphSetter, SetOptions, SetParagraph } from "./inline";
 import { NO_BREAK, offsetDraw, type VBox, type VItem } from "./paginate";
 import { fromTextStyle, type RunStyle, type Styler } from "./style";
 import type { Draw, LayoutWarning, TextDraw } from "./types";
@@ -272,7 +272,7 @@ export class FlowBuilder {
         case "paragraph": {
           if (theme.body.blockParagraphs && idx > 0) items.push({ type: "space", height: L * 0.5 });
           const indent = theme.body.blockParagraphs || state.noIndent ? 0 : theme.body.indent * this.env.bodySize;
-          const set = this.env.setter.set(b.inlines, frame.base, {
+          const setOpts: SetOptions = {
             width: frame.width,
             align: theme.body.justify ? "justify" : "left",
             indent,
@@ -281,8 +281,27 @@ export class FlowBuilder {
             leadInWords: frame.nested ? 0 : state.leadIn,
             noteNumber: this.env.noteNumber,
             micro: theme.body.justify,
-          });
-          items.push(...this.lineBoxes(set, { left: frame.left, blockId: b.id, src: b.src, body: true }));
+          };
+          const set = this.env.setter.set(b.inlines, frame.base, setOpts);
+          const lineOpts = { left: frame.left, blockId: b.id, src: b.src, body: true };
+          const boxes = this.lineBoxes(set, lineOpts);
+          if (theme.body.justify && boxes.length) {
+            // The page builder may ask for this paragraph in one line more or less to fill a page.
+            const cache = new Map<number, VBox[] | null>();
+            boxes[0].group = {
+              size: boxes.length,
+              alt: (delta) => {
+                if (!cache.has(delta)) {
+                  const v = this.env.setter.variant(b.inlines, frame.base, setOpts, set.lines.length + delta);
+                  const alt = v ? this.lineBoxes(v, lineOpts) : null;
+                  if (alt?.length) alt[0].group = { size: alt.length, alt: () => null, adjusted: true };
+                  cache.set(delta, alt?.length ? alt : null);
+                }
+                return cache.get(delta) ?? null;
+              },
+            };
+          }
+          items.push(...boxes);
           state.noIndent = false;
           state.leadIn = 0;
           state.dropCap = false;

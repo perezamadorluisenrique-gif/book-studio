@@ -1,41 +1,41 @@
 {
   "oz": {
     "pages": 142,
-    "shortPages": 39,
-    "unevenSpreads": 14,
+    "shortPages": 22,
+    "unevenSpreads": 3,
     "ladders": 0,
     "veryLoose": 0,
     "loose": 7,
     "widows": 0,
     "orphans": 0,
-    "hyphenTurns": 0
+    "hyphenTurns": 1
   },
   "leyendas": {
-    "pages": 126,
-    "shortPages": 36,
-    "unevenSpreads": 22,
+    "pages": 128,
+    "shortPages": 32,
+    "unevenSpreads": 6,
     "ladders": 0,
     "veryLoose": 0,
     "loose": 1,
     "widows": 0,
     "orphans": 0,
-    "hyphenTurns": 2
+    "hyphenTurns": 0
   },
   "dialogo-es": {
     "pages": 82,
-    "shortPages": 17,
-    "unevenSpreads": 14,
+    "shortPages": 13,
+    "unevenSpreads": 1,
     "ladders": 0,
     "veryLoose": 0,
     "loose": 0,
     "widows": 0,
     "orphans": 0,
-    "hyphenTurns": 2
+    "hyphenTurns": 1
   },
   "ensayo-es": {
-    "pages": 84,
-    "shortPages": 11,
-    "unevenSpreads": 6,
+    "pages": 82,
+    "shortPages": 4,
+    "unevenSpreads": 0,
     "ladders": 0,
     "veryLoose": 0,
     "loose": 0,
@@ -45,8 +45,8 @@
   },
   "largo-de": {
     "pages": 60,
-    "shortPages": 6,
-    "unevenSpreads": 4,
+    "shortPages": 2,
+    "unevenSpreads": 0,
     "ladders": 0,
     "veryLoose": 0,
     "loose": 2,
