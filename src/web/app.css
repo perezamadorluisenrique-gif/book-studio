@@ -9,6 +9,7 @@
   --app-accent: #6a4c93;
   --app-surface: #ffffff;
   --app-danger: #b3261e;
+  --app-ok: #1e6b34;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -20,6 +21,7 @@
     --app-accent: #b79be0;
     --app-surface: #222226;
     --app-danger: #ff8a80;
+    --app-ok: #7fd18f;
   }
 
   /* studio.css loads later and sets the same variables on .bs-studio; the extra class wins by specificity, not by order. */
@@ -1139,6 +1141,13 @@ button.mod-cta {
   margin: 0;
   padding-left: 1.2em;
   color: var(--app-muted);
+}
+
+.wiz-report .wiz-ok {
+  color: var(--app-ok);
+  font-weight: 600;
+  list-style: none;
+  margin-left: -1.2em;
 }
 
 @media (max-width: 900px) {

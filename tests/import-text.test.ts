@@ -83,3 +83,13 @@ describe("first-book guide", () => {
     expect(onboardingOf({ ...guided, onboarding: 9 as unknown as 1 })).toBe("done");
   });
 });
+
+describe("countWords", () => {
+  it("counts runs of letters and digits, with accents", async () => {
+    const { countWords } = await import("../src/project/import-text");
+    expect(countWords("")).toBe(0);
+    expect(countWords("¡Hola, niño! Cuesta 3,50 € — año 2026.")).toBe(7);
+    expect(countWords("don't state-of-the-art")).toBe(6);
+    expect(countWords("**bold** and *it*")).toBe(3);
+  });
+});

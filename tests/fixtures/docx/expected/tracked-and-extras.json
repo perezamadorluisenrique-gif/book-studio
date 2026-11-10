@@ -52,6 +52,20 @@
     ],
     "chapters": 2,
     "images": 0,
-    "footnotes": 0
+    "footnotes": 0,
+    "words": {
+      "source": 13,
+      "book": 10,
+      "missing": [
+        {
+          "texto": "x=1",
+          "lugar": "Part A"
+        },
+        {
+          "texto": "boxed",
+          "lugar": "Part A"
+        }
+      ]
+    }
   }
 }

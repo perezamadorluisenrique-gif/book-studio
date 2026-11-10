@@ -113,7 +113,7 @@ export class Wizard {
 
   private step1(body: HTMLElement, p: Project): void {
     body.append(h("p", { cls: "wiz-lead", text: tn("wiz.chapters", p.chapters.length) }), h("p", { text: t("wiz.s1.help") }));
-    if (this.report.length) body.append(h("ul", { cls: "wiz-report" }, ...this.report.map((l) => h("li", { text: l }))));
+    if (this.report.length) body.append(h("ul", { cls: "wiz-report" }, ...this.report.map((l) => h("li", { text: l, cls: l.startsWith("✓") ? "wiz-ok" : "" }))));
   }
 
   private step2(body: HTMLElement, p: Project): void {

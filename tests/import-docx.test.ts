@@ -23,6 +23,13 @@ describe("importDocx", () => {
     await expect(JSON.stringify(summary, null, 2) + "\n").toMatchFileSnapshot(`./fixtures/docx/expected/${name}.json`);
   });
 
+  it.each(FIXTURES)("%s: words missing from the book are only what the report already says was left out", async (name) => {
+    const r = await importDocx(await load(name), parseXml, `${name}.docx`);
+    const declared = new Set(r.report.items.map((i) => i.code));
+    if (r.report.words.missing.length) expect(["tables", "textBoxes", "equations"].some((c) => declared.has(c as never))).toBe(true);
+    expect(r.report.words.source).toBeGreaterThan(0);
+  });
+
   it("rejects a file that is not a .docx", async () => {
     await expect(importDocx(new Uint8Array([1, 2, 3]), parseXml)).rejects.toThrow("docx.notDocx");
   });
