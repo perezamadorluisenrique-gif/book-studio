@@ -1354,3 +1354,107 @@ describe("web app, versions and find and replace", () => {
     });
   }
 });
+
+describe("web app, cover designer", () => {
+  async function startBook(page: Page, name: string, locale = "en-US"): Promise<void> {
+    await page.goto(`${base}?sample=oz`);
+    await page.getByRole("button", { name: locale.startsWith("es") ? "Mis libros" : "My books" }).click();
+    await page.locator("#proj-name").fill(name);
+    await page.locator(".proj-new:not(.proj-import) button[type=submit]").click();
+    await page.locator("#ed-text").waitFor();
+    if ((page.viewportSize()?.width ?? 1280) >= 900) await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+  }
+  const openDesigner = async (page: Page) => {
+    await page.getByRole("button", { name: "Open the cover designer" }).click();
+    const dialog = page.getByRole("dialog", { name: "Cover designer" });
+    await dialog.waitFor();
+    await dialog.locator("canvas[data-ready]").waitFor({ timeout: 30_000 });
+    return dialog;
+  };
+
+  it("picks a template, edits a text, moves it with the keyboard, undoes, and keeps the design", async () => {
+    const page = await (await browser.newContext({ locale: "en-US" })).newPage();
+    await startBook(page, "Cover test");
+    let dialog = await openDesigner(page);
+    await dialog.locator("#cv-template").selectOption("modern-bold");
+    // A Pro template is refused on the free plan and the choice goes back.
+    await dialog.locator("#cv-template").selectOption("waves-ocean");
+    await page.getByText("is part of Book Studio Pro").first().waitFor();
+    expect(await dialog.locator("#cv-template").inputValue()).toBe("modern-bold");
+
+    // The title layer is the first text on the front; pick it from the list and rewrite it.
+    await dialog.locator(".cv-layers button", { hasText: "Front · text" }).first().click();
+    await dialog.locator("#cv-text").fill("A new title");
+    await dialog.locator("#cv-text").blur();
+    const handle = dialog.locator(".cv-handle.is-selected");
+    await handle.waitFor();
+    const before = await handle.boundingBox();
+    await handle.focus();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    const after = await dialog.locator(".cv-handle.is-selected").boundingBox();
+    expect(after!.y).toBeGreaterThan(before!.y + 1);
+
+    await dialog.getByRole("button", { name: "Undo" }).click();
+    await dialog.getByRole("button", { name: "Undo" }).click();
+    const undone = await dialog.locator(".cv-handle.is-selected").boundingBox();
+    expect(Math.abs(undone!.y - before!.y)).toBeLessThan(1);
+    await dialog.getByRole("button", { name: "Redo" }).click();
+
+    // Add a text on the back, then close and reopen: everything is still there.
+    await dialog.locator("#cv-where").selectOption("back");
+    await dialog.getByRole("button", { name: "Add text" }).click();
+    await dialog.locator("#cv-text").fill("Praise for the book");
+    await dialog.locator("#cv-text").blur();
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await page.getByRole("dialog").waitFor({ state: "detached" });
+    await page.waitForTimeout(900);
+    dialog = await openDesigner(page);
+    expect(await dialog.locator("#cv-template").inputValue()).toBe("modern-bold");
+    expect(await dialog.locator(".cv-layers button", { hasText: "Praise for the book" }).count()).toBe(1);
+    expect(await dialog.locator(".cv-layers button", { hasText: "A new title" }).count()).toBe(1);
+    await page.close();
+  });
+
+  it("drags a layer with the mouse and snaps it to the middle", async () => {
+    const page = await (await browser.newContext({ locale: "en-US" })).newPage();
+    await startBook(page, "Cover drag");
+    const dialog = await openDesigner(page);
+    await dialog.locator("#cv-template").selectOption("classic-navy");
+    await dialog.locator(".cv-layers button", { hasText: "Front · text" }).first().click();
+    const handle = dialog.locator(".cv-handle.is-selected");
+    const b = (await handle.boundingBox())!;
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2 + 20, b.y + b.height / 2 + 30, { steps: 5 });
+    await page.mouse.up();
+    const moved = (await dialog.locator(".cv-handle.is-selected").boundingBox())!;
+    expect(moved.y).toBeGreaterThan(b.y + 15);
+    await page.close();
+  });
+
+  it("adds a picture, crops and darkens it, and warns when it is too small to print", async () => {
+    const page = await (await browser.newContext({ locale: "en-US" })).newPage();
+    await startBook(page, "Cover picture");
+    const dialog = await openDesigner(page);
+    await dialog.locator("#cv-file").setInputFiles(new URL("../sample/oz/images/cover.jpg", import.meta.url).pathname);
+    await dialog.locator("#cv-zoom").waitFor();
+    await dialog.locator("#cv-zoom").fill("2");
+    await dialog.locator("#cv-dim").fill("0.4");
+    expect(await dialog.locator(".cv-checks").innerText()).toMatch(/ppi/);
+    await page.close();
+  });
+
+  for (const [label, size] of [["desktop", { width: 1280, height: 900 }], ["mobile 390 px", { width: 390, height: 800 }]] as const) {
+    it(`has no serious accessibility violations, ${label}`, async () => {
+      const page = await (await browser.newContext({ locale: "en-US", viewport: size })).newPage();
+      await startBook(page, "Cover a11y");
+      if (size.width < 900) await page.getByRole("tab", { name: "Chapters" }).click();
+      const dialog = await openDesigner(page);
+      await dialog.locator(".cv-layers button").first().click();
+      const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+      expect(r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+      await page.close();
+    });
+  }
+});

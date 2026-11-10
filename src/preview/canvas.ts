@@ -120,6 +120,7 @@ export class PagePainter {
       } else if (d.kind === "rect") {
         ctx.save();
         if (d.fill) {
+          if (d.opacity !== undefined) ctx.globalAlpha = Math.max(0, d.opacity);
           ctx.fillStyle = `rgb(${d.fill.map((c) => Math.round(c * 255)).join(",")})`;
           ctx.fillRect(d.x, d.y, d.w, d.h);
         }

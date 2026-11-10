@@ -56,12 +56,15 @@ export function layerBox(g: CoverGeometry, l: { panel: PanelId; x: number; y: nu
 const inside = (b: Box, s: Box) => b.x >= s.x - 0.002 && b.y >= s.y - 0.002 && b.x + b.w <= s.x + s.w + 0.002 && b.y + b.h <= s.y + s.h + 0.002;
 const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
-function drawImage(draws: Draw[], img: ImageAsset, box: Box, fit: "cover" | "contain", alt: string): number {
+function drawImage(draws: Draw[], img: ImageAsset, box: Box, fit: "cover" | "contain", alt: string, crop: { zoom?: number; focusX?: number; focusY?: number } = {}): number {
   const bx = pt(box.x), by = pt(box.y), bw = pt(box.w), bh = pt(box.h);
-  const scale = (fit === "cover" ? Math.max : Math.min)(bw / img.width, bh / img.height);
+  const scale = (fit === "cover" ? Math.max : Math.min)(bw / img.width, bh / img.height) * (fit === "cover" ? (crop.zoom ?? 1) : 1);
   const w = img.width * scale;
   const h = img.height * scale;
-  draws.push({ kind: "image", x: bx + (bw - w) / 2, y: by + (bh - h) / 2, w, h, path: img.path, alt, ...(fit === "cover" ? { clip: { x: bx, y: by, w: bw, h: bh } } : {}) });
+  // The part of the picture left over (when it is bigger than the box) slides by the focus point.
+  const x = bx + (bw - w) * (fit === "cover" ? (crop.focusX ?? 0.5) : 0.5);
+  const y = by + (bh - h) * (fit === "cover" ? (crop.focusY ?? 0.5) : 0.5);
+  draws.push({ kind: "image", x, y, w, h, path: img.path, alt, ...(fit === "cover" ? { clip: { x: bx, y: by, w: bw, h: bh } } : {}) });
   return PT / scale;
 }
 
@@ -143,7 +146,8 @@ export function renderDesign(design: CoverDesign, ctx: DesignContext, ink: Paint
         findings.push({ severity: "warning", layer: l.id, message: `The picture ${il.target} on the ${l.panel} cover could not be read, so that layer is empty.` });
         continue;
       }
-      const ppi = drawImage(draws, img, box, il.fit, il.alt);
+      const ppi = drawImage(draws, img, box, il.fit, il.alt, il);
+      if (il.dim) draws.push({ kind: "rect", x: pt(box.x), y: pt(box.y), w: pt(box.w), h: pt(box.h), fill: il.dim > 0 ? [0, 0, 0] : [1, 1, 1], opacity: Math.abs(il.dim) });
       if (il.fit === "cover" && ppi < 300) findings.push({ severity: "warning", layer: l.id, message: `The picture ${il.target} prints at ${Math.round(ppi)} ppi on the ${l.panel} cover; KDP asks for 300 ppi.` });
     } else {
       const tl = l;

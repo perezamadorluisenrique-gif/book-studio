@@ -22,6 +22,8 @@ export { contrastInk, hexToRgb, luminance } from "./paint";
 export interface CoverFinding {
   severity: "error" | "warning" | "info";
   message: string;
+  /** The cover-design layer it is about, when it is about one. */
+  layer?: string;
 }
 
 export interface CoverOptions {
