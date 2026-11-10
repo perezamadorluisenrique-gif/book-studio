@@ -29,13 +29,9 @@ const MESSAGE = (item: CheckItem): string => {
 
 const GUIDE = { en: "en/format-a-book-for-kdp/", es: "es/como-formatear-un-libro-para-kdp/" };
 
-/** Open the window; it removes itself from the page when it closes. */
-export function showPublishChecklist(deps: PublishDeps, opener?: HTMLElement): void {
-  const project = deps.project();
-  if (!project) return;
-  const list = publishChecklist(project, deps.facts());
-  const dialog = h("dialog", { cls: "pub-dialog", attr: { "aria-labelledby": "pub-title" } });
-
+/** The summary line, the list of items and the spine note, as the window and the first-book guide both show them. */
+export function renderChecklist(project: Project, facts: BuiltFacts | null, go: (place: FixPlace) => void): HTMLElement[] {
+  const list = publishChecklist(project, facts);
   const rows = list.items.map((item) => {
     const mark = item.status === "ok" ? t("pub.done") : item.status === "todo" ? t("pub.todo") : t("pub.tip");
     const li = h(
@@ -46,20 +42,28 @@ export function showPublishChecklist(deps: PublishDeps, opener?: HTMLElement): v
     );
     if (item.status !== "ok" && item.fix) {
       const fix = item.fix;
-      li.appendChild(h("button", { text: t(`pub.fix.${fix}`), attr: { type: "button" }, on: { click: () => (dialog.close(), deps.go(fix)) } }));
+      li.appendChild(h("button", { text: t(`pub.fix.${fix}`), attr: { type: "button" }, on: { click: () => go(fix) } }));
     }
     return li;
   });
-
-  const f = list.facts;
-  const lang = getLocale();
-  const steps = h("ol", { cls: "pub-steps" }, ...(["pub.step1", "pub.step2", "pub.step3", "pub.step4", "pub.step5"] as const).map((k) => h("li", { text: t(k) })));
-  const content = [
-    h("h2", { text: t("pub.title"), attr: { id: "pub-title" } }),
+  const out = [
     h("p", { cls: list.ready ? "pub-summary pub-ready" : "pub-summary", text: list.ready ? t("pub.ready") : t("pub.notReady"), attr: { role: "status" } }),
     h("ul", { cls: "pub-list", attr: { "aria-label": t("pub.title") } }, ...rows),
   ];
-  if (f) content.push(h("p", { cls: "pub-spine", text: t("pub.spine", { pages: f.pages, spine: f.spine.toFixed(3) }) }));
+  const f = list.facts;
+  if (f) out.push(h("p", { cls: "pub-spine", text: t("pub.spine", { pages: f.pages, spine: f.spine.toFixed(3) }) }));
+  return out;
+}
+
+/** Open the window; it removes itself from the page when it closes. */
+export function showPublishChecklist(deps: PublishDeps, opener?: HTMLElement): void {
+  const project = deps.project();
+  if (!project) return;
+  const dialog = h("dialog", { cls: "pub-dialog", attr: { "aria-labelledby": "pub-title" } });
+  const lang = getLocale();
+  const [summary, items, ...spine] = renderChecklist(project, deps.facts(), (fix) => (dialog.close(), deps.go(fix)));
+  const steps = h("ol", { cls: "pub-steps" }, ...(["pub.step1", "pub.step2", "pub.step3", "pub.step4", "pub.step5"] as const).map((k) => h("li", { text: t(k) })));
+  const content = [h("h2", { text: t("pub.title"), attr: { id: "pub-title" } }), summary, items, ...spine];
   content.push(
     h("h3", { text: t("pub.stepsTitle") }),
     steps,

@@ -18,7 +18,7 @@ beforeAfter:
 steps:
   - { title: "1. Upload your Word file", text: "Drop your .docx (or .md or .txt). It is read in your browser and turned into chapters, with their footnotes and pictures.", img: img/landing-en-step1.webp, alt: "Book Studio's first screen with a place to drop your Word file." }
   - { title: "2. Pick a style", text: "Five free styles and every KDP trim size. The preview redraws at once, page by page.", img: img/landing-en-step2.webp, alt: "Book Studio showing a facing-pages preview of a book in its style." }
-  - { title: "3. Download and publish", text: "The print PDF, the full cover and the EPUB, with a checklist for KDP.", img: img/landing-en-step3.webp, height: 220, alt: "The buttons to download the print PDF, the cover and the EPUB." }
+  - { title: "3. Download and publish", text: "The print PDF, the full cover and the EPUB, with a checklist for KDP.", img: img/landing-en-step3.webp, alt: "The buttons to download the print PDF, the cover and the EPUB." }
 compare:
   label: "Comparison"
   head: ["", "Book Studio", "Vellum", "Atticus", "Kindle Create"]

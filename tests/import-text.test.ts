@@ -68,3 +68,18 @@ describe("projectFromText", () => {
     expect(project).toMatchObject({ id: "p", name: "Mi libro", updatedAt: 5, meta: { title: "Mi libro", language: "es" } });
   });
 });
+
+describe("first-book guide", () => {
+  it("starts on step 1 only when asked, and old books have no guide", async () => {
+    const { projectFromText } = await import("../src/project/import-text");
+    const { onboardingOf } = await import("../src/project/model");
+    const plain = projectFromText("# Uno\n\na\n", { id: "p1", now: 1 }).project;
+    const guided = projectFromText("# Uno\n\na\n", { id: "p2", now: 1, guide: true }).project;
+    expect(onboardingOf(plain)).toBe("done");
+    expect(onboardingOf(guided)).toBe(1);
+    expect(onboardingOf({ ...guided, onboarding: 3 })).toBe(3);
+    expect(onboardingOf({ ...guided, onboarding: "done" })).toBe("done");
+    // Something odd in storage never traps a person in the guide.
+    expect(onboardingOf({ ...guided, onboarding: 9 as unknown as 1 })).toBe("done");
+  });
+});

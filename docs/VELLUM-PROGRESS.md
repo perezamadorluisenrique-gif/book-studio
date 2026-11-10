@@ -15,7 +15,7 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 | B | T1.6 Velocidad | hecha (metas de tiempo en frío no alcanzadas del todo, ver desviaciones) | PR «cached, off-thread layout» |
 | B | T2.0 Lo gratis nuevo | hecha (falta el PR de la lista de Pro en la web, otro repositorio) | PR «every trim, the full cover and footnotes are free» |
 | B | T2.1 Página de inicio | hecha | PR «landing page and drop-your-Word first screen» |
-| B | T2.2 Asistente de 4 pasos | sin empezar | |
+| B | T2.2 Asistente de 4 pasos | hecha | PR «four-step first-book wizard» |
 | C | T3.1 a T3.5 Word sin pérdidas | sin empezar | |
 | D | T4.1 a T4.5 Editor de cubiertas | sin empezar | |
 | E | T5.1 a T5.5 Estilos y paridad | sin empezar | |
@@ -117,6 +117,14 @@ En la misma máquina y momento, `main` medía 816, 928, 594, 1036 y 601 ms. Capt
 - T2.1: las capturas de los pasos 2 y 3 son del estado actual de la app (vista previa y barra de exportar); T2.2 las rehace con el asistente (`npm run landing-shots -- --app`).
 - T2.1: en la app, el inicio sin libros muestra el titular, la zona «Suelta aquí tu Word» y el ejemplo en vez de abrir el libro de muestra (`?sample=` sigue abriéndolo; `?start=import` deja el foco en la zona). Dos carreras arregladas de paso: la lista de libros no se vuelve a dibujar encima de lo que alguien empieza a escribir.
 
+- T2.2 (2026-11-10): el asistente (`src/web/wizard.ts`) sale solo tras importar desde la zona «Suelta aquí tu Word» (`importManuscript({ guide: true })` pone `project.onboarding = 1`). Los libros sin el campo (antiguos, copias, carpetas, el formulario de importar) cuentan como `"done"` (`onboardingOf` en `model.ts`); no hace falta migrar nada guardado. El paso se guarda al instante, el resto de cambios con el retardo de siempre.
+- T2.2, desviación: lo que la importación de Word dejó fuera se muestra en el paso 1 en vez de en una ventana (así no cuenta como clic). El formulario de importar de «Mis libros» sigue con su ventana.
+- T2.2, desviación: miniaturas de estilo: se componen solo los primeros ~3500 caracteres del primer capítulo con texto (no el libro entero), la apertura del capítulo, a 110 px de ancho (`src/web/theme-thumbs.ts`). Salen en paralelo a la vista previa y no la retrasan.
+- T2.2, desviación: el paso 4 muestra la lista de comprobación entera (`renderChecklist` en `publish.ts`, compartida con la ventana) debajo de los tres botones de descarga; se rehace cuando termina cada maquetación (`Studio.onBuilt`).
+- T2.2, e2e «del Word al PDF»: un `.docx` de 60.000 palabras en 30 capítulos (hecho en la prueba con `jszip`) pasa por los 4 pasos con **4 clics** (Siguiente ×3 y Descargar PDF; el título se escribe) y sale un PDF de 186 páginas que pasa `checkKdpPdf`. Tiempo medido en esta máquina: 5,0 a 5,9 s de la caída del archivo a la descarga (el límite de la prueba es 60 s). Vídeo de 35 s: `/mnt/project-files/book-studio-vellum/t22-del-word-al-pdf.webm`.
+- T2.2: las capturas de los pasos 2 y 3 de la portada (`site/img/landing-*-step2/3.webp`) son ahora del asistente.
+- Arreglo de paso: «Mis libros» no se vuelve a dibujar si ya está a la vista, para no borrar lo que se acaba de escribir.
+
 Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Diario
@@ -125,7 +133,7 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilo B, orden T2.2 (asistente de 4 pasos).
+Hilo C, órdenes T3.1 a T3.5 (Word sin pérdidas). Antes de empezar: leer `src/project/import-docx.ts` entero y `tests/fixtures/docx/README.md`. Hilo B terminado.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
@@ -136,3 +144,4 @@ Hilo B, orden T2.2 (asistente de 4 pasos).
 - 2026-11-10: T1.6 hecha (caché, motor más rápido y hilo aparte de la web). Pruebas locales: lint, typecheck, 359 tests, build, build:web, e2e 47/47; calidad sin cambios.
 - 2026-11-10: T2.0 hecha. Gratis para siempre: los 12 formatos, los cinco temas (Classic, Modern, Elegant, Non-fiction, Large Print), notas al pie, cubierta completa, revisión previa de KDP, hoja de datos y letra grande; Pro conserva temas de género, índice, ediciones, cajas de libros y paquete de EPUB accesible. `FREE_SINCE_2026_11` en `tests/entitlements.test.ts` impide volver a cobrarlo. En la edición comunitaria (sin Pro) la pestaña KDP ahora se ve. Pruebas locales: lint, typecheck, 361 tests, build, build:web, e2e 48/48 (una prueba nueva exporta con el plan gratis un PDF 7 × 10 con notas al pie y la cubierta sin pantalla de Pro).
 - 2026-11-10: T2.1 hecha. Portada de venta sin JavaScript en `/es/` y `/en/`, pantalla vacía con zona para soltar el Word, `?start=import`. Pruebas locales: lint, typecheck, 377 tests, build, build:web, e2e 53/53 (nuevas: soltar un .docx, elegir archivo, `?start=import`, axe en la pantalla vacía y en `/es/` y `/en/`).
+- 2026-11-10: T2.2 hecha. Asistente de 4 pasos tras soltar el Word (sube, estilo con miniaturas, datos, descarga con lista de comprobación), con «Saltar» y paso guardado en el libro. Pruebas locales: lint, typecheck, 380 tests, build, build:web, e2e 57/57 (nuevas: del Word al PDF con 60.000 palabras en 4 clics, miniaturas y estilo, recarga y Saltar, axe en los 4 pasos en escritorio y móvil).
