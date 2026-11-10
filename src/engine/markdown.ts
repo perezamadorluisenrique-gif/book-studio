@@ -348,10 +348,12 @@ async function convertBlock(t: Token, ctx: ParseContext, src: SourceRef, blocks:
       const inner = await convertBlocks(bq.tokens, ctx, src.line);
       // Obsidian callouts: drop the [!type] marker, keep any title as a bold line.
       const first = inner[0];
+      let callout = false;
       if (first?.kind === "paragraph" && first.inlines[0]?.kind === "text") {
         const lead = first.inlines[0];
         const m = /^\[!(\w+)\][+-]?[ \t]*([^\n]*)\n?/.exec(lead.text);
         if (m) {
+          callout = true;
           const remaining = lead.text.slice(m[0].length);
           const restInlines = [...(remaining ? [{ ...lead, text: remaining }] : []), ...first.inlines.slice(1)];
           const replacement: Block[] = [];
@@ -360,7 +362,7 @@ async function convertBlock(t: Token, ctx: ParseContext, src: SourceRef, blocks:
           inner.splice(0, 1, ...replacement);
         }
       }
-      blocks.push({ kind: "blockquote", id: ctx.nextId(), blocks: inner, src });
+      blocks.push({ kind: "blockquote", id: ctx.nextId(), blocks: inner, src, ...(callout ? { callout } : {}) });
       return;
     }
     case "list": {

@@ -6,6 +6,7 @@
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { parseFaceKey, type FontFile, type FontSet } from "./fonts";
+import { orientedMatrix } from "./images";
 import type { Book } from "./model";
 import type { Layout } from "./layout/types";
 
@@ -147,7 +148,8 @@ export async function writePdf(book: Book, layout: Layout, fonts: FontSet, opts:
         }
         ops.push("q");
         if (d.clip) ops.push(`${fmt(d.clip.x + offX)} ${fmt(H + b - d.clip.y - d.clip.h)} ${fmt(d.clip.w)} ${fmt(d.clip.h)} re W n`);
-        ops.push(`${fmt(d.w)} 0 0 ${fmt(d.h)} ${fmt(d.x + offX)} ${fmt(H + b - d.y - d.h)} cm`, `${name} Do`, "Q");
+        const m = orientedMatrix(book.images.get(d.path)?.orientation ?? 1, d.x + offX, H + b - d.y - d.h, d.w, d.h);
+        ops.push(`${m.map(fmt).join(" ")} cm`, `${name} Do`, "Q");
       } else if (d.kind === "rect") {
         endText();
         const paint = d.fill && d.stroke ? "B" : d.fill ? "f" : "S";

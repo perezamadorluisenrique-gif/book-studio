@@ -45,6 +45,19 @@ describe("print layout", { timeout: 30_000 }, () => {
     expect(layout.toc.length).toBeGreaterThanOrEqual(24);
   });
 
+  it("sets every paragraph of a callout flush left, unlike a plain quote", async () => {
+    const para = (n: number) => `Paragraph ${n} of the quote has enough words to wrap onto a second line, so the first line of it can be told apart.`;
+    const body = `# One\n\nIntro.\n\n> ${["", "", ""].map((_, i) => para(i + 1)).join("\n>\n> ")}\n`;
+    const starts = async (note: string) => {
+      const book = await loadBook(memVault({ "Book.md": "---\nbook: true\ntitle: Tiny\n---\n- [[One]]\n", "One.md": note }), "Book.md", {});
+      const layout = await layoutHyphenated(book, fonts);
+      const xs = layout.pages.flatMap((pg) => pg.draws).filter((d) => d.kind === "text" && /Paragraph/.test(d.text)).map((d) => (d.kind === "text" ? Math.round(d.x * 100) : 0));
+      return new Set(xs).size;
+    };
+    expect(await starts(body)).toBeGreaterThan(1); // a plain quote indents its later paragraphs
+    expect(await starts(body.replace("> Paragraph 1", "> [!quote]\n> Paragraph 1"))).toBe(1);
+  });
+
   it("starts every chapter on a right-hand page by default", async () => {
     const layout = await layoutOz();
     const openers = layout.pages.filter((p) => p.role === "opener");
