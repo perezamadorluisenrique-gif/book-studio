@@ -12,46 +12,46 @@
   },
   "leyendas": {
     "pages": 128,
-    "shortPages": 32,
+    "shortPages": 28,
     "unevenSpreads": 6,
     "ladders": 0,
     "veryLoose": 0,
-    "loose": 1,
+    "loose": 0,
     "widows": 0,
     "orphans": 0,
     "hyphenTurns": 0
   },
   "dialogo-es": {
     "pages": 82,
-    "shortPages": 13,
-    "unevenSpreads": 1,
-    "ladders": 0,
-    "veryLoose": 0,
-    "loose": 0,
-    "widows": 0,
-    "orphans": 0,
-    "hyphenTurns": 1
-  },
-  "ensayo-es": {
-    "pages": 82,
-    "shortPages": 4,
+    "shortPages": 10,
     "unevenSpreads": 0,
     "ladders": 0,
     "veryLoose": 0,
-    "loose": 0,
+    "loose": 1,
     "widows": 0,
     "orphans": 0,
-    "hyphenTurns": 3
+    "hyphenTurns": 2
   },
-  "largo-de": {
-    "pages": 60,
+  "ensayo-es": {
+    "pages": 82,
     "shortPages": 2,
     "unevenSpreads": 0,
     "ladders": 0,
     "veryLoose": 0,
-    "loose": 2,
+    "loose": 1,
     "widows": 0,
     "orphans": 0,
-    "hyphenTurns": 3
+    "hyphenTurns": 1
+  },
+  "largo-de": {
+    "pages": 60,
+    "shortPages": 0,
+    "unevenSpreads": 0,
+    "ladders": 0,
+    "veryLoose": 0,
+    "loose": 3,
+    "widows": 0,
+    "orphans": 0,
+    "hyphenTurns": 2
   }
 }

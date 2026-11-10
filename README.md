@@ -113,6 +113,8 @@ Chapter notes are ordinary Markdown:
 
 The studio's toolbar can override the theme and trim for a single export without editing the note.
 
+**Hyphenation.** Words are split by language patterns (Spanish, Catalan, Galician, Basque, English, French, German, Italian, Portuguese and Dutch), never in capitalised acronyms or in words with digits, and a name in the middle of a sentence is split less willingly. To say where a word may split, put a soft hyphen (U+00AD) there: the word then splits only at those points. To keep a word whole, put a word joiner (U+2060) anywhere inside it. Neither character is printed.
+
 ## Importing a manuscript (web app)
 
 In **My books**, choose *Import a manuscript* and pick a Word (`.docx`), `.md` or `.txt` file, or paste the text. It becomes a new book; every `# Heading`, "Chapter 3" or "Capítulo 3" line starts a chapter. From Word it keeps headings, bold and italic, lists, quotes, footnotes, links, page breaks and PNG or JPG pictures with their alt text. It leaves out tables, text boxes, equations, comments and the table of contents, and a report lists what was left out. Old `.doc` files are not read: save them as `.docx` first.

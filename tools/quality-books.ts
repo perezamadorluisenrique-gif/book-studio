@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadBook } from "../src/engine/book";
 import type { FontSet } from "../src/engine/fonts";
+import { loadHyphenator } from "../src/engine/hyphenate";
 import { layoutBook } from "../src/engine/layout/index";
 import type { Layout, Quality } from "../src/engine/layout/types";
 import { isManifestFrontmatter } from "../src/engine/manifest";
@@ -31,8 +32,9 @@ export async function measureBook(root: string, dir: string, fonts: FontSet): Pr
   const manifest = vault.paths.find((p) => p.endsWith(".md") && isManifestFrontmatter(splitFrontmatter(readFileSync(join(abs, p), "utf8")).frontmatter));
   if (!manifest) throw new Error(`No book found in ${dir}`);
   const book = await loadBook(vault, manifest, {});
+  const hyphenator = await loadHyphenator(book.meta.language);
   const t0 = performance.now();
-  const layout: Layout = layoutBook(book, fonts);
+  const layout: Layout = layoutBook(book, fonts, { hyphenator });
   const ms = Math.round(performance.now() - t0);
   return { book: dir.replace(/^.*\//, ""), pages: layout.pages.length, quality: layout.quality, ms };
 }

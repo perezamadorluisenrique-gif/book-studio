@@ -104,6 +104,8 @@ const HANG_LEFT: Record<string, number> = { "‘": 0.6, "“": 0.6, "'": 0.6, '"
 /** Letters may grow or shrink by this fraction of their width to even out the spaces. */
 const EXPAND = 0.02;
 const HYPHEN_PENALTY = 50;
+/** A capitalised word in mid-sentence is probably a name; splitting one reads worse. */
+const NAME_HYPHEN_PENALTY = 150;
 const DASH_PENALTY = 100;
 
 export class ParagraphSetter {
@@ -237,6 +239,7 @@ export class ParagraphSetter {
     if (indent > 0) items.push({ type: "box", width: indent, data: { text: "", face: "", size: 0, tracking: 0, dy: 0, offset: 0 } });
     let words = 0;
     const lead = opts.leadInWords ?? 0;
+    let prevWord = "";
     for (const atom of atoms) {
       if (atom.kind === "space") {
         const prev = items[items.length - 1];
@@ -257,8 +260,12 @@ export class ParagraphSetter {
         continue;
       }
       const smallCapsLead = words < lead;
+      const text = atom.pieces.map((p) => p.text).join("");
+      // A name: starts with a capital, is not the first word, and doesn't follow the end of a sentence.
+      const name = words > 0 && /^\p{Lu}/u.test(text) && !/[.!?…]["'”’»)\]]*$/.test(prevWord);
+      prevWord = text;
       words++;
-      this.wordItems(atom.pieces, base, smallCapsLead, !!opts.hyphenate, space, items, !!opts.micro && !ragged);
+      this.wordItems(atom.pieces, base, smallCapsLead, !!opts.hyphenate, space, items, !!opts.micro && !ragged, name ? NAME_HYPHEN_PENALTY : HYPHEN_PENALTY);
     }
     while (items.length && items[items.length - 1].type === "glue") items.pop();
     items.push({ type: "penalty", width: 0, penalty: INFINITE_PENALTY, flagged: false });
@@ -267,13 +274,18 @@ export class ParagraphSetter {
     return items;
   }
 
-  private wordItems(pieces: WordPiece[], base: RunStyle, smallCapsLead: boolean, hyphenate: boolean, space: number, items: Item[], micro: boolean): void {
+  private wordItems(pieces: WordPiece[], base: RunStyle, smallCapsLead: boolean, hyphenate: boolean, space: number, items: Item[], micro: boolean, hyphenPenalty: number): void {
     const styler = this.styler;
     const word = pieces.map((p) => p.text).join("");
     // Break opportunities, as indices into `word` → kind.
     const points = new Map<number, "hyphen" | "explicit" | "dash" | "zw">();
+    // The author's controls: a soft hyphen (U+00AD) marks the only places a word may be split, and a word
+    // joiner (U+2060) anywhere in it forbids splitting it at all. Words with digits are never hyphenated.
+    const noSplit = word.includes("\u2060");
+    const soft = word.includes("\u00AD");
+    const hasDigit = /\p{N}/u.test(word);
     const anyCode = pieces.some((p) => p.style.code || p.style.href?.includes("://"));
-    for (let i = 0; i < word.length; i++) {
+    for (let i = 0; i < word.length && !noSplit; i++) {
       const ch = word[i];
       if (i > 0 && i < word.length - 1) {
         if (ch === "-" && /\p{L}/u.test(word[i - 1]) && /\p{L}/u.test(word[i + 1])) points.set(i + 1, "explicit");
@@ -283,7 +295,7 @@ export class ParagraphSetter {
       if (ch === "­") points.set(i, "hyphen");
       if (ch === "​") points.set(i, "zw");
     }
-    if (hyphenate && this.hyphenator && !anyCode) {
+    if (hyphenate && this.hyphenator && !anyCode && !noSplit && !soft && !hasDigit) {
       const re = /\p{L}+/gu;
       for (let m = re.exec(word); m; m = re.exec(word)) {
         if (m[0].length < 5) continue;
@@ -301,7 +313,7 @@ export class ParagraphSetter {
       const cuts = [...points.keys()].filter((p) => p > start && p < end).sort((a, b) => a - b);
       let segStart = start;
       for (const cut of [...cuts, end]) {
-        const raw = word.slice(segStart, cut).replace(/[\u00AD\u200B]/g, "");
+        const raw = word.slice(segStart, cut).replace(/[\u00AD\u200B\u2060]/g, "");
         this.segmentBoxes(raw, rs, dy, piece, piece.offset + (segStart - start), space, items, micro);
         const kind = cut < end ? points.get(cut) : undefined;
         if (kind === "hyphen") {
@@ -310,13 +322,13 @@ export class ParagraphSetter {
           items.push({
             type: "penalty",
             width: styler.width("-", rs),
-            penalty: HYPHEN_PENALTY,
+            penalty: hyphenPenalty,
             flagged: true,
             pr: micro ? HANG_RIGHT["-"] * styler.width("-", rs) : undefined,
             data: { hyphen: { text: "-", face: p.face, size: p.size, tracking: p.tracking, dy, offset: 0 } },
           });
         } else if (kind === "explicit") {
-          items.push({ type: "penalty", width: 0, penalty: HYPHEN_PENALTY, flagged: true });
+          items.push({ type: "penalty", width: 0, penalty: hyphenPenalty, flagged: true });
         } else if (kind === "dash") {
           items.push({ type: "penalty", width: 0, penalty: DASH_PENALTY, flagged: false });
         } else if (kind === "zw") {
@@ -332,13 +344,13 @@ export class ParagraphSetter {
         items.push({
           type: "penalty",
           width: styler.width("-", rs),
-          penalty: HYPHEN_PENALTY,
+          penalty: hyphenPenalty,
           flagged: true,
           pr: micro ? HANG_RIGHT["-"] * styler.width("-", rs) : undefined,
           data: { hyphen: { text: "-", face: parts[0].face, size: parts[0].size, tracking: parts[0].tracking, dy, offset: 0 } },
         });
       } else if (kind && kind !== "hyphen" && end < word.length) {
-        items.push({ type: "penalty", width: 0, penalty: kind === "dash" ? DASH_PENALTY : kind === "zw" ? 0 : HYPHEN_PENALTY, flagged: kind === "explicit" });
+        items.push({ type: "penalty", width: 0, penalty: kind === "dash" ? DASH_PENALTY : kind === "zw" ? 0 : hyphenPenalty, flagged: kind === "explicit" });
       }
     }
   }

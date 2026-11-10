@@ -2,7 +2,7 @@
 // with running heads, folios and KDP's page-count–dependent gutter.
 
 import type { FontSet } from "../fonts";
-import { hyphenatorFor } from "../hyphenate";
+import type { Hyphenator } from "../hyphenate";
 import { chapterLabel, partHeading, roman, strings } from "../i18n";
 import { buildIndex, parseIndexSpecs } from "../index-terms";
 import { INDEX_ID, NOTES_ID, notesHeadingId, type Book, type Chapter, type Matter, type Note } from "../model";
@@ -29,18 +29,23 @@ interface RawPage {
 
 const PT = 72;
 
-export function layoutBook(book: Book, fonts: FontSet): Layout {
+export interface LayoutOptions {
+  /** The hyphenator for the book's language (see `loadHyphenator`); without one nothing is hyphenated. */
+  hyphenator?: Hyphenator | null;
+}
+
+export function layoutBook(book: Book, fonts: FontSet, options: LayoutOptions = {}): Layout {
   const settings = book.settings;
   const theme = themeById(settings.theme);
   const trim = trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!;
   const minOut = kdpMinOutside(settings.bleed);
   let inside = Math.max(theme.margins.inside, kdpMinInside(1));
-  let result = compose(book, fonts, inside);
+  let result = compose(book, fonts, inside, options.hyphenator ?? null);
   for (let pass = 0; pass < 3; pass++) {
     const need = kdpMinInside(result.pages.length);
     if (need <= inside + 1e-9) break;
     inside = need;
-    result = compose(book, fonts, inside);
+    result = compose(book, fonts, inside, options.hyphenator ?? null);
   }
   const outside = Math.max(theme.margins.outside, minOut);
   const top = Math.max(theme.margins.top, minOut);
@@ -87,7 +92,7 @@ export function measureQuality(pages: LayoutPage[]): Quality {
   return q;
 }
 
-function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutPage[]; toc: TocEntry[]; warnings: LayoutWarning[]; bodyStart: number } {
+function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphenator | null): { pages: LayoutPage[]; toc: TocEntry[]; warnings: LayoutWarning[]; bodyStart: number } {
   const { settings, meta } = book;
   const theme = themeById(settings.theme);
   const trim = trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!;
@@ -106,7 +111,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number): { pages: LayoutP
   const warnings: LayoutWarning[] = [];
   const styler = new Styler(fonts, lang);
   const hyphenate = settings.hyphenate && theme.body.hyphenate;
-  const setter = new ParagraphSetter(styler, hyphenate ? hyphenatorFor(lang) : null);
+  const setter = new ParagraphSetter(styler, hyphenate ? hyphenator : null);
   const noteNumbers = new Map<string, number>();
   for (const ch of book.chapters) for (const n of ch.notes) noteNumbers.set(n.id, n.number);
   const env: FlowEnv = {

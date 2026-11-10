@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { loadBook } from "../src/engine/book";
-import { layoutBook } from "../src/engine/layout/index";
 import { NO_BREAK, paginate, type ParaGroup, type VBox, type VItem } from "../src/engine/layout/paginate";
 import { testFonts } from "./helpers/fonts";
+import { layoutHyphenated } from "./helpers/layout";
 import { memVault } from "./helpers/memVault";
 
 const H = 10;
@@ -85,7 +85,7 @@ describe("headings stay with the text", () => {
       const body = Array.from({ length: before }, (_, i) => `${sentence} ${i}. ${sentence}`).join("\n\n");
       const after = Array.from({ length: 12 }, (_, i) => `${sentence} ${i}. ${sentence}`).join("\n\n");
       const vault = memVault({ "Book.md": "---\nbook: true\ntitle: T\nlanguage: es\n---\n- [[One]]\n", "One.md": `# One\n\n${body}\n\n## Zzsubhead\n\n${after}` });
-      const layout = layoutBook(await loadBook(vault, "Book.md"), fonts);
+      const layout = await layoutHyphenated(await loadBook(vault, "Book.md"), fonts);
       const bottom = layout.heightPt - layout.margins.bottom + 0.5;
       for (const page of layout.pages) {
         const texts = page.draws.flatMap((d) => (d.kind === "text" && d.y <= bottom ? [d] : []));

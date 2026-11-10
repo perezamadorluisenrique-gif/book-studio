@@ -1,17 +1,18 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadBook } from "../src/engine/book";
 import type { FontSet } from "../src/engine/fonts";
-import { layoutBook, type Layout } from "../src/engine/layout/index";
+import type { Layout } from "../src/engine/layout/index";
 import type { BookSettings } from "../src/engine/model";
 import { kdpMinInside, KDP_MIN_PAGES } from "../src/engine/trims";
 import { testFonts } from "./helpers/fonts";
+import { layoutHyphenated } from "./helpers/layout";
 import { fsVault } from "./helpers/fsVault";
 import { memVault } from "./helpers/memVault";
 
 const OZ = "The Wonderful Wizard of Oz.md";
 let fonts: FontSet;
 const oz = fsVault(new URL("../sample/oz", import.meta.url).pathname);
-const layoutOz = async (overrides: Partial<BookSettings> = {}) => layoutBook(await loadBook(oz, OZ, overrides), fonts);
+const layoutOz = async (overrides: Partial<BookSettings> = {}) => layoutHyphenated(await loadBook(oz, OZ, overrides), fonts);
 
 beforeAll(async () => {
   fonts = await testFonts();
@@ -73,7 +74,7 @@ describe("print layout", { timeout: 30_000 }, () => {
 
   it("pads a short book to KDP's minimum and says so", async () => {
     const vault = memVault({ "Book.md": "---\nbook: true\ntitle: Tiny\n---\n- [[One]]\n", "One.md": "# One\n\nA line." });
-    const layout = layoutBook(await loadBook(vault, "Book.md"), fonts);
+    const layout = await layoutHyphenated(await loadBook(vault, "Book.md"), fonts);
     expect(layout.pages.length).toBe(KDP_MIN_PAGES);
     expect(layout.warnings.map((w) => w.message).join(" ")).toMatch(/at least 24 pages/);
   });
@@ -86,7 +87,7 @@ describe("print layout", { timeout: 30_000 }, () => {
 
   it("sets Leyendas without a ladder of three hyphens in a row", async () => {
     const leyendas = fsVault(new URL("../sample/leyendas", import.meta.url).pathname);
-    const layout = layoutBook(await loadBook(leyendas, "Leyendas y rimas.md"), fonts);
+    const layout = await layoutHyphenated(await loadBook(leyendas, "Leyendas y rimas.md"), fonts);
     expect(layout.quality.ladders).toBe(0);
     expect(layout.quality.lines).toBeGreaterThan(3000);
   });
@@ -113,7 +114,7 @@ describe("print layout", { timeout: 30_000 }, () => {
   });
 
   it("leaves no widows or orphans and no uneven facing pages beyond the baseline in the samples", async () => {
-    const leyendas = layoutBook(await loadBook(fsVault(new URL("../sample/leyendas", import.meta.url).pathname), "Leyendas y rimas.md"), fonts);
+    const leyendas = await layoutHyphenated(await loadBook(fsVault(new URL("../sample/leyendas", import.meta.url).pathname), "Leyendas y rimas.md"), fonts);
     for (const layout of [await layoutOz(), leyendas]) {
       expect(layout.quality.widows).toBe(0);
       expect(layout.quality.orphans).toBe(0);
