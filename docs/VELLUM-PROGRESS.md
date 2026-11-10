@@ -133,6 +133,9 @@ En la misma máquina y momento, `main` medía 816, 928, 594, 1036 y 601 ms. Capt
 - T4.1, modelo: `CoverDesign` en `src/engine/cover/design.ts` (fondo de color o imagen de toda la hoja; capas de texto, imagen y bloque de color, con caja en fracciones del panel, `bleed` y texto del lomo girado). JSON en `Cover design.json`, enlazado con `cover-design:` en la nota del libro; `Project.coverDesign` lo guarda y `to-vault`/`from-vault` lo llevan y traen. `renderDesign` (`render-design.ts`) dibuja y avisa: texto fuera de la zona segura, sobre el código de barras, que no cabe, imagen bajo 300 ppi.
 - T4.1, desviación: la orden pide que el diseño actual pase a ser la plantilla `simple`. No se hizo: el diseño actual se queda como cubierta por defecto (sin `cover-design`) con su código propio, porque pasarlo a capas cambia sus cifras sin ganar nada; la plantilla equivalente nace en T4.2. El degradado y el fondo generativo (`gradient`, `generative`) se añaden en T4.2, con sus tipos de dibujo. El tipo viejo `CoverDesign` de `model.ts` pasó a llamarse `CoverTexts` (el campo sigue siendo `meta.coverDesign`).
 
+- T4.2 (2026-11-10): 20 plantillas (8 gratis, 12 Pro) en `src/engine/cover/templates.ts`; 6 familias de fondo generativo en `generative.ts` (semilla = título + autor + variante, generador propio repetible); dos tipos de dibujo nuevos, `path` y `gradient`, en `types.ts`, `pdf.ts` (degradado con sombreado axial) y `canvas.ts`. Prueba: 20 plantillas × 3 formatos (5×8, 6×9, 8,5×11) × 3 grosores (120, 300, 600 páginas) sin avisos de zona segura, código de barras ni texto que no cabe, y contraste de 4,5 a 1 o más contra todo lo que hay debajo. Revisado a ojo en una hoja de contacto.
+- T4.2, desviaciones: el degradado y los patrones usan colores sólidos, sin transparencia (la transparencia llega con T4.3 si hace falta para oscurecer imágenes). Las plantillas con imagen (`picture-band`, `picture-card`) usan la portada del libro y, sin ella, quedan solo con el bloque de color. Con menos de 100 páginas el lomo es tan fino que el texto baja a 4–5 pt y puede avisar de que no cabe; es lo que debe pasar. Nombres en inglés y español en cada plantilla.
+
 Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Diario
@@ -141,7 +144,7 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilo D, órdenes T4.2 a T4.5 (editor de cubiertas). T4.1 hecha. Hilos A, B y C terminados.
+Hilo D, órdenes T4.3 a T4.5 (editor de cubiertas). T4.1 y T4.2 hechas. Hilos A, B y C terminados.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
@@ -154,3 +157,4 @@ Hilo D, órdenes T4.2 a T4.5 (editor de cubiertas). T4.1 hecha. Hilos A, B y C t
 - 2026-11-10: T2.1 hecha. Portada de venta sin JavaScript en `/es/` y `/en/`, pantalla vacía con zona para soltar el Word, `?start=import`. Pruebas locales: lint, typecheck, 377 tests, build, build:web, e2e 53/53 (nuevas: soltar un .docx, elegir archivo, `?start=import`, axe en la pantalla vacía y en `/es/` y `/en/`).
 - 2026-11-10: T2.2 hecha. Asistente de 4 pasos tras soltar el Word (sube, estilo con miniaturas, datos, descarga con lista de comprobación), con «Saltar» y paso guardado en el libro. Pruebas locales: lint, typecheck, 380 tests, build, build:web, e2e 57/57 (nuevas: del Word al PDF con 60.000 palabras en 4 clics, miniaturas y estilo, recarga y Saltar, axe en los 4 pasos en escritorio y móvil).
 - 2026-11-10: T4.1 hecha. Cubierta por capas con su JSON en el proyecto, `renderDesign` y avisos; números de KDP comprobados (barcode sin fuente). Pruebas locales: ver PR.
+- 2026-11-10: T4.2 hecha. 20 plantillas, 6 fondos generativos, dibujos `path` y `gradient`.

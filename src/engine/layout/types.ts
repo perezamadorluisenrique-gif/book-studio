@@ -63,7 +63,43 @@ export interface RectDraw {
   dash?: number[];
 }
 
-export type Draw = TextDraw | ImageDraw | RuleDraw | RectDraw;
+/** One step of a path: move, line, cubic curve or close. Coordinates are points, as everywhere else. */
+export type PathOp = ["M" | "L", number, number] | ["C", number, number, number, number, number, number] | ["Z"];
+
+/** A filled and/or outlined path (cover art). Filled paths use the non-zero rule. */
+export interface PathDraw {
+  kind: "path";
+  ops: PathOp[];
+  fill?: Rgb;
+  stroke?: Rgb;
+  strokeWidth?: number;
+}
+
+/** A rectangle filled with a two-colour gradient; `angle` 0 runs left to right, 90 top to bottom. */
+export interface GradientDraw {
+  kind: "gradient";
+  x: number;
+  /** Top edge. */
+  y: number;
+  w: number;
+  h: number;
+  from: Rgb;
+  to: Rgb;
+  angle: number;
+}
+
+export type Draw = TextDraw | ImageDraw | RuleDraw | RectDraw | PathDraw | GradientDraw;
+
+/** The two ends of a gradient's axis across a box, in the box's own (screen) coordinates. */
+export function gradientAxis(g: { x: number; y: number; w: number; h: number; angle: number }): [number, number, number, number] {
+  const r = (g.angle * Math.PI) / 180;
+  const dx = Math.cos(r);
+  const dy = Math.sin(r);
+  const half = (Math.abs(dx) * g.w + Math.abs(dy) * g.h) / 2;
+  const cx = g.x + g.w / 2;
+  const cy = g.y + g.h / 2;
+  return [cx - dx * half, cy - dy * half, cx + dx * half, cy + dy * half];
+}
 
 export type PageRole =
   | "blank"

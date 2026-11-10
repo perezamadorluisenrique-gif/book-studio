@@ -4,7 +4,7 @@
 
 import { parseFaceKey, type FontSet } from "../engine/fonts";
 import type { ImageAsset } from "../engine/model";
-import type { Layout, LayoutPage } from "../engine/layout/types";
+import { gradientAxis, type Layout, type LayoutPage } from "../engine/layout/types";
 
 export interface PaintOptions {
   /** CSS pixels per point. */
@@ -129,6 +129,35 @@ export class PagePainter {
           ctx.setLineDash(d.dash ?? []);
           ctx.strokeRect(d.x, d.y, d.w, d.h);
         }
+        ctx.restore();
+      } else if (d.kind === "path") {
+        ctx.save();
+        ctx.beginPath();
+        for (const o of d.ops) {
+          if (o[0] === "M") ctx.moveTo(o[1], o[2]);
+          else if (o[0] === "L") ctx.lineTo(o[1], o[2]);
+          else if (o[0] === "C") ctx.bezierCurveTo(o[1], o[2], o[3], o[4], o[5], o[6]);
+          else ctx.closePath();
+        }
+        const css = (c: readonly number[]) => `rgb(${c.map((v) => Math.round(v * 255)).join(",")})`;
+        if (d.fill) {
+          ctx.fillStyle = css(d.fill);
+          ctx.fill();
+        }
+        if (d.stroke || !d.fill) {
+          ctx.strokeStyle = d.stroke ? css(d.stroke) : ink;
+          ctx.lineWidth = d.strokeWidth ?? 0.5;
+          ctx.stroke();
+        }
+        ctx.restore();
+      } else if (d.kind === "gradient") {
+        const [x0, y0, x1, y1] = gradientAxis(d);
+        const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+        grad.addColorStop(0, `rgb(${d.from.map((c) => Math.round(c * 255)).join(",")})`);
+        grad.addColorStop(1, `rgb(${d.to.map((c) => Math.round(c * 255)).join(",")})`);
+        ctx.save();
+        ctx.fillStyle = grad;
+        ctx.fillRect(d.x, d.y, d.w, d.h);
         ctx.restore();
       } else {
         ctx.lineWidth = d.width;

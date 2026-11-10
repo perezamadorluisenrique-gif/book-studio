@@ -34,6 +34,13 @@ export const PRO_FEATURES: Record<PaidFeature, string> = {
   accessiblePack: "Accessible EPUB pack: image-description audit, conformance claim and report",
 };
 
+/** The eight free cover templates (the others are Pro). Listed here so a test can hold the line. */
+export const FREE_COVER_TEMPLATE_IDS: readonly string[] = ["classic-navy", "classic-cream", "modern-bold", "clean-white", "red-band", "green-frame", "dusk", "picture-band"];
+
+export function coverTemplateAllowed(plan: Plan, id: string): boolean {
+  return plan === "pro" || FREE_COVER_TEMPLATE_IDS.includes(id);
+}
+
 export function themeAllowed(plan: Plan, theme: string): boolean {
   return plan === "pro" || FREE_THEMES.includes(theme);
 }

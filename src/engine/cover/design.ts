@@ -6,8 +6,16 @@
 
 export type PanelId = "back" | "spine" | "front";
 
+export const GEN_FAMILIES = ["stripes", "circles", "triangles", "waves", "blocks", "constellation"] as const;
+export type GenFamily = (typeof GEN_FAMILIES)[number];
+
+/** `color` is always the base colour: the whole fill for "color", the first stop of a gradient, the ground under a pattern. */
 export type CoverBackground =
   | { kind: "color"; color: string }
+  /** `color` to `to`, `angle` degrees: 0 left to right, 90 top to bottom. */
+  | { kind: "gradient"; color: string; to: string; angle: number }
+  /** A pattern drawn from `seed` in the colours of `palette` over `color`. The same seed always gives the same drawing. */
+  | { kind: "generative"; color: string; family: GenFamily; seed: string; palette: string[] }
   /** One picture over the whole flat sheet (a wraparound image made elsewhere). */
   | { kind: "image"; color: string; target: string; alt: string; path?: string };
 
@@ -98,7 +106,16 @@ export function parseCoverDesign(raw: unknown): ParsedDesign {
 
   const b = o.background && typeof o.background === "object" ? (o.background as Record<string, unknown>) : {};
   const bgColor = color(b.color, "#ffffff");
-  const background: CoverBackground = b.kind === "image" && str(b.target) ? { kind: "image", color: bgColor, target: str(b.target), alt: str(b.alt) } : { kind: "color", color: bgColor };
+  const family = GEN_FAMILIES.find((f) => f === b.family);
+  const palette = (Array.isArray(b.palette) ? b.palette : []).map((c) => color(c, "")).filter(Boolean).slice(0, 5);
+  const background: CoverBackground =
+    b.kind === "image" && str(b.target)
+      ? { kind: "image", color: bgColor, target: str(b.target), alt: str(b.alt) }
+      : b.kind === "gradient"
+        ? { kind: "gradient", color: bgColor, to: color(b.to, bgColor), angle: clamp(num(b.angle, 90), -360, 360) }
+        : b.kind === "generative" && family && palette.length
+          ? { kind: "generative", color: bgColor, family, seed: str(b.seed), palette }
+          : { kind: "color", color: bgColor };
 
   const layers: CoverLayer[] = [];
   const seen = new Set<string>();
