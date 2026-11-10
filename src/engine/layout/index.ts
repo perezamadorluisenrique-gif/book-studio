@@ -49,6 +49,13 @@ interface CachedChapter {
 }
 
 export class LayoutCache {
+  /**
+   * `plain` sets the book the way a word processor does: no hyphenation, no microtypography, lines filled
+   * greedily and pages not balanced. It exists to show the difference on the landing page; keep such a cache
+   * apart from the ones real layouts use.
+   */
+  constructor(readonly plain = false) {}
+
   private fonts: FontSet | null = null;
   private setters = new Map<string, { hyphenator: Hyphenator | null; styler: Styler; setter: ParagraphSetter }>();
   private chapters = new Map<string, CachedChapter>();
@@ -63,7 +70,7 @@ export class LayoutCache {
     let hit = this.setters.get(lang);
     if (!hit || hit.hyphenator !== hyphenator) {
       const styler = new Styler(fonts, lang);
-      hit = { hyphenator, styler, setter: new ParagraphSetter(styler, hyphenator) };
+      hit = { hyphenator, styler, setter: new ParagraphSetter(styler, hyphenator, this.plain) };
       this.setters.set(lang, hit);
     }
     return hit;
@@ -233,7 +240,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
   // A chapter set on a right-hand page and on a left-hand page comes out differently, so each is kept apart.
   // What else a chapter depends on goes into the key: the settings, the margin, the language and the size of
   // every image. The cache outlives this call, so a later layout of the same book only sets what changed.
-  const envKey = fingerprint(JSON.stringify([settings, lang, insideIn, hyphenate && hyphenator ? 1 : 0, [...book.images].map(([path, a]) => [path, a.width, a.height])]));
+  const envKey = fingerprint(JSON.stringify([settings, lang, insideIn, hyphenate && hyphenator ? 1 : 0, cache.plain ? 1 : 0, [...book.images].map(([path, a]) => [path, a.width, a.height])]));
   const chapterFingerprints = new Map<Chapter, string>();
   const layChapter = (ch: Chapter, firstRecto: boolean): FlowPage[] => {
     let print = chapterFingerprints.get(ch);
@@ -242,7 +249,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
     let hit = cache.chapter(key);
     if (!hit) {
       const before = warnings.length;
-      const pages = paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: ch.matter === "body" || ch.type === "prologue" })], capacity, foot, { unit: leading, balance: true, firstRecto, maxLong });
+      const pages = paginate([...fb.opener(ch), ...fb.chapterBody(ch, { dropCap: !cache.plain && (ch.matter === "body" || ch.type === "prologue") })], capacity, foot, { unit: leading, balance: !cache.plain, firstRecto, maxLong });
       hit = { pages, warnings: warnings.slice(before) };
       cache.keepChapter(key, hit);
     } else {

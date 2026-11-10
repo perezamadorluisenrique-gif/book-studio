@@ -45,11 +45,11 @@ describe("guide pages", () => {
   const built = buildSite("site", out);
   const files = htmlFiles(out).filter((f) => f !== join(out, "index.html"));
 
-  it("has 6 guides and a hub in each language, all passing the audit", () => {
+  it("has 6 guides and a landing page in each language, all passing the audit", () => {
     expect(auditPages(pages)).toEqual([]);
     for (const lang of ["en", "es"]) {
-      expect(pages.filter((p) => p.lang === lang && p.type !== "hub")).toHaveLength(6);
-      expect(pages.filter((p) => p.lang === lang && p.type === "hub")).toHaveLength(1);
+      expect(pages.filter((p) => p.lang === lang && p.type !== "landing")).toHaveLength(6);
+      expect(pages.filter((p) => p.lang === lang && p.type === "landing")).toHaveLength(1);
     }
     expect(built.pages).toBe(14);
     expect(files).toHaveLength(14);
@@ -77,7 +77,27 @@ describe("guide pages", () => {
       expect(html).toMatch(new RegExp(`<link rel="canonical" href="${SITE}`));
       expect(html.match(/hreflang="(en|es|x-default)" href=/g)?.length).toBe(3);
       expect(html).toMatch(/<meta name="description" content="[^"]{70,}"/);
-      expect(html.match(/<h1>/g)).toHaveLength(1);
+      expect(html.match(/<h1[ >]/g)).toHaveLength(1);
+    }
+  });
+
+  it("makes each landing page a one-h1 sales page: main button, comparison table, six questions, no script", () => {
+    for (const lang of ["en", "es"]) {
+      const file = join(out, lang, "index.html");
+      const html = readFileSync(file, "utf8");
+      expect(html.match(/<h1[ >]/g), lang).toHaveLength(1);
+      expect(html).toMatch(/<a class="btn primary" href="\.\.\/\?start=import">/);
+      expect(html).toMatch(/<a class="btn" href="\.\.\/\?sample=/);
+      expect(html.match(/<table>/g)?.length).toBe(2); // the comparison and the sample downloads
+      expect(html).toContain("Vellum");
+      expect(html).toContain("Kindle Create");
+      expect(html.match(/<h3>[^<]+\?<\/h3>/g)).toHaveLength(6);
+      expect(html).toContain('"@type":"FAQPage"');
+      expect(html).toContain('"price":"0"');
+      expect(html).not.toMatch(/<script(?![^>]*application\/ld\+json)/);
+      expect(html.match(/<img /g)?.length).toBe(5);
+      // Before the images, the page stays small.
+      expect(Buffer.byteLength(html)).toBeLessThan(60_000);
     }
   });
 

@@ -874,6 +874,69 @@ describe("web app, import a manuscript", () => {
   });
 });
 
+describe("web app, first screen", () => {
+  const DOCX = new URL("../tests/fixtures/docx/spanish-patterns.docx", import.meta.url).pathname;
+
+  it("turns a Word file dropped on the empty first screen into a book with its preview and a working PDF button", async () => {
+    const context = await browser.newContext({ locale: "es-ES" });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.getByRole("heading", { name: "Tu libro listo para Amazon en 10 minutos" }).waitFor();
+    const bytes = [...(await readFile(DOCX))];
+    await page.locator("#land-drop").evaluate(async (el, data) => {
+      const dt = new DataTransfer();
+      dt.items.add(new File([new Uint8Array(data)], "spanish-patterns.docx"));
+      el.dispatchEvent(new DragEvent("dragover", { dataTransfer: dt, bubbles: true, cancelable: true }));
+      el.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
+    }, bytes);
+    // A Word file with things left out shows its report first; close it.
+    const report = page.getByRole("dialog");
+    if (await report.waitFor({ timeout: 15_000 }).then(() => true, () => false)) await report.getByRole("button").last().click();
+    await page.locator("#ed-text").waitFor();
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    expect(await page.getByRole("button", { name: "Exportar PDF de impresión" }).isEnabled()).toBe(true);
+    await context.close();
+  });
+
+  it("takes a Word file chosen with the drop zone, and says so when the file is of another kind", async () => {
+    const context = await browser.newContext({ locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.locator("#land-drop").waitFor();
+    await page.locator("input[type=file][aria-label='Choose your manuscript']").setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: Buffer.from("x") });
+    await page.getByText("Drop a Word (.docx), .md or .txt file.").waitFor();
+    await page.locator("input[type=file][aria-label='Choose your manuscript']").setInputFiles({ name: "diary.md", mimeType: "text/markdown", buffer: Buffer.from("# One\n\na\n\n# Two\n\nb\n") });
+    await page.locator("#ed-text").waitFor();
+    expect(await page.locator(".ch-pick").allTextContents()).toEqual(["One", "Two"]);
+    await context.close();
+  });
+
+  it("opens with the drop zone focused when the link says ?start=import, and with the sample when it names one", async () => {
+    const context = await browser.newContext({ locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(`${base}?start=import`);
+    await page.locator("#land-drop").waitFor();
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe("land-drop");
+    await page.getByRole("button", { name: "See a sample book" }).click();
+    await page.getByRole("button", { name: "Export print PDF" }).waitFor();
+    await context.close();
+  });
+
+  for (const [label, viewport] of [["desktop", { width: 1280, height: 800 }], ["mobile 390 px", { width: 390, height: 844 }]] as const) {
+    it(`has no serious accessibility violations on the empty first screen and on the Spanish landing page, ${label}`, async () => {
+      const context = await browser.newContext({ viewport, locale: "es-ES" });
+      const page = await context.newPage();
+      for (const url of [base, `${base}es/`, `${base}en/`]) {
+        await page.goto(url);
+        await page.locator("h1, h2").first().waitFor();
+        const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+        expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${url}: ${v.id}`)).toEqual([]);
+      }
+      await context.close();
+    });
+  }
+});
+
 describe("web app, offline", () => {
   it("writes a service worker that saves the app and the fonts, and a manifest that can be installed", async () => {
     const sw = await readFile("dist/web/sw.js", "utf8");

@@ -6,7 +6,7 @@ export interface SitePage {
   slug: string;
   pair: string;
   updated: string;
-  type: "hub" | "article" | "howto";
+  type: "hub" | "landing" | "article" | "howto";
   order: number;
   steps?: string[];
   h1?: string;

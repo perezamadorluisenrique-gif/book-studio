@@ -99,3 +99,26 @@ describe("speed of a long book", () => {
     expect(editMs).toBeLessThan(firstMs / 3);
   }, 60_000);
 });
+
+describe("plain layout (the landing page's \"word processor\" picture)", () => {
+  const endsInHyphen = (l: ReturnType<typeof layoutBook>) => {
+    let n = 0;
+    for (const p of l.pages) for (const d of p.draws) if (d.kind === "text" && /\p{L}-$/u.test(d.text)) n++;
+    return n;
+  };
+
+  it("sets no hyphens and differs from the real layout", () => {
+    const real = layoutBook(leyendas, fonts, { hyphenator, cache: new LayoutCache() });
+    const plain = layoutBook(leyendas, fonts, { hyphenator, cache: new LayoutCache(true) });
+    expect(endsInHyphen(real)).toBeGreaterThan(50);
+    // A few words end in a hyphen in the text itself; the engine's hyphens are gone.
+    expect(endsInHyphen(plain)).toBeLessThan(endsInHyphen(real) / 20);
+    expect(shape(plain)).not.toBe(shape(real));
+  });
+
+  it("never leaks into a normal cache", () => {
+    const cold = layoutBook(leyendas, fonts, { hyphenator });
+    const again = layoutBook(leyendas, fonts, { hyphenator, cache: new LayoutCache() });
+    expect(shape(again)).toBe(shape(cold));
+  });
+});
