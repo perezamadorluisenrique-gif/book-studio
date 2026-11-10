@@ -5,7 +5,7 @@
 import type { FaceKey } from "../fonts";
 import { FAMILIES, faceKey, familyFace } from "../fonts";
 import type { Hyphenator } from "../hyphenate";
-import { FIL, INFINITE_PENALTY, firstFit, knuthPlass, type KPBreak, type KPItem } from "../linebreak";
+import { FIL, INFINITE_PENALTY, breakParagraph, firstFit, type KPBreak, type KPItem, type KPOptions } from "../linebreak";
 import type { Inline, InlineStyle } from "../model";
 import type { RunStyle, Styler } from "./style";
 
@@ -44,6 +44,8 @@ export interface DropCap {
 export interface SetParagraph {
   lines: SetLine[];
   dropCap?: DropCap;
+  /** Whether the line-break search could use hyphenation points. */
+  hyphenated: boolean;
 }
 
 export type Align = "justify" | "left" | "center" | "right";
@@ -101,7 +103,8 @@ export class ParagraphSetter {
     private hyphenator: Hyphenator | null,
   ) {}
 
-  set(inlines: Inline[], base: RunStyle, opts: SetOptions): SetParagraph {
+  /** The parts of a paragraph every way of setting it shares: atoms without the initial, and line widths. */
+  private prepare(inlines: Inline[], base: RunStyle, opts: SetOptions) {
     const atoms = tokenize(inlines, opts.noteNumber);
     let dropCap: DropCap | undefined;
     let dropWidth = 0;
@@ -117,20 +120,44 @@ export class ParagraphSetter {
     const indentFor = (line: number) => (dropCap && line < dropCap.lines ? dropWidth : 0);
     const lineWidth = (line: number) => opts.width - indentFor(line);
     const firstIndent = dropCap ? 0 : (opts.indent ?? 0);
-
     const ragged = opts.align !== "justify";
-    const build = (hyphenate: boolean) => this.items(working, base, { ...opts, hyphenate: hyphenate && !ragged }, firstIndent, ragged);
+    const hyphens = !ragged && !!opts.hyphenate && this.hyphenator !== null;
+    const build = (hyphenate: boolean) => this.items(working, base, { ...opts, hyphenate: hyphenate && hyphens }, firstIndent, ragged);
+    // What the line breaker is told besides the tolerance: no ladders of hyphens, no hyphen before the
+    // last line, no last line shorter than two ems.
+    const common: Omit<KPOptions, "tolerance"> = {
+      lineWidth,
+      maxHyphenRun: 2,
+      finalHyphenDemerits: 5000,
+      lastLineMin: Math.max(2 * firstIndent, 2 * base.size),
+      runtDemerits: 10000,
+      flaggedDemerits: 10000,
+    };
+    return { dropCap, indentFor, lineWidth, ragged, hyphens, build, common };
+  }
+
+  set(inlines: Inline[], base: RunStyle, opts: SetOptions): SetParagraph {
+    const { dropCap, indentFor, lineWidth, ragged, hyphens, build, common } = this.prepare(inlines, base, opts);
     let items = build(false);
     let breaks: KPBreak[] | null = null;
+    let hyphenated = false;
     if (ragged) {
-      breaks = knuthPlass(items, { lineWidth, tolerance: 4, fitnessDemerits: 0 });
+      breaks = breakParagraph(items, { lineWidth, tolerance: 4, fitnessDemerits: 0 })?.breaks ?? null;
     } else {
-      breaks = knuthPlass(items, { lineWidth, tolerance: 1 });
-      if (!breaks && opts.hyphenate) {
+      const attempt = (tolerances: number[]) => {
+        for (const tolerance of tolerances) {
+          const r = breakParagraph(items, { ...common, tolerance });
+          if (r) return r.breaks;
+        }
+        return null;
+      };
+      breaks = attempt([0.7]);
+      if (!breaks && hyphens) {
         items = build(true);
-        breaks = knuthPlass(items, { lineWidth, tolerance: 2 }) ?? knuthPlass(items, { lineWidth, tolerance: 6 });
+        hyphenated = true;
+        breaks = attempt([1, 1.6, 2.5, 6]);
       } else if (!breaks) {
-        breaks = knuthPlass(items, { lineWidth, tolerance: 6 });
+        breaks = attempt([1, 2, 4, 8]);
       }
     }
     breaks ??= firstFit(items, lineWidth);
@@ -139,7 +166,17 @@ export class ParagraphSetter {
       // Too short for an initial; set it plainly.
       return this.set(inlines, base, { ...opts, dropCap: undefined, indent: 0 });
     }
-    return { lines, dropCap };
+    return { lines, dropCap, hyphenated };
+  }
+
+  /** The same justified paragraph set in exactly `lines` lines, for the page builder to try; `null` when that can't be done. */
+  variant(inlines: Inline[], base: RunStyle, opts: SetOptions, lines: number): SetParagraph | null {
+    const { dropCap, indentFor, lineWidth, ragged, hyphens, build, common } = this.prepare(inlines, base, opts);
+    if (ragged || lines < 1 || (dropCap && lines <= dropCap.lines)) return null;
+    const items = build(true);
+    const r = breakParagraph(items, { ...common, tolerance: 1.3, lineCount: lines });
+    if (!r) return null;
+    return { lines: this.lines(items, r.breaks, lineWidth, indentFor, opts.align), dropCap, hyphenated: hyphens };
   }
 
   private extractDropCap(atoms: Atom[], base: RunStyle, dc: NonNullable<SetOptions["dropCap"]>) {

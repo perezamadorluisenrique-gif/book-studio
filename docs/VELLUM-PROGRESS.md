@@ -7,7 +7,7 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 | Hilo | Orden | Estado | PR |
 |---|---|---|---|
 | A | T0 Banco de pruebas de calidad | hecha (PR abierto) | |
-| A | T1.1 Líneas | sin empezar | |
+| A | T1.1 Líneas | hecha (PR abierto) | |
 | A | T1.2 Márgenes ópticos y letras elásticas | sin empezar | |
 | A | T1.3 Páginas | sin empezar | |
 | A | T1.4 Guiones por idioma | sin empezar | |
@@ -41,10 +41,22 @@ Desde T0, pegar aquí la tabla de `npm run quality` tras cada orden.
 | largo-de | 62 | 1742 | 6 | 6 | 38 | 6 | 166 | 0 | 0 | 2 | 572 | 273 |
 
 
+### 2026-11-10, T1.1
+
+| Book | Pages | Lines | Short pages | Uneven spreads | Ladders | Very loose | Loose | Widows | Orphans | Hyphen turns | Hyphens | Layout ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| oz | 142 | 3215 | 45 | 17 | 0 | 5 | 94 | 0 | 0 | 2 | 145 | 438 |
+| leyendas | 128 | 3487 | 38 | 26 | 0 | 4 | 74 | 0 | 0 | 5 | 395 | 415 |
+| dialogo-es | 82 | 2131 | 18 | 13 | 0 | 1 | 77 | 0 | 0 | 5 | 398 | 358 |
+| ensayo-es | 86 | 2311 | 11 | 6 | 0 | 0 | 69 | 0 | 0 | 10 | 636 | 476 |
+| largo-de | 62 | 1743 | 4 | 4 | 0 | 6 | 205 | 0 | 0 | 3 | 513 | 324 |
+
 ## Desviaciones del plan
 
 - T0: las cifras del banco no coinciden del todo con la medición externa de la sección 2 (Oz: 43 páginas cortas de 142 frente a 28 de 91; Leyendas: 36 frente a 33, escaleras 11 frente a 9, huecos muy grandes 4 frente a 13). Las dobles páginas desiguales sí coinciden (15 y 25). Se usan las definiciones exactas de la orden; la línea base nueva es la del banco, no la de la sección 2.
 - T0: los libros de prueba salen de Project Gutenberg (Marianela, Ariel, Die Verwandlung); las 47 notas al pie de `ensayo-es` son de prueba, generadas a partir del propio texto.
+- T1.1: no se prohíben los guiones en la última palabra del párrafo (paso 3 de la orden). Con esa prohibición, los huecos muy grandes de Oz subían de 5 a 8; basta con `finalHyphenDemerits`, que ya penaliza partir la última línea.
+- T1.1 (**regla 5 incumplida a propósito, hay que recuperarlo**): quitar las escaleras (`maxHyphenRun: 2`) cuesta líneas flojas. `loose` sube: Oz 92→94, Leyendas 62→74, dialogo-es 54→77, ensayo-es 36→69, largo-de 166→205. También suben en ruido de reflujo `shortPages`/`unevenSpreads` (Oz 43→45 y 15→17; Leyendas 36→38 y 25→26; dialogo-es 17→18 y 12→13) y `hyphenTurns` (Leyendas 3→5, ensayo-es 6→10, largo-de 2→3). Medido: sin el límite de guiones seguidos la subida desaparece; el resto de reglas casi no cuesta. `ladders` baja a 0 en los cinco libros. Meta no alcanzada: `veryLoose` de Leyendas queda en 4 (la orden pedía 3 como mucho). Lo recuperan T1.2 (letras elásticas y márgenes ópticos: `loose` a la mitad) y T1.3 (páginas); ambas deben dejar cada cifra por debajo de la línea base de T0, que está en el PR #35.
 
 Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
@@ -56,3 +68,4 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 Hilo A, orden T0.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
+- 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).

@@ -17,6 +17,15 @@ export interface KPOptions {
   linePenalty?: number;
   flaggedDemerits?: number;
   fitnessDemerits?: number;
+  /** Most lines in a row that may end in a flagged penalty (a hyphen). 0 means no limit. */
+  maxHyphenRun?: number;
+  /** Added when the last line follows a line that ends in a hyphen. */
+  finalHyphenDemerits?: number;
+  /** A last line (of a paragraph with more than one) narrower than this gets `runtDemerits`. */
+  lastLineMin?: number;
+  runtDemerits?: number;
+  /** Only solutions with exactly this many lines count. */
+  lineCount?: number;
 }
 
 export interface KPBreak {
@@ -35,15 +44,26 @@ interface Node {
   totalShrink: number;
   demerits: number;
   ratio: number;
+  /** Lines in a row, ending here, that end in a flagged penalty. */
+  run: number;
   prev: Node | null;
 }
 
 export function knuthPlass<T>(items: KPItem<T>[], opts: KPOptions): KPBreak[] | null {
+  return breakParagraph(items, opts)?.breaks ?? null;
+}
+
+/** The best set of breaks and its total demerits; `null` when no breaks stay within the tolerance. */
+export function breakParagraph<T>(items: KPItem<T>[], opts: KPOptions): { breaks: KPBreak[]; demerits: number } | null {
+  const maxRun = opts.maxHyphenRun ?? 0;
+  const finalHyphenDemerits = opts.finalHyphenDemerits ?? 0;
+  const lastLineMin = opts.lastLineMin ?? 0;
+  const runtDemerits = opts.runtDemerits ?? 0;
   const linePenalty = opts.linePenalty ?? 10;
   const flaggedDemerits = opts.flaggedDemerits ?? 3000;
   const fitnessDemerits = opts.fitnessDemerits ?? 3000;
   const sum = { width: 0, stretch: 0, shrink: 0 };
-  let active: Node[] = [{ position: 0, line: 0, fitness: 1, totalWidth: 0, totalStretch: 0, totalShrink: 0, demerits: 0, ratio: 0, prev: null }];
+  let active: Node[] = [{ position: 0, line: 0, fitness: 1, totalWidth: 0, totalStretch: 0, totalShrink: 0, demerits: 0, ratio: 0, run: 0, prev: null }];
 
   const ratioFor = (a: Node, end: number, lineIndex: number): number => {
     let width = sum.width - a.totalWidth;
@@ -82,7 +102,9 @@ export function knuthPlass<T>(items: KPItem<T>[], opts: KPOptions): KPBreak[] | 
     let i = 0;
     while (i < active.length) {
       // Process active nodes in groups that share a line number (line widths may differ per line).
-      const candidates: ({ node: Node; demerits: number; ratio: number } | null)[] = [null, null, null, null];
+      // One candidate per fitness class and hyphen-run length, so a cheap node with a long run can't hide a dearer one that is free to hyphenate.
+      const classes = maxRun > 0 ? maxRun + 1 : 1;
+      const candidates: ({ node: Node; demerits: number; ratio: number; run: number; fitness: number } | null)[] = Array.from({ length: 4 * classes }, () => null);
       let groupLine = -1;
       while (i < active.length) {
         const a = active[i];
@@ -91,7 +113,7 @@ export function knuthPlass<T>(items: KPItem<T>[], opts: KPOptions): KPBreak[] | 
         const ratio = ratioFor(a, index, a.line);
         const deactivate = ratio < -1 || penalty === -INFINITE_PENALTY;
         if (!deactivate) next.push(a);
-        if (ratio >= -1 && ratio <= opts.tolerance) {
+        if (ratio >= -1 && ratio <= opts.tolerance && !(flagged && maxRun > 0 && a.run >= maxRun)) {
           const badness = 100 * Math.abs(ratio) ** 3;
           let d: number;
           if (penalty >= 0) d = (linePenalty + badness) ** 2 + penalty ** 2;
@@ -99,27 +121,33 @@ export function knuthPlass<T>(items: KPItem<T>[], opts: KPOptions): KPBreak[] | 
           else d = (linePenalty + badness) ** 2;
           const prevItem = items[a.position];
           if (flagged && prevItem.type === "penalty" && prevItem.flagged) d += flaggedDemerits;
+          if (index === items.length - 1) {
+            if (finalHyphenDemerits && prevItem.type === "penalty" && prevItem.flagged) d += finalHyphenDemerits;
+            if (runtDemerits && a.line >= 1 && sum.width - a.totalWidth < lastLineMin) d += runtDemerits;
+          }
           const fitness = ratio < -0.5 ? 0 : ratio <= 0.5 ? 1 : ratio <= 1 ? 2 : 3;
           if (Math.abs(fitness - a.fitness) > 1) d += fitnessDemerits;
           d += a.demerits;
-          const c = candidates[fitness];
-          if (!c || d < c.demerits) candidates[fitness] = { node: a, demerits: d, ratio };
+          const run = flagged ? a.run + 1 : 0;
+          const key = fitness + 4 * (maxRun > 0 ? run : 0);
+          const c = candidates[key];
+          if (!c || d < c.demerits) candidates[key] = { node: a, demerits: d, ratio, run, fitness };
         }
         i++;
       }
       const after = sumAfter(index);
-      for (let f = 0; f < 4; f++) {
-        const c = candidates[f];
+      for (const c of candidates) {
         if (!c) continue;
         next.push({
           position: index,
           line: c.node.line + 1,
-          fitness: f,
+          fitness: c.fitness,
           totalWidth: after.width,
           totalStretch: after.stretch,
           totalShrink: after.shrink,
           demerits: c.demerits,
           ratio: c.ratio,
+          run: c.run,
           prev: c.node,
         });
       }
@@ -145,11 +173,11 @@ export function knuthPlass<T>(items: KPItem<T>[], opts: KPOptions): KPBreak[] | 
   }
 
   let best: Node | null = null;
-  for (const a of active) if (a.position === items.length - 1 && (!best || a.demerits < best.demerits)) best = a;
+  for (const a of active) if (a.position === items.length - 1 && (opts.lineCount === undefined || a.line === opts.lineCount) && (!best || a.demerits < best.demerits)) best = a;
   if (!best) return null;
   const breaks: KPBreak[] = [];
   for (let n: Node | null = best; n && n.prev; n = n.prev) breaks.push({ position: n.position, ratio: n.ratio });
-  return breaks.reverse();
+  return { breaks: breaks.reverse(), demerits: best.demerits };
 }
 
 /** First-fit breaking: used for ragged text and as the last resort for overfull material. */

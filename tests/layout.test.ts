@@ -83,4 +83,11 @@ describe("print layout", { timeout: 30_000 }, () => {
     expect(layout.bleedPt).toBe(9);
     expect(layout.margins.outside).toBeGreaterThanOrEqual(0.375 * 72);
   });
+
+  it("sets Leyendas without a ladder of three hyphens in a row", async () => {
+    const leyendas = fsVault(new URL("../sample/leyendas", import.meta.url).pathname);
+    const layout = layoutBook(await loadBook(leyendas, "Leyendas y rimas.md"), fonts);
+    expect(layout.quality.ladders).toBe(0);
+    expect(layout.quality.lines).toBeGreaterThan(3000);
+  });
 });
