@@ -6,6 +6,9 @@
 const BUILD = "__BUILD__";
 const CORE = `bs-core-${BUILD}`;
 const SAMPLES = "bs-samples";
+const TOOLS = "bs-tools";
+// The free KDP tools on the site (their pages, script and styles) are saved as they are opened.
+const TOOL_PAGE = /^(en\/tools|es\/herramientas)(\/|$)|^tools\/tools\.js$|^site\.css$/;
 const FILES = __FILES__;
 
 self.addEventListener("install", (event) => {
@@ -19,7 +22,7 @@ self.addEventListener("message", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      for (const key of await caches.keys()) if (key !== CORE && key !== SAMPLES) await caches.delete(key);
+      for (const key of await caches.keys()) if (key !== CORE && key !== SAMPLES && key !== TOOLS) await caches.delete(key);
       await self.clients.claim();
     })(),
   );
@@ -37,6 +40,21 @@ self.addEventListener("fetch", (event) => {
   // The page itself: the network first so a new release shows up, the saved copy when offline.
   if (req.mode === "navigate" && (rel === "" || rel === "index.html")) {
     event.respondWith(fetch(req).catch(() => caches.open(CORE).then((c) => c.match("./", { ignoreSearch: true })).then((r) => r || Response.error())));
+    return;
+  }
+  // The tools: the network first so a fix shows up, the saved copy when offline (the address may carry ?pages=… values).
+  if (TOOL_PAGE.test(rel)) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            void caches.open(TOOLS).then((c) => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.open(TOOLS).then((c) => c.match(req, { ignoreSearch: true })).then((r) => r || Response.error())),
+    );
     return;
   }
   // Sample books: saved as they are opened; the network first, so they stay current.

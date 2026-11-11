@@ -1,0 +1,11 @@
+{
+  "note": "Common choices among self-published paperbacks. This is editorial guidance, not a KDP rule: KDP prints every size in its table.",
+  "novel": ["5.5x8.5", "5.25x8", "6x9", "5x8"],
+  "memoir": ["6x9", "5.5x8.5", "5.25x8"],
+  "poetry": ["5x8", "5.5x8.5", "6x9"],
+  "children": ["8.5x8.5", "8.25x8.25", "8x10", "8.25x6"],
+  "workbook": ["8.5x11", "7x10", "8x10"],
+  "cookbook": ["8x10", "7x10", "8.5x11"],
+  "photo": ["8.5x11", "8.5x8.5", "8x10"],
+  "any": ["6x9", "5.5x8.5", "5x8"]
+}

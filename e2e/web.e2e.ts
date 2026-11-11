@@ -1535,3 +1535,143 @@ describe("web app, cover designer", () => {
     });
   }
 });
+
+describe("free KDP tools", () => {
+  const EN = "en/tools/";
+  const ES = "es/herramientas/";
+  const pages: [string, string, string][] = [
+    ["en", `${EN}spine-width-calculator/`, "spine"],
+    ["en", `${EN}cover-size-calculator/`, "cover"],
+    ["en", `${EN}printing-cost-royalty-calculator/`, "cost"],
+    ["en", `${EN}margins-calculator/`, "margins"],
+    ["en", `${EN}trim-size-chooser/`, "trim"],
+    ["en", `${EN}isbn-barcode-checker/`, "isbn"],
+    ["en", `${EN}words-to-pages-calculator/`, "pages"],
+    ["es", `${ES}calculadora-lomo-kdp/`, "spine"],
+    ["es", `${ES}calculadora-tamano-cubierta-kdp/`, "cover"],
+    ["es", `${ES}calculadora-costes-regalias-kdp/`, "cost"],
+    ["es", `${ES}calculadora-margenes-kdp/`, "margins"],
+    ["es", `${ES}elegir-tamano-libro-kdp/`, "trim"],
+    ["es", `${ES}comprobar-isbn-codigo-barras/`, "isbn"],
+    ["es", `${ES}palabras-a-paginas/`, "pages"],
+  ];
+
+  it("takes a spine width to the cover size and into the app, with the size and paper already set", async () => {
+    const context = await browser.newContext({ acceptDownloads: true, locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(`${base}${EN}spine-width-calculator/`);
+    await page.getByLabel("Page count").fill("400");
+    await page.getByLabel("Paper and ink").selectOption("bw_cream");
+    await page.getByText("Spine width: 1.000 in (25.4 mm)").waitFor();
+
+    await page.getByRole("link", { name: "Cover size for these pages" }).click();
+    expect(await page.getByLabel("Page count").inputValue()).toBe("400");
+    expect(await page.getByLabel("Paper and ink").inputValue()).toBe("bw_cream");
+    await page.getByText("Full cover file: 13.250 × 9.250 in").waitFor();
+    await page.getByLabel("Trim size").selectOption("7x10");
+    await page.getByText("Full cover file: 15.250 × 10.250 in").waitFor();
+
+    // The template downloads: a PDF the size of the cover, and a PNG at 300 ppi.
+    const [pdf] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download template (PDF)" }).click()]);
+    const doc = await (await import("pdf-lib")).PDFDocument.load(await readFile(await pdf.path()));
+    expect(doc.getPage(0).getSize().width).toBeCloseTo(15.25 * 72, 1);
+    const [png] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download template (PNG)" }).click()]);
+    const size = imageSize(new Uint8Array(await readFile(await png.path())));
+    expect([size?.width, size?.height]).toEqual([4575, 3075]);
+
+    // Into the app: the book starts in 7 × 10 on cream paper.
+    await page.getByRole("link", { name: "Start this book in Book Studio" }).click();
+    await page.waitForURL(/\?start=import&trim=7x10&paper=cream$/);
+    await page.getByLabel("Or paste the text").fill("# One\n\nA first chapter.\n");
+    await page.getByRole("button", { name: "Import as a new book" }).click();
+    await page.locator("#ed-text").waitFor();
+    const settings = await page.evaluate(
+      () =>
+        new Promise<Record<string, string>>((ok) => {
+          const open = indexedDB.open("book-studio");
+          open.onsuccess = () => {
+            const all = open.result.transaction("projects").objectStore("projects").getAll();
+            all.onsuccess = () => ok((all.result[0] as { settings: Record<string, string> }).settings);
+          };
+        }),
+    );
+    expect(settings.trim).toBe("7x10");
+    expect(settings.paper).toBe("cream");
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    const [pdfBook] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export print PDF" }).click()]);
+    const r = await checkKdpPdf(new Uint8Array(await readFile(await pdfBook.path())), trimById("7x10")!, { bleed: false });
+    expect(r.errors).toEqual([]);
+    await context.close();
+  });
+
+  it("calculates the cost and royalty, checks an ISBN with its barcode, estimates pages and picks a size", async () => {
+    const context = await browser.newContext({ acceptDownloads: true, locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(`${base}${EN}printing-cost-royalty-calculator/`);
+    await page.getByLabel("Page count").fill("333");
+    await page.getByLabel("List price (USD)").fill("15");
+    await page.getByText("Printing cost: $5.00").waitFor();
+    await page.getByText("$4.00").first().waitFor();
+    await page.getByLabel("List price (USD)").fill("3");
+    await page.getByText("Your list price is below the minimum").waitFor();
+
+    await page.goto(`${base}${EN}isbn-barcode-checker/`);
+    await page.getByLabel("ISBN", { exact: true }).fill("0-306-40615-2");
+    await page.getByText("This is an ISBN-10. Its ISBN-13 is 9780306406157.").waitFor();
+    expect(await page.locator(".barcode svg rect").count()).toBeGreaterThan(30);
+    const [svg] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download barcode (SVG)" }).click()]);
+    expect(await readFile(await svg.path(), "utf8")).toContain("EAN-13 9780306406157");
+    await page.getByLabel("ISBN", { exact: true }).fill("9780306406158");
+    await page.getByText("does not match the others").waitFor();
+
+    await page.goto(`${base}${EN}words-to-pages-calculator/`);
+    await page.getByText(/Estimated page count: \d+/).waitFor();
+    await page.goto(`${base}${EN}trim-size-chooser/`);
+    await page.getByLabel("Kind of book").selectOption("children");
+    await page.getByLabel("Page count").fill("32");
+    await page.getByText("8.5 × 8.5 in").first().waitFor();
+    await context.close();
+  });
+
+  it("says nothing about the visitor to anyone: no request leaves the page, and a tool still works with no network once opened", async () => {
+    const context = await browser.newContext({ locale: "es-ES" });
+    const page = await context.newPage();
+    const outside: string[] = [];
+    page.on("request", (r) => {
+      if (!r.url().startsWith(base) && !r.url().startsWith("data:") && !r.url().startsWith("blob:")) outside.push(r.url());
+    });
+    await page.goto(`${base}${ES}calculadora-lomo-kdp/`);
+    await page.getByLabel("Número de páginas").fill("300");
+    await page.getByText("Ancho del lomo: 0,676 pulg. (17,2 mm)").waitFor();
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) await new Promise((ok) => navigator.serviceWorker.addEventListener("controllerchange", ok, { once: true }));
+    });
+    // Visit it again so the worker saves the page and the script.
+    await page.goto(`${base}${ES}calculadora-lomo-kdp/`);
+    await page.getByLabel("Número de páginas").waitFor();
+    await context.setOffline(true);
+    await page.goto(`${base}${ES}calculadora-lomo-kdp/?pages=500&ink=bw_cream`);
+    await page.getByText("Ancho del lomo: 1,250 pulg. (31,8 mm)").waitFor({ timeout: 20_000 });
+    expect(outside).toEqual([]);
+    await context.close();
+  });
+
+  for (const [lang, path, tool] of pages) {
+    for (const scheme of ["light", "dark"] as const) {
+      it(`has no serious accessibility violations on the ${tool} tool in ${lang} (${scheme}), with a result showing`, async () => {
+        const context = await browser.newContext({ locale: lang === "es" ? "es-ES" : "en-US", colorScheme: scheme });
+        const page = await context.newPage();
+        await page.goto(`${base}${path}`);
+        await page.locator("#tool .tool-out").waitFor();
+        expect(await page.locator("#tool .tool-out").innerText()).not.toBe("");
+        const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+        expect(result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+        // On a phone the page does not scroll sideways.
+        await page.setViewportSize({ width: 390, height: 800 });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        await context.close();
+      });
+    }
+  }
+});

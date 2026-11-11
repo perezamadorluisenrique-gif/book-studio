@@ -61,3 +61,7 @@ The app opens Oz by default; `app:?sample=leyendas` opens the Spanish one.
 - Spine per page: 0.002252 in (white paper, and standard colour), 0.0025 in (cream), 0.002347 in (premium colour). Bleed 0.125 in. Spine text from 79 pages (80 in KDP's Cover Creator), 0.0625 in from the spine edge.
 - KDP asks for text 0.125 in inside the trim and borders 0.25 in inside; Book Studio keeps text 0.25 in inside.
 - The 2 in × 1.2 in barcode box is the size of KDP's cover template; the help page does not state it. Say "the barcode area KDP reserves", not that KDP requires those numbers.
+
+## Free KDP tools (2026-11-11)
+
+Seven calculators under `/en/tools/` and `/es/herramientas/` (spine, cover size with PDF/PNG template, printing cost and royalty, margins, trim chooser, ISBN and barcode, words to pages). Code in `site/tools/src/`, pages in `site/tools/<lang>/`, bundled into `tools/tools.js` by `tools/site.mjs`. Their numbers live only in `site/tools/data/kdp-figures.json` with the date read from KDP's four help pages (Amazon.com, USD); a test fails when that date is over 180 days old: re-read the pages and update the file. The tool pages show that date. Printing cost and royalty are Amazon.com only. The barcode box on the template is a guide: KDP's help does not publish its size. Genre lists in the trim chooser are editorial, not KDP rules. Links carry `?trim=…&paper=…` into the app (`src/project/start-link.ts`); pages cannot be passed, they come from the text.

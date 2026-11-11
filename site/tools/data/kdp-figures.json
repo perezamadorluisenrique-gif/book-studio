@@ -1,0 +1,480 @@
+{
+ "checked": "2026-11-11",
+ "note": "Figures from Amazon KDP's own help pages (US marketplace, inches, US dollars). Refresh by reading the four source pages and updating `checked`; tests fail when the date is over 180 days old.",
+ "sources": {
+  "cover": "https://kdp.amazon.com/en_US/help/topic/G201953020",
+  "trim": "https://kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6",
+  "cost": "https://kdp.amazon.com/en_US/help/topic/G201834340",
+  "royalty": "https://kdp.amazon.com/en_US/help/topic/G201834330"
+ },
+ "bleed": 0.125,
+ "spinePerPage": {
+  "bw_white": 0.002252,
+  "bw_cream": 0.0025,
+  "color_standard": 0.002252,
+  "color_premium": 0.002347
+ },
+ "spineTextMinPages": 79,
+ "spineTextClearance": 0.0625,
+ "spineVariance": 0.0625,
+ "margins": {
+  "inside": [
+   {
+    "from": 24,
+    "to": 150,
+    "inches": 0.375
+   },
+   {
+    "from": 151,
+    "to": 300,
+    "inches": 0.5
+   },
+   {
+    "from": 301,
+    "to": 500,
+    "inches": 0.625
+   },
+   {
+    "from": 501,
+    "to": 700,
+    "inches": 0.75
+   },
+   {
+    "from": 701,
+    "to": 828,
+    "inches": 0.875
+   }
+  ],
+  "outsideNoBleed": 0.25,
+  "outsideBleed": 0.375
+ },
+ "largeTrim": {
+  "widthOver": 6.12,
+  "heightOver": 9
+ },
+ "trims": [
+  {
+   "width": 5.0,
+   "height": 8.0,
+   "pages": {
+    "bw_white": [
+     24,
+     828
+    ],
+    "bw_cream": [
+     24,
+     776
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     828
+    ]
+   }
+  },
+  {
+   "width": 5.06,
+   "height": 7.81,
+   "pages": {
+    "bw_white": [
+     24,
+     828
+    ],
+    "bw_cream": [
+     24,
+     776
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     828
+    ]
+   }
+  },
+  {
+   "width": 5.25,
+   "height": 8.0,
+   "pages": {
+    "bw_white": [
+     24,
+     828
+    ],
+    "bw_cream": [
+     24,
+     776
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     828
+    ]
+   }
+  },
+  {
+   "width": 5.5,
+   "height": 8.5,
+   "pages": {
+    "bw_white": [
+     24,
+     828
+    ],
+    "bw_cream": [
+     24,
+     776
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     828
+    ]
+   }
+  },
+  {
+   "width": 6.0,
+   "height": 9.0,
+   "pages": {
+    "bw_white": [
+     24,
+     828
+    ],
+    "bw_cream": [
+     24,
+     776
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     828
+    ]
+   }
+  },
+  {
+   "width": 6.14,
+   "height": 9.21,
+   "pages": {
+    "bw_white": [
+     24,
+     828
+    ],
+    "bw_cream": [
+     24,
+     776
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     828
+    ]
+   }
+  },
+  {
+   "width": 6.69,
+   "height": 9.61,
+   "pages": {
+    "bw_white": [
+     24,
+     828
+    ],
+    "bw_cream": [
+     24,
+     776
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     828
+    ]
+   }
+  },
+  {
+   "width": 7.0,
+   "height": 10.0,
+   "pages": {
+    "bw_white": [
+     24,
+     828
+    ],
+    "bw_cream": [
+     24,
+     776
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     828
+    ]
+   }
+  },
+  {
+   "width": 7.44,
+   "height": 9.69,
+   "pages": {
+    "bw_white": [
+     24,
+     828
+    ],
+    "bw_cream": [
+     24,
+     776
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     828
+    ]
+   }
+  },
+  {
+   "width": 7.5,
+   "height": 9.25,
+   "pages": {
+    "bw_white": [
+     24,
+     828
+    ],
+    "bw_cream": [
+     24,
+     776
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     828
+    ]
+   }
+  },
+  {
+   "width": 8.0,
+   "height": 10.0,
+   "pages": {
+    "bw_white": [
+     24,
+     828
+    ],
+    "bw_cream": [
+     24,
+     776
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     828
+    ]
+   }
+  },
+  {
+   "width": 8.25,
+   "height": 6.0,
+   "pages": {
+    "bw_white": [
+     24,
+     800
+    ],
+    "bw_cream": [
+     24,
+     750
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     800
+    ]
+   }
+  },
+  {
+   "width": 8.25,
+   "height": 8.25,
+   "pages": {
+    "bw_white": [
+     24,
+     800
+    ],
+    "bw_cream": [
+     24,
+     750
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     800
+    ]
+   }
+  },
+  {
+   "width": 8.5,
+   "height": 8.5,
+   "pages": {
+    "bw_white": [
+     24,
+     590
+    ],
+    "bw_cream": [
+     24,
+     550
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     590
+    ]
+   }
+  },
+  {
+   "width": 8.5,
+   "height": 11.0,
+   "pages": {
+    "bw_white": [
+     24,
+     590
+    ],
+    "bw_cream": [
+     24,
+     550
+    ],
+    "color_standard": [
+     72,
+     600
+    ],
+    "color_premium": [
+     24,
+     590
+    ]
+   }
+  },
+  {
+   "width": 8.27,
+   "height": 11.69,
+   "pages": {
+    "bw_white": [
+     24,
+     780
+    ],
+    "bw_cream": [
+     24,
+     730
+    ],
+    "color_standard": null,
+    "color_premium": [
+     24,
+     590
+    ]
+   }
+  }
+ ],
+ "printCost": {
+  "bw_white": {
+   "flatUpTo": 110,
+   "regular": {
+    "flat": 2.3,
+    "fixed": 1.0,
+    "perPage": 0.012
+   },
+   "large": {
+    "flat": 2.84,
+    "fixed": 1.0,
+    "perPage": 0.017
+   }
+  },
+  "bw_cream": {
+   "flatUpTo": 110,
+   "regular": {
+    "flat": 2.3,
+    "fixed": 1.0,
+    "perPage": 0.012
+   },
+   "large": {
+    "flat": 2.84,
+    "fixed": 1.0,
+    "perPage": 0.017
+   }
+  },
+  "color_premium": {
+   "flatUpTo": 40,
+   "regular": {
+    "flat": 3.6,
+    "fixed": 1.0,
+    "perPage": 0.065
+   },
+   "large": {
+    "flat": 4.2,
+    "fixed": 1.0,
+    "perPage": 0.08
+   }
+  },
+  "color_standard": {
+   "flatUpTo": 0,
+   "regular": {
+    "flat": 0,
+    "fixed": 1.0,
+    "perPage": 0.0255
+   },
+   "large": {
+    "flat": 0,
+    "fixed": 1.0,
+    "perPage": 0.0402
+   }
+  }
+ },
+ "royalty": {
+  "lowRate": 0.5,
+  "highRate": 0.6,
+  "lowUpTo": 9.98,
+  "highFrom": 9.99,
+  "expandedRate": 0.4,
+  "maxList": 250
+ },
+ "exampleCheck": {
+  "blackInk300pages": {
+   "pages": 300,
+   "printingCost": 4.6
+  },
+  "royaltyExample": {
+   "pages": 333,
+   "listPrice": 15,
+   "royalty": 4.0
+  },
+  "source": "KDP's own worked examples on the printing cost and royalty pages"
+ }
+}

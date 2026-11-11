@@ -51,14 +51,16 @@ describe("guide pages", () => {
       expect(pages.filter((p) => p.lang === lang && p.type !== "landing")).toHaveLength(6);
       expect(pages.filter((p) => p.lang === lang && p.type === "landing")).toHaveLength(1);
     }
-    expect(built.pages).toBe(14);
-    expect(files).toHaveLength(14);
+    expect(built.pages).toBe(30); // 14 guides and landing pages, 14 tool pages, 2 tools indexes
+    expect(files).toHaveLength(30);
   });
 
   it("links only to pages and files that exist, and loads nothing from another host", () => {
     for (const file of files) {
       const html = readFileSync(file, "utf8");
-      expect(html, file).not.toMatch(/<script(?![^>]*application\/ld\+json)/);
+      // The only script on the site is the tools' own file, and only the tool pages load it.
+      const isTool = /\/(tools|herramientas)\/[^/]+\/index\.html$/.test(file) && !/\/(tools|herramientas)\/index\.html$/.test(file);
+      expect(html, file).not.toMatch(isTool ? /<script(?![^>]*(application\/ld\+json|src="(\.\.\/)+tools\/tools\.js"))/ : /<script(?![^>]*application\/ld\+json)/);
       expect(html, file).not.toMatch(/<(img|link|script)[^>]+(src|href)="https?:\/\/(?!perezamadorluisenrique-gif\.github\.io\/book-studio\/)/);
       for (const [, url] of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
         if (/^(https?:|mailto:|#)/.test(url)) continue;
@@ -103,7 +105,7 @@ describe("guide pages", () => {
 
   it("writes a sitemap with every page and a robots.txt that points to it", () => {
     const map = readFileSync(join(out, "sitemap.xml"), "utf8");
-    expect(map.match(/<loc>/g)).toHaveLength(15);
+    expect(map.match(/<loc>/g)).toHaveLength(31); // the app and 30 pages
     expect(readFileSync(join(out, "robots.txt"), "utf8")).toContain(`Sitemap: ${SITE}sitemap.xml`);
   });
 });

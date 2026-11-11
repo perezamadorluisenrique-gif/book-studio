@@ -39,7 +39,7 @@ export default defineConfig([
     rules: { "no-undef": "off" },
   },
   {
-    files: ["src/web/**", "tests/**", "tools/**", "e2e/**", "*.mjs"],
+    files: ["src/web/**", "site/**", "tests/**", "tools/**", "e2e/**", "*.mjs"],
     rules: {
       "obsidianmd/prefer-create-el": "off",
       "obsidianmd/prefer-active-doc": "off",
