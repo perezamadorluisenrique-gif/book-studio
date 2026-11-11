@@ -74,7 +74,8 @@ Otras decisiones cerradas:
 | B | 1 (segunda mitad) y 2 | Ortotipografía; velocidad; lo gratis nuevo; página de inicio; asistente | T1.5, T1.6, T2.0, T2.1, T2.2 |
 | C | 3 | Word sin pérdidas | T3.1 a T3.5 |
 | D | 4 | Editor de cubiertas | T4.1 a T4.5 |
-| E | 5 | Estilos y paridad con Vellum | T5.1 a T5.5 |
+| E | 5 | Estilos gratis, editor de estilo, formatos y vista previa del ebook (revisado el 11-11) | T5.0 a T5.4 |
+| E2 | 5 | Tapa dura y apertura con imagen | T5.5 a T5.7 |
 | F | 6 | Lanzamiento | T6.1 a T6.3 |
 
 Lo que verá el autor al final de cada hilo:
@@ -83,7 +84,7 @@ Lo que verá el autor al final de cada hilo:
 - **B:** diálogos, abreviaturas y siglos como los pone un corrector; la vista previa responde al instante; todos los formatos, la cubierta y las notas al pie son gratis; una página de inicio que lleva del Word al PDF en 4 clics.
 - **C:** su Word entra entero, con la garantía de palabras a la vista.
 - **D:** una cubierta completa hecha en 5 minutos.
-- **E:** 24 estilos, tapa dura, vista previa del ebook en un Kindle.
+- **E:** nueve estilos gratis, un editor de estilo, los 16 formatos de tapa blanda y una vista previa aproximada del ebook. **E2:** tapa dura y capítulos que abren con imagen. Los estilos de género (Pro) llegan cuando se retomen las ventas, desde el repositorio privado.
 - **F:** vídeos, guías y fichas publicadas.
 
 ## 5. Cómo se gana dinero después (apagado hasta que Enrique diga)
@@ -396,11 +397,41 @@ Antes de empezar: leer `src/engine/cover/` entero y `tests/cover.test.ts`.
 
 ### HILO E: Estilos y paridad
 
-- **T5.1 Cuatro estilos generales gratis** (`literary`, `minimal`, `memoir`, `textbook`) en `themes.ts`, con solo los tipos de letra ya incluidos. Cada uno con su página dorada.
-- **T5.2 Doce estilos de género Pro** (dos por género: romántica, negra, fantasía, ciencia ficción, infantil, poesía) con adornos de escena y aperturas de capítulo propias; apertura de capítulo con imagen (`chapter-image:` en la nota del capítulo).
-- **T5.3 Editor de estilo:** tamaño de letra, interlínea, márgenes, sangría, adorno de escena y capitular, gratis; guardar como estilo propio y cargar tipos de letra propios, Pro.
-- **T5.4 Formatos:** los 4 formatos de KDP que faltan y tapa dura (comprobar medidas y márgenes en la ayuda oficial; geometría de cubierta de tapa dura en `geometry.ts`).
-- **T5.5 Vista previa de ebook** en marcos de Kindle, móvil y tableta (el EPUB dentro de un `iframe` con tamaño fijo y los CSS del libro), y salida PDF/X para otras imprentas (Pro): comprobar primero si `pdf-lib` permite `OutputIntent`; si no, apuntarlo y dejarlo fuera.
+> **Revisado el 2026-11-11, antes de construir.** La versión del 11-09 (T5.1 a T5.5 en cinco líneas) queda caducada. Motivos: 1) desde el 11-11 no puede haber código Pro en este repositorio, y tres de sus cinco órdenes lo metían (12 estilos de género, estilos y tipos de letra propios, PDF/X); 2) el editor de estilo no tenía dónde apoyarse: el motor busca el estilo por su nombre en siete sitios; 3) tapa dura y los 4 formatos iban en una sola orden y la vista previa del ebook iba junto con PDF/X; 4) con las ventas congeladas, lo Pro no sirve a la meta de alcance y va después.
+
+Antes de empezar: leer `src/engine/themes.ts` entero, `src/engine/entitlements.ts`, `tests/entitlements.test.ts` y las líneas de `settings` en `src/engine/model.ts`. Todo el hilo E es gratis y público. Ninguna orden añade un interruptor Pro ni toca los archivos de relleno (`themes-pro.ts` y los demás de `CLAUDE.md`).
+
+Hechos del código que mandan (comprobados el 11-11):
+
+- Solo hay seis familias de letra (`fonts.ts`): EB Garamond, Crimson Pro, Cormorant, Montserrat, Atkinson, Inconsolata. Tres de los cinco estilos ya usan Crimson Pro en el texto. Los estilos nuevos se distinguen por estructura, no por letra.
+- `themeById(settings.theme)` se llama en `layout/index.ts` (2), `epub.ts` (1) y `cover/cover.ts` (4). `BookSettings` ya tiene dos ajustes sueltos, `fontSize` y `sceneBreak`.
+- El adorno de escena y el de capítulo son un glifo de una familia (`{ glyph, family, size }`). El dibujo vectorial `path` existe desde T4.2.
+- `tests/entitlements.test.ts` exige `FREE_SINCE_2026_11.trims` con longitud 12, y esa lista sale de `TRIMS`: al añadir un formato la prueba falla.
+- `tests/golden.test.ts` y `npm run quality` solo miden el estilo de cada libro de muestra. El paginado se afinó con esos estilos.
+- `epub.ts` solo exporta `writeEpub` (devuelve el zip).
+
+- **T5.0 Un solo punto de estilo.** `resolveTheme(settings): Theme` en `themes.ts`: toma el estilo por su id y le aplica `settings.style` (tipo nuevo `StyleOverrides`: `size`, `leading`, `margins`, `indent`, `dropCap`, `sceneBreak`), más los dos ajustes viejos `fontSize` y `sceneBreak`, que siguen leyéndose. Límites dentro de la función, no en la pantalla: tamaño de 9 a 14 pt (Large Print, de 16 a 20); interlínea entre 1,2 y 1,5 veces el tamaño, redondeada a 0,25 pt; márgenes nunca por debajo de `kdpMinOutside`; todo espacio vertical del estilo se recalcula como múltiplo de la interlínea. Las siete llamadas a `themeById` de fuera de `themes.ts` pasan a `resolveTheme`. `style` se guarda en la nota del libro igual que `fontSize` hoy y viaja en `to-vault`/`from-vault`. Sin pantalla. Pruebas: una que falla si aparece `themeById(` fuera de `themes.ts`; sin `style` las páginas doradas y `npm run quality` no cambian ni un número; cambiar un ajuste cambia la maquetación aunque haya `LayoutCache` (si la clave de la caché no incluye el estilo resuelto, incluirlo). PR: `Book Studio: one place where a book's style is resolved`.
+- **T5.1 Cuatro estilos generales gratis** (`literary`, `minimal`, `memoir`, `textbook`). Antes de escribirlos, ampliar el adorno: `sceneBreak` y `chapter.ornament` admiten también `{ path, width }` (dibujo vectorial, con `path` de T4.2 en PDF y vista previa; en el EPUB, SVG en línea con `aria-hidden`), y se añaden 8 adornos en `src/engine/ornaments.ts`. Reglas: solo las seis familias; texto en EB Garamond o Crimson Pro (Cormorant solo en títulos: es demasiado fina para texto corrido); cada par de estilos gratis se diferencia al menos en tres de estos siete rasgos: familia del texto, familia del título, alineación del título, formato del rótulo de capítulo, capitular o palabras de entrada, posición del folio, sangría o párrafos en bloque. Cada estilo define su CSS de EPUB en el mismo sitio que los actuales. Pruebas: la de los tres rasgos; una página dorada por estilo nuevo (Oz, tres páginas: apertura, doble página normal, cambio de escena); `npm run quality` gana una segunda tabla «por estilo» (Oz y `ensayo-es` con los nueve estilos) guardada en `tests/quality-baseline.json`, donde ningún estilo nuevo puede tener más páginas cortas, dobles desiguales ni escaleras que Classic con el mismo libro; EPUBCheck pasa con cada uno; los cuatro ids entran en `FREE_THEMES` y en una constante nueva `FREE_SINCE_2026_11_T5` de `tests/entitlements.test.ts`. Asistente: las miniaturas pasan de 5 a 9; medir el paso «Estilo» antes y después y no tardar más del doble (si hace falta, maquetar solo el primer capítulo para la miniatura). Capturas de los cuatro en `docs/vellum/`. PR: `Book Studio: four more free styles and vector ornaments`.
+- **T5.2 Editor de estilo, gratis.** Panel «Estilo» en `src/app/` (lo reciben la web y el plugin): tamaño, interlínea, márgenes, sangría, capitular (ninguna, 2 o 3 líneas), adorno de escena (lista de T5.1) y «Restablecer». Escribe `settings.style` con las operaciones puras de T5.0; la vista previa se rehace 300 ms después del último cambio. El margen interior mínimo depende del número de páginas, que depende del margen: no se itera, se maqueta y, si la revisión de KDP avisa, el aviso sale junto al control con el botón «Poner el mínimo». Guardar los ajustes dentro del libro es gratis para siempre (se añade a la prueba de `FREE_SINCE`); lo único Pro, más adelante y fuera de este repositorio, es reutilizarlos entre libros. e2e: subir el tamaño cambia el número de páginas, recargar lo conserva, «Restablecer» devuelve las páginas doradas; axe sin fallos en escritorio y a 390 px. PR: `Book Studio: style editor`.
+- **T5.3 Los cuatro formatos de KDP que faltan.** Comprobar primero en la ayuda oficial de KDP la lista de tamaños de tapa blanda (se esperan 8,25 × 6, 8,25 × 8,25, 8,5 × 8,5 y 8,27 × 11,69 in; si la ayuda dice otra cosa, manda la ayuda) y citar la fuente en `trims.ts` y `FACTS.md`. Cambio de prueba permitido y obligatorio: `FREE_SINCE_2026_11.trims` deja de salir de `TRIMS` y pasa a ser la lista literal de los 12 ids de hoy (es más estricta, no más floja); los 4 nuevos van a `FREE_SINCE_2026_11_T5`. Dos son cuadrados o apaisados y uno es A4: a) aviso nuevo en la revisión, «líneas demasiado largas», cuando la línea media pasa de 80 caracteres, con la propuesta de subir el tamaño o los márgenes; b) las 20 plantillas de cubierta se prueban en los 4 formatos nuevos con las comprobaciones de T4.2; la que no pase se arregla o se oculta en ese formato con el motivo a la vista, nunca se afloja la comprobación; c) la portada JPG de 1600 × 2560 de un libro apaisado no se recorta: se encaja entera sobre el color de fondo; d) actualizar `tools/kdp-check.ts`, las herramientas de `site/tools/` y su fichero de cifras si listan formatos. Los 9 estilos × 16 formatos maquetan Oz sin error ni bloqueo de la revisión. PR: `Book Studio: the four remaining KDP trim sizes`.
+- **T5.4 Vista previa del ebook.** `epub.ts` expone `epubParts(book, opts)` (mapa de ruta a contenido) y `writeEpub` lo usa: el EPUB que se descarga no cambia ni un byte (prueba con los dos libros de muestra). `src/app/ebook-preview.ts`: el capítulo elegido en un `iframe` con `sandbox` vacío (sin scripts), con el CSS y las imágenes del libro incrustados, paginado con columnas CSS, botones anterior y siguiente, y tres marcos dibujados con CSS: lector de tinta de 6 pulgadas, móvil y tableta, más tamaño de letra del lector (3 pasos) y modo oscuro. Sin nombres de marca ni imágenes de aparatos reales en los marcos. Texto fijo bajo la vista, en la app y en `FACTS.md`: «Vista aproximada: cada lector de ebooks dibuja el libro a su manera». La web no dice «así se verá en tu Kindle». Si la política de seguridad de la app impide el `iframe`, se amplía solo con `frame-src blob:` o se usa `srcdoc`; ninguna petición a otro servidor. e2e y axe en los tres marcos. PR: `Book Studio: ebook preview`.
+
+**Hecho cuando (hilo E):** nueve estilos gratis con su página dorada y sus números de calidad no peores que Classic; el editor de estilo cambia y conserva el libro; los 16 formatos de tapa blanda maquetan con los nueve estilos; la vista previa del ebook funciona sin scripts dentro del marco.
+
+### HILO E2: Tapa dura y apertura con imagen (después de E; gratis)
+
+- **T5.5 Tapa dura, interior.** No es un formato más: es una encuadernación. `settings.binding: "paperback" | "hardcover"`, con su lista de tamaños, su mínimo y máximo de páginas y sus márgenes, todo leído de la ayuda oficial de KDP y citado (de memoria, sin verificar: 5 tamaños, uno de ellos solo de tapa dura, y de 75 a 550 páginas). La revisión de KDP bloquea lo que no admite. PR: `Book Studio: hardcover interiors`.
+- **T5.6 Tapa dura, cubierta.** Geometría propia en `geometry.ts` (vuelta de la tapa y bisagra, de la ayuda oficial; lo que la ayuda no dé se dice como «sin verificar», igual que el código de barras en T4.1), guías nuevas en el diseñador, y las 20 plantillas probadas en 3 tamaños y 3 grosores de tapa dura. PR: `Book Studio: hardcover covers`.
+- **T5.7 Apertura de capítulo con imagen.** `chapter-image:` en la nota del capítulo; funciona con todos los estilos y es gratis (es motor, y el motor es público). Aviso si la imagen queda por debajo de 300 ppp. PR: `Book Studio: chapter openers with an image`.
+
+### Lo Pro de la fase 5 (aplazado; nunca en este repositorio)
+
+Doce estilos de género, guardar estilos propios entre libros, tipos de letra propios y la salida para otras imprentas se construyen, cuando Enrique retome las ventas, en el repositorio privado (`obsidian-dev/book-studio-pro/`, sobre un clon con `overlay.mjs`). Aquí solo existen sus rellenos vacíos. Notas para ese día:
+
+- Los estilos de género son datos (`PRO_THEMES` en `themes-pro.ts`); todo lo que necesiten del motor (adornos vectoriales, apertura con imagen) ya será público y gratis tras E y E2.
+- Tipos de letra propios: el motor usa versalitas y cifras elzevirianas de las familias incluidas; un tipo subido puede no tenerlas y puede prohibir la incrustación (`fsType`). Hace falta su propia orden y su banco de pruebas.
+- PDF/X: `pdf-lib` permite escribir el `OutputIntent` a mano, pero hace falta incrustar un perfil ICC, los velos con opacidad de las cubiertas (T4.3) no caben en PDF/X-1a, y no hay validador gratuito de PDF/X para probarlo. No se promete hasta tener con qué comprobarlo.
+- La web no anuncia «24 estilos» hasta que existan.
 
 ### HILO F: Lanzamiento
 
