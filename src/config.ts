@@ -1,14 +1,17 @@
+import { PRO_INCLUDED } from "./edition";
 import type { OnlineConfig } from "./engine/license-online";
 
 // Build-time settings, set by esbuild.config.mjs from environment variables.
 // `typeof` guards keep tests and unbundled runs working without the defines.
 
 /**
- * The community edition has no Pro plan at all: Pro options are hidden rather
- * than locked and there is no license screen. The default build is the full
- * one, where Pro is unlocked by a license key.
+ * The free edition has no Pro plan at all: Pro options are hidden rather than
+ * locked and there is no license screen. It is what this public repository
+ * builds. Only a tree with the private Pro overlay (src/edition.ts says so)
+ * builds the full edition, where Pro is unlocked by a license key; such a
+ * tree can still build the free one with BOOK_STUDIO_EDITION=community.
  */
-export const FREE_EDITION: boolean = typeof __FREE_EDITION__ === "boolean" ? __FREE_EDITION__ : false;
+export const FREE_EDITION: boolean = typeof __FREE_EDITION__ === "boolean" ? __FREE_EDITION__ : !PRO_INCLUDED;
 
 /** Developer builds can switch Pro on without a key, to try it; never set for a release. */
 export const PRO_PREVIEW: boolean = !FREE_EDITION && typeof __PRO_PREVIEW__ === "boolean" ? __PRO_PREVIEW__ : false;

@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { PRO_INCLUDED } from "../src/edition";
 import { buildBook, pdfBlockers } from "../src/app/pipeline";
 import type { FontSet } from "../src/engine/fonts";
 import { buildIndex, formatPages, parseIndexSpecs } from "../src/engine/index-terms";
@@ -12,7 +13,8 @@ beforeAll(async () => {
   fonts = await testFonts();
 });
 
-describe("index terms", () => {
+// The back-of-book index comes with the private Pro overlay, which runs these too.
+describe.runIf(PRO_INCLUDED)("index terms", () => {
   it("parses entries, sub-entries, aliases and see references", () => {
     expect(parseIndexSpecs(["Napoleon = Bonaparte | the Emperor", "Napoleon > exile", "lighthouse", "Pharos -> lighthouse", "  ", "# comment only"])).toEqual([
       { main: "Napoleon", match: ["Napoleon", "Bonaparte", "the Emperor"], sub: undefined, see: undefined },
@@ -63,7 +65,7 @@ function book(terms: string) {
   });
 }
 
-describe("the index in print", () => {
+describe.runIf(PRO_INCLUDED)("the index in print", () => {
   it("is set after the book in two columns with page numbers that name the pages the terms are on", async () => {
     const b = await buildBook(book('["Napoleon", "lighthouse", "dragon", "Pharos -> lighthouse"]'), "Book.md", fonts);
     const { layout } = b;

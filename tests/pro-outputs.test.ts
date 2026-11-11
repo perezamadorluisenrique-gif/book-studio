@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import { PDFDocument } from "pdf-lib";
 import { beforeAll, describe, expect, it } from "vitest";
+import { PRO_INCLUDED } from "../src/edition";
 import { buildBook, buildBookEdition, exportEdition, exportPdf, planEditions, SAMPLE_WATERMARK, type Built } from "../src/app/pipeline";
 import { checkIsbn } from "../src/engine/cover/isbn";
 import type { FontSet } from "../src/engine/fonts";
@@ -26,7 +27,8 @@ function vault(front: Record<string, string> = {}, chapters = 3) {
   });
 }
 
-describe("new themes", () => {
+// The genre themes and editions come with the private Pro overlay, which runs these too.
+describe.runIf(PRO_INCLUDED)("new themes", () => {
   it.each(["thriller", "romance", "fantasy"])("%s lays out a book with no missing glyphs and stays on the page", async (id) => {
     const built = await buildBook(vault({ theme: id }), "Book.md", fonts);
     expect(built.book.settings.theme).toBe(id);
@@ -123,7 +125,7 @@ describe("preflight report", () => {
   });
 });
 
-describe("editions", { timeout: 60_000 }, () => {
+describe.runIf(PRO_INCLUDED)("editions", { timeout: 60_000 }, () => {
   const longText = text.repeat(3);
   const manifest = (editions: string) => memVault({
     "Book.md": `---\nbook: true\ntitle: Many\nauthor: Ada Writer\nisbn: 978-0-306-40615-7\n${editions}---\n## Chapters\n1. [[One]]\n2. [[Two]]\n3. [[Three]]\n`,

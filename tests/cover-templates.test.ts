@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { PRO_INCLUDED } from "../src/edition";
 import { coverTemplateAllowed, FREE_COVER_TEMPLATE_IDS } from "../src/engine/entitlements";
 import { GEN_FAMILIES, parseCoverDesign, serializeCoverDesign, type CoverDesign, type TextLayer } from "../src/engine/cover/design";
 import { coverGeometry } from "../src/engine/cover/geometry";
@@ -43,12 +44,15 @@ function under(d: CoverDesign, t: TextLayer, g: ReturnType<typeof coverGeometry>
 }
 
 describe("templates", () => {
-  it("are eight free and twelve Pro, with distinct names", () => {
-    expect(COVER_TEMPLATES).toHaveLength(20);
+  // The twelve Pro templates come with the private Pro overlay; the free edition has the eight free ones.
+  const total = PRO_INCLUDED ? 20 : 8;
+  it("are eight free and, with Pro, twelve Pro, with distinct names", () => {
+    expect(COVER_TEMPLATES).toHaveLength(total);
     expect(FREE_COVER_TEMPLATES).toHaveLength(8);
-    expect(new Set(COVER_TEMPLATES.map((t) => t.id)).size).toBe(20);
-    expect(new Set(COVER_TEMPLATES.map((t) => t.name)).size).toBe(20);
-    expect(COVER_TEMPLATES.filter((t) => t.generative).map((t) => t.generative).sort()).toEqual(expect.arrayContaining([...GEN_FAMILIES]));
+    expect(new Set(COVER_TEMPLATES.map((t) => t.id)).size).toBe(total);
+    expect(new Set(COVER_TEMPLATES.map((t) => t.name)).size).toBe(total);
+    if (PRO_INCLUDED) expect(COVER_TEMPLATES.filter((t) => t.generative).map((t) => t.generative).sort()).toEqual(expect.arrayContaining([...GEN_FAMILIES]));
+    else expect(COVER_TEMPLATES.every((t) => !t.pro)).toBe(true);
   });
 
   it("are free or Pro as the entitlements say", () => {
@@ -82,7 +86,7 @@ describe("templates", () => {
 
   it("use the book's own picture when they are picture templates", () => {
     const g = coverGeometry(trimById("6x9")!, 300, "white");
-    for (const id of ["picture-band", "picture-card"]) {
+    for (const id of PRO_INCLUDED ? ["picture-band", "picture-card"] : ["picture-band"]) {
       const d = COVER_TEMPLATES.find((t) => t.id === id)!.build({ ...info, coverTarget: "cover.jpg", coverAlt: "Cover" }, g);
       const img = d.layers.find((l) => l.kind === "image");
       expect(img && img.kind === "image" && img.target).toBe("cover.jpg");

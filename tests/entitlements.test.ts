@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { PRO_INCLUDED } from "../src/edition";
 import { epubBlockers, FREE_FEATURES, FREE_THEMES, hasFeature, PRO_FEATURES, printBlockers, themeAllowed } from "../src/engine/entitlements";
 import { FREE_TRIMS, TRIMS } from "../src/engine/trims";
 import { THEMES } from "../src/engine/themes";
@@ -81,7 +82,8 @@ describe("no free feature is ever taken away", () => {
 
   it("only marks Pro what the data says is Pro", () => {
     expect(THEMES.filter((t) => !t.pro).map((t) => t.id).sort()).toEqual([...FREE_THEMES].sort());
-    expect(THEMES.filter((t) => t.pro).map((t) => t.id).sort()).toEqual(["fantasy", "romance", "thriller"]);
+    // The genre themes come with the private Pro overlay.
+    expect(THEMES.filter((t) => t.pro).map((t) => t.id).sort()).toEqual(PRO_INCLUDED ? ["fantasy", "romance", "thriller"] : []);
     expect([...FREE_TRIMS].sort()).toEqual(TRIMS.map((t) => t.id).sort());
   });
 

@@ -1,7 +1,7 @@
 // Build a book and its outputs. Shared by both hosts and the sample script;
 // the plan decides what the outputs include, never what can be previewed.
 
-import { PRODUCT_NAME, VERSION } from "../config";
+import { FREE_EDITION, PRODUCT_NAME, VERSION } from "../config";
 import { auditBook, type AuditResult } from "../engine/a11y";
 import { accessibilityReport } from "../engine/a11y-report";
 import { loadBook, type VaultSource } from "../engine/book";
@@ -33,7 +33,7 @@ export interface Built {
 export async function buildBook(source: VaultSource, manifestPath: string, fonts: FontSet, overrides: Partial<BookSettings> = {}, opts: { cache?: LayoutCache; layout?: (book: Book) => Promise<Layout> } = {}): Promise<Built> {
   const t0 = performance.now();
   // Box sets always load so free users can preview them; exporting one needs Pro.
-  const book = await loadBook(source, manifestPath, overrides, { boxSets: true });
+  const book = await loadBook(source, manifestPath, overrides, { boxSets: !FREE_EDITION });
   const away = opts.layout ? await opts.layout(book).catch(() => null) : null;
   const layout = away ?? layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? await loadHyphenator(book.meta.language) : null, cache: opts.cache });
   const audit = auditBook(book, { pageList: true });
@@ -132,7 +132,7 @@ export async function exportEdition(source: VaultSource, manifestPath: string, f
 
 export async function buildBookEdition(source: VaultSource, manifestPath: string, fonts: FontSet, edition: Edition): Promise<Built> {
   const t0 = performance.now();
-  const book = await loadBook(source, manifestPath, edition.settings, { boxSets: true, meta: { isbnPrint: edition.format === "print" ? edition.isbn : undefined, isbnEbook: edition.format === "epub" ? edition.isbn : undefined, edition: edition.edition } });
+  const book = await loadBook(source, manifestPath, edition.settings, { boxSets: !FREE_EDITION, meta: { isbnPrint: edition.format === "print" ? edition.isbn : undefined, isbnEbook: edition.format === "epub" ? edition.isbn : undefined, edition: edition.edition } });
   const layout = layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? await loadHyphenator(book.meta.language) : null });
   return { book, layout, audit: auditBook(book, { pageList: true }), ms: Math.round(performance.now() - t0) };
 }
