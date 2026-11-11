@@ -9,6 +9,7 @@ import { deflateSync, crc32 } from "node:zlib";
 import JSZip from "jszip";
 import { chromium, type Browser, type Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { PRO_INCLUDED } from "../src/edition";
 import { trimById } from "../src/engine/trims";
 import { imageSize } from "../src/project/cover-image";
 import { checkKdpPdf } from "../tools/kdp-check";
@@ -547,10 +548,13 @@ describe("web app, book details and cover", () => {
     expect(await page.locator("#dt-keywords-err").textContent()).toContain("only the first 7");
     await keywords.fill(DATA.Keywords);
 
-    // Genre themes show as disabled with the Pro label; Elegant, every trim and the other free themes are allowed.
+    // With the Pro overlay, genre themes show as disabled with the Pro label; the free edition has none.
+    // Elegant, every trim and the other free themes are allowed either way.
     const thriller = page.locator("#dt-theme option[value=thriller]");
-    expect(await thriller.isDisabled()).toBe(true);
-    expect(await thriller.textContent()).toContain("Pro");
+    if (PRO_INCLUDED) {
+      expect(await thriller.isDisabled()).toBe(true);
+      expect(await thriller.textContent()).toContain("Pro");
+    } else expect(await thriller.count()).toBe(0);
     for (const free of ["modern", "elegant", "nonfiction", "large-print"]) expect(await page.locator(`#dt-theme option[value=${free}]`).isDisabled(), free).toBe(false);
     expect(await page.locator("#dt-trim option[value=\"7x10\"]").isDisabled()).toBe(false);
     await field(page, "Trim size").selectOption("5x8");
@@ -1414,10 +1418,13 @@ describe("web app, cover designer", () => {
     await startBook(page, "Cover test");
     let dialog = await openDesigner(page);
     await dialog.locator("#cv-template").selectOption("modern-bold");
-    // A Pro template is refused on the free plan and the choice goes back.
-    await dialog.locator("#cv-template").selectOption("waves-ocean");
-    await page.getByText("is part of Book Studio Pro").first().waitFor();
-    expect(await dialog.locator("#cv-template").inputValue()).toBe("modern-bold");
+    // With the Pro overlay, a Pro template is refused on the free plan and the choice goes back;
+    // the free edition doesn't list Pro templates at all.
+    if (PRO_INCLUDED) {
+      await dialog.locator("#cv-template").selectOption("waves-ocean");
+      await page.getByText("is part of Book Studio Pro").first().waitFor();
+      expect(await dialog.locator("#cv-template").inputValue()).toBe("modern-bold");
+    } else expect(await dialog.locator("#cv-template option[value=waves-ocean]").count()).toBe(0);
 
     // The title layer is the first text on the front; pick it from the list and rewrite it.
     await dialog.locator(".cv-layers button", { hasText: "Front · text" }).first().click();

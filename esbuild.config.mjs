@@ -6,15 +6,17 @@ import { join, relative, sep } from "node:path";
 
 const production = process.argv[2] === "production";
 const only = process.argv[3]; // "plugin" | "web" | undefined (both)
-// The default build is the full one: free features plus Pro, unlocked by a
-// license key that is checked on the device. BOOK_STUDIO_EDITION=community
-// leaves Pro and licensing out entirely. Developer settings, none of them set
-// for a release:
+// This public repository builds the free edition. With the private Pro overlay
+// copied over it (src/edition.ts then says PRO_INCLUDED = true) the default
+// build is the full one: free features plus Pro, unlocked by a license key.
+// BOOK_STUDIO_EDITION=community leaves Pro and licensing out of such a tree.
+// Developer settings, none of them set for a release:
 //   BOOK_STUDIO_PRO_PREVIEW=1       lets people try Pro without a key
 //   BOOK_STUDIO_EXTRA_PUBLIC_KEYS   "kid:hex,..." extra license keys, for tests
 //   PRO_LICENSE_TEST_API            e2e only: a local stand-in for the payment
 //                                   service's licence endpoint (never in a release)
-const freeEdition = process.env.BOOK_STUDIO_EDITION === "community";
+const proIncluded = /PRO_INCLUDED: boolean = true/.test(readFileSync("src/edition.ts", "utf8"));
+const freeEdition = !proIncluded || process.env.BOOK_STUDIO_EDITION === "community";
 const proPreview = !freeEdition && process.env.BOOK_STUDIO_PRO_PREVIEW === "1";
 const extraKeys = process.env.BOOK_STUDIO_EXTRA_PUBLIC_KEYS ?? "";
 const proLicenseTestApi = (process.env.PRO_LICENSE_TEST_API ?? "").replace(/\/+$/, "");

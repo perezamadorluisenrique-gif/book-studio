@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { buildBook } from "../src/app/pipeline";
 import { composeCover } from "../src/engine/cover/cover";
 import { coverGeometry } from "../src/engine/cover/geometry";
+import type { CoverDesign } from "../src/engine/cover/design";
 import { COVER_TEMPLATES, coverInfo } from "../src/engine/cover/templates";
 import type { FontSet } from "../src/engine/fonts";
 import type { TextDraw } from "../src/engine/layout/types";
@@ -47,8 +48,15 @@ describe("the cover PDF", () => {
   it("paints gradients and patterns into a valid PDF", async () => {
     const built = await buildBook(vault([], 6), "Book.md", fonts);
     const g = coverGeometry(trimById("6x9")!, 200, "white");
-    for (const id of ["dusk", "waves-ocean", "constellation"]) {
-      const book = { ...built.book, meta: { ...built.book.meta, coverLayout: COVER_TEMPLATES.find((t) => t.id === id)!.build(coverInfo(built.book), g) } };
+    // A gradient template, and the same design over two generated patterns (the Pro templates use these).
+    const dusk = COVER_TEMPLATES.find((t) => t.id === "dusk")!.build(coverInfo(built.book), g);
+    const designs: [string, CoverDesign][] = [
+      ["dusk", dusk],
+      ["waves", { ...dusk, background: { kind: "generative", color: "#0a2342", family: "waves", seed: "s", palette: ["#12375f", "#1a4a7a", "#0f2d52"] } }],
+      ["constellation", { ...dusk, background: { kind: "generative", color: "#0b1026", family: "constellation", seed: "s", palette: ["#3b4a8f", "#51609f", "#2c3a78"] } }],
+    ];
+    for (const [id, design] of designs) {
+      const book = { ...built.book, meta: { ...built.book.meta, coverLayout: design } };
       const cover = composeCover(book, fonts, 200);
       const bytes = await writePdf(book, cover.layout, fonts, { producer: "test", title: id });
       expect(Buffer.from(bytes).toString("latin1")).toContain("%PDF");
