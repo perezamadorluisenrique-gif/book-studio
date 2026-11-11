@@ -83,3 +83,7 @@ KDP acepta un PDF listo para imprimir para el interior, y las fuentes deben ir i
 ## Siguientes pasos
 
 Elegir el formato es el primer paso de [cómo formatear un libro para KDP](guide:como-formatear-un-libro-para-kdp). Si quieres que la herramienta haga el resto, lee [formatear un libro para KDP gratis](guide:formatear-libro-kdp-gratis) y [abre la app](app:).
+
+## Calculadoras KDP gratis
+
+Haz las cuentas en tu navegador, con las cifras de KDP: los [márgenes de tu tamaño y tus páginas](tool:margins), el [selector de tamaño](tool:trim), el [ancho del lomo](tool:spine) y el [tamaño de la cubierta](tool:cover), el [coste de impresión y la regalía](tool:cost) y el [código de barras del ISBN](tool:isbn). Están todas en la [página de herramientas KDP gratis](tool:).

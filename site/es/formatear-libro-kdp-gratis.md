@@ -63,3 +63,7 @@ No es un procesador de textos completo: la app web tiene un editor de capítulos
 Book Studio Pro añade los temas de género (Thriller, Romance, Fantasy), índice analítico, varias ediciones en una exportación, cajas de libros y el paquete de EPUB accesible (pago único). [Más sobre Book Studio Pro](pro:).
 
 Cuando quieras, [abre la app](app:) y exporta tu primer PDF, o vuelve a [todas las guías](hub:).
+
+## Calculadoras KDP gratis
+
+Haz las cuentas en tu navegador, con las cifras de KDP: los [márgenes de tu tamaño y tus páginas](tool:margins), el [selector de tamaño](tool:trim), el [ancho del lomo](tool:spine) y el [tamaño de la cubierta](tool:cover), el [coste de impresión y la regalía](tool:cost) y el [código de barras del ISBN](tool:isbn). Están todas en la [página de herramientas KDP gratis](tool:).

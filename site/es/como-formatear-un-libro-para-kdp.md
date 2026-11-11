@@ -68,3 +68,7 @@ Mira primero el número de páginas. Si superó un umbral de la tabla de arriba,
 Para un resumen de lo que hace la app, lee [formatear un libro para KDP gratis](guide:formatear-libro-kdp-gratis), o vuelve a [todas las guías](hub:).
 
 ¿Listo para exportar? [Abre la app](app:) y carga tu carpeta.
+
+## Calculadoras KDP gratis
+
+Haz las cuentas en tu navegador, con las cifras de KDP: los [márgenes de tu tamaño y tus páginas](tool:margins), el [selector de tamaño](tool:trim), el [ancho del lomo](tool:spine) y el [tamaño de la cubierta](tool:cover), el [coste de impresión y la regalía](tool:cost) y el [código de barras del ISBN](tool:isbn). Están todas en la [página de herramientas KDP gratis](tool:).

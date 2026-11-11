@@ -83,3 +83,7 @@ KDP accepts a print-ready PDF for the interior, and fonts must be embedded. Book
 ## Next steps
 
 Choosing a trim is step one of the process in [how to format a book for KDP](guide:format-a-book-for-kdp). If you want the tool to do the rest, read the [free KDP book formatter overview](guide:free-kdp-book-formatter), then [open the app](app:).
+
+## Free KDP calculators
+
+Do the arithmetic in your browser, with KDP's own numbers: the [margins for your size and page count](tool:margins), the [trim size chooser](tool:trim), the [spine width](tool:spine) and [cover size](tool:cover), the [printing cost and royalty](tool:cost) and an [ISBN barcode](tool:isbn). All are on the [free KDP tools page](tool:).

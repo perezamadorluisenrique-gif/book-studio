@@ -3,7 +3,11 @@
     "target": "ES2020",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": ["ES2021", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2021",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "types": [],
     "strict": true,
     "noImplicitOverride": true,
@@ -16,5 +20,13 @@
     "noEmit": true,
     "baseUrl": "."
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "tools/**/*.ts", "e2e/**/*.ts", "vitest.e2e.config.ts", "src/types.d.ts"]
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "tools/**/*.ts",
+    "e2e/**/*.ts",
+    "vitest.e2e.config.ts",
+    "src/types.d.ts",
+    "site/**/*.ts"
+  ]
 }

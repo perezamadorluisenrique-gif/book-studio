@@ -9,8 +9,12 @@
 //   download:<book>/<kind>   kind = pdf | epub | zip, from downloads.json
 //   pro:                 the Book Studio Pro page in the same language
 //   hub:                 the guides index in the same language
-// and two placeholders on lines of their own: {{guides}} and {{downloads}}.
+//   tool:<key>           a free KDP tool in the same language (key from site/tools/routes.json); tool: alone is the tools index
+// and placeholders on lines of their own: {{guides}}, {{downloads}} and, on the tool pages, {{tool}}, {{figures}} and {{tools}}.
+// The tools (site/tools/<lang>/*.md) are the only pages with a script: one local file, tools/tools.js, built from
+// site/tools/src/client.ts.
 
+import { buildSync } from "esbuild";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,6 +32,11 @@ const UI = {
     skip: "Skip to content",
     app: "Open the app",
     guides: "Guides",
+    tools: "Free KDP tools",
+    needJs: "This tool needs JavaScript. It runs in your browser: nothing you type leaves your device.",
+    figuresHead: "KDP figures checked on",
+    figuresFrom: "Source: KDP help pages",
+    sources: { cover: "Create a Paperback Cover", trim: "Set Trim Size, Bleed, and Margins", cost: "Paperback Printing Cost", royalty: "Paperback Royalty" },
     switchTo: "Español",
     switchLabel: "Leer en español",
     privacy: "No accounts, no cookies, no analytics. Your manuscript never leaves your device.",
@@ -45,6 +54,11 @@ const UI = {
     skip: "Ir al contenido",
     app: "Abrir la app",
     guides: "Guías",
+    tools: "Herramientas KDP gratis",
+    needJs: "Esta herramienta necesita JavaScript. Funciona en tu navegador: nada de lo que escribes sale de tu dispositivo.",
+    figuresHead: "Cifras de KDP comprobadas el",
+    figuresFrom: "Fuente: páginas de ayuda de KDP",
+    sources: { cover: "Create a Paperback Cover", trim: "Set Trim Size, Bleed, and Margins", cost: "Paperback Printing Cost", royalty: "Paperback Royalty" },
     switchTo: "English",
     switchLabel: "Read in English",
     privacy: "Sin cuentas, sin cookies, sin analítica. Tu manuscrito nunca sale de tu dispositivo.",
@@ -84,6 +98,31 @@ export function loadPages(dir) {
   return pages;
 }
 
+/** The free tools: one Markdown file per tool and language in site/tools/<lang>/, routed by site/tools/routes.json. */
+export function loadToolPages(dir) {
+  const routes = JSON.parse(readFileSync(join(dir, "tools", "routes.json"), "utf8"));
+  const pages = [];
+  for (const lang of LANGS) {
+    const other = lang === "en" ? "es" : "en";
+    const folder = join(dir, "tools", lang);
+    for (const name of readdirSync(folder).sort()) {
+      if (!name.endsWith(".md")) continue;
+      const key = name.slice(0, -3);
+      const raw = readFileSync(join(folder, name), "utf8");
+      const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(raw);
+      if (!m) throw new Error(`tools/${lang}/${name}: no front matter`);
+      const meta = parseYaml(m[1]);
+      const hub = key === "index";
+      if (!hub && !routes.tools[key]) throw new Error(`tools/${lang}/${name}: "${key}" is not in routes.json`);
+      const slug = hub ? routes.hub[lang] : `${routes.hub[lang]}/${routes.tools[key][lang]}`;
+      const pair = hub ? routes.hub[other] : `${routes.hub[other]}/${routes.tools[key][other]}`;
+      for (const k of ["title", "description", "updated"]) if (meta[k] === undefined) throw new Error(`tools/${lang}/${name}: front matter needs ${k}`);
+      pages.push({ ...meta, updated: String(meta.updated), type: hub ? "toolhub" : "tool", tool: hub ? undefined : key, slug, pair, body: m[2], lang, file: `tools/${lang}/${name}`, order: hub ? 0 : Object.keys(routes.tools).indexOf(key) + 1 });
+    }
+  }
+  return pages;
+}
+
 /** Path of a page from the site root, with a trailing slash; the hub is "<lang>/". */
 export function pagePath(page) {
   return page.slug === "" ? `${page.lang}/` : `${page.lang}/${page.slug}/`;
@@ -99,6 +138,12 @@ function resolveHref(href, page, ctx) {
   if (href.startsWith("app:")) return `${root}${href.slice(4)}`;
   if (href === "hub:") return `${root}${page.lang}/`;
   if (href === "pro:") return PRO_PAGE[page.lang];
+  if (href.startsWith("tool:")) {
+    const key = href.slice(5).split("#")[0];
+    const target = ctx.pages.find((p) => p.lang === page.lang && (key === "" ? p.type === "toolhub" : p.tool === key));
+    if (!target) throw new Error(`${page.file}: no ${page.lang} tool "${key}"`);
+    return `${root}${pagePath(target)}`;
+  }
   if (href.startsWith("guide:")) {
     const [slug, hash] = href.slice(6).split("#");
     const target = ctx.pages.find((p) => p.lang === page.lang && p.slug === slug);
@@ -120,10 +165,31 @@ function formatBytes(n) {
 
 function guidesList(page, ctx) {
   const items = ctx.pages
-    .filter((p) => p.lang === page.lang && p.type !== "hub" && p.type !== "landing")
+    .filter((p) => p.lang === page.lang && p.type !== "hub" && p.type !== "landing" && p.type !== "tool" && p.type !== "toolhub")
     .sort((a, b) => a.order - b.order)
     .map((p) => `<li><a href="${up(page)}${pagePath(p)}">${esc(p.title)}</a><br><span class="muted">${esc(p.description)}</span></li>`);
   return `<ul class="guide-list">\n${items.join("\n")}\n</ul>`;
+}
+
+function toolsList(page, ctx) {
+  const items = ctx.pages
+    .filter((p) => p.lang === page.lang && p.type === "tool")
+    .sort((a, b) => a.order - b.order)
+    .map((p) => `<li><a href="${up(page)}${pagePath(p)}">${esc(p.title)}</a><br><span class="muted">${esc(p.description)}</span></li>`);
+  return `<ul class="guide-list">\n${items.join("\n")}\n</ul>`;
+}
+
+/** Where the tool's script mounts its form; the words "needs JavaScript" show only without it. */
+function toolMount(page) {
+  return `<div id="tool" class="tool" data-tool="${esc(page.tool)}" data-root="${up(page)}"><noscript><p class="problem">${UI[page.lang].needJs}</p></noscript></div>`;
+}
+
+/** The date the numbers were last read from KDP's help pages, with the pages. */
+function figuresNote(page, ctx) {
+  const ui = UI[page.lang];
+  const f = ctx.figures;
+  const links = Object.entries(f.sources).map(([k, url]) => `<a href="${esc(url)}" rel="noopener">${esc(ui.sources[k])}</a>`).join(" · ");
+  return `<p class="figures">${ui.figuresHead} <time datetime="${esc(f.checked)}">${esc(f.checked)}</time>. ${ui.figuresFrom}: ${links}.</p>`;
 }
 
 function downloadsTable(page, ctx) {
@@ -208,6 +274,9 @@ export function renderBody(page, ctx) {
   let html = marked.parse(page.body);
   html = html.replace(/<p>\{\{guides\}\}<\/p>/g, () => guidesList(page, ctx));
   html = html.replace(/<p>\{\{downloads\}\}<\/p>/g, () => downloadsTable(page, ctx));
+  html = html.replace(/<p>\{\{tools\}\}<\/p>/g, () => toolsList(page, ctx));
+  html = html.replace(/<p>\{\{tool\}\}<\/p>/g, () => toolMount(page));
+  html = html.replace(/<p>\{\{figures\}\}<\/p>/g, () => figuresNote(page, ctx));
   html = html.replace(/<p>\{\{steps\}\}<\/p>/g, () => stepsList(page, ctx));
   html = html.replace(/<p>\{\{beforeafter\}\}<\/p>/g, () => beforeAfter(page, ctx));
   html = html.replace(/<p>\{\{compare\}\}<\/p>/g, () => compareTable(page, ctx));
@@ -232,7 +301,8 @@ function jsonLd(page) {
     const faq = { "@type": "FAQPage", inLanguage: page.lang, mainEntity: (page.faq ?? []).map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: String(f.a).replace(/\]\([^)]*\)/g, "]").replace(/[[\]*]/g, "") } })) };
     return { "@context": "https://schema.org", "@graph": [{ ...app, inLanguage: page.lang, description: page.description }, faq] };
   }
-  if (page.type === "hub") return { "@context": "https://schema.org", ...app, inLanguage: page.lang, description: page.description };
+  if (page.type === "tool") return { "@context": "https://schema.org", "@type": "WebApplication", name: page.title, description: page.description, inLanguage: page.lang, url, applicationCategory: "UtilitiesApplication", operatingSystem: "Any", isAccessibleForFree: true, offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }, dateModified: page.updated, author: { "@type": "Organization", name: "Hidden Problems Lab" }, isPartOf: app };
+  if (page.type === "hub" || page.type === "toolhub") return { "@context": "https://schema.org", ...app, inLanguage: page.lang, description: page.description };
   const article = { "@context": "https://schema.org", "@type": "Article", headline: page.title, description: page.description, inLanguage: page.lang, dateModified: page.updated, url, author: { "@type": "Organization", name: "Hidden Problems Lab" }, about: app };
   if (page.type !== "howto" || !page.steps) return article;
   return { ...article, "@type": "HowTo", name: page.title, step: page.steps.map((s, i) => ({ "@type": "HowToStep", position: i + 1, name: s })) };
@@ -257,14 +327,14 @@ export function renderPage(page, ctx) {
   const alt = (p) => `<link rel="alternate" hreflang="${p.lang}" href="${SITE}${pagePath(p)}">`;
   const en = page.lang === "en" ? page : pair;
   const body = renderBody(page, ctx);
-  const home = page.type === "hub" || page.type === "landing";
+  const home = page.type === "hub" || page.type === "landing" || page.type === "toolhub";
   const updated = home ? "" : `<p class="updated">${ui.updated} <time datetime="${esc(page.updated)}">${esc(page.updated)}</time></p>`;
   return `<!doctype html>
 <html lang="${page.lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; ${page.type === "tool" ? "script-src 'self'; " : ""}style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
 <title>${esc(page.title)}${home ? "" : " · Book Studio"}</title>
 <meta name="description" content="${esc(page.description)}">
 <link rel="canonical" href="${SITE}${pagePath(page)}">
@@ -280,7 +350,7 @@ ${alt(pair)}
 <meta property="og:locale" content="${page.lang === "en" ? "en_US" : "es_ES"}">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="${root}site.css">
-<script type="application/ld+json">${JSON.stringify(jsonLd(page)).replace(/</g, "\\u003c")}</script>
+${page.type === "tool" ? `<script src="${root}tools/tools.js" defer></script>\n` : ""}<script type="application/ld+json">${JSON.stringify(jsonLd(page)).replace(/</g, "\\u003c")}</script>
 </head>
 <body>
 <a class="skip" href="#main">${ui.skip}</a>
@@ -288,6 +358,7 @@ ${alt(pair)}
 <nav aria-label="${ui.nav}">
 <a class="brand" href="${root}${page.lang}/">Book Studio</a>
 <a href="${root}${page.lang}/">${ui.guides}</a>
+<a href="${root}${pagePath(ctx.pages.find((p) => p.lang === page.lang && p.type === "toolhub"))}">${ui.tools}</a>
 <a href="${root}${pagePath(pair)}" hreflang="${pair.lang}" lang="${pair.lang}" aria-label="${ui.switchLabel}">${ui.switchTo}</a>
 <a class="cta" href="${root}${page.lang === "es" ? "?sample=leyendas" : ""}">${ui.app}</a>
 </nav>
@@ -316,13 +387,19 @@ export function auditPages(pages) {
     if (p.description.length < 70 || p.description.length > 160) problems.push(`${where}: description is ${p.description.length} characters (70–160)`);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(p.updated)) problems.push(`${where}: updated must be YYYY-MM-DD`);
     if (!pages.some((q) => q.lang !== p.lang && q.slug === p.pair && q.pair === p.slug)) problems.push(`${where}: no matching ${p.lang === "en" ? "es" : "en"} page that pairs back`);
-    if (!["hub", "article", "howto", "landing"].includes(p.type)) problems.push(`${where}: unknown type ${p.type}`);
+    if (!["hub", "article", "howto", "landing", "tool", "toolhub"].includes(p.type)) problems.push(`${where}: unknown type ${p.type}`);
     if (p.type === "howto" && !Array.isArray(p.steps)) problems.push(`${where}: a howto lists its steps`);
     if (p.type === "landing") {
       if (!String(p.hero?.primary?.href).startsWith("app:")) problems.push(`${where}: the main button must open the app`);
       if (!Array.isArray(p.steps) || p.steps.length !== 3) problems.push(`${where}: a landing page lists three steps`);
       if (!Array.isArray(p.faq) || p.faq.length !== 6) problems.push(`${where}: a landing page answers six questions`);
       if (!p.compare?.rows?.length) problems.push(`${where}: a landing page has a comparison table`);
+    } else if (p.type === "tool") {
+      if (!p.body.includes("{{tool}}")) problems.push(`${where}: a tool page mounts its tool with {{tool}}`);
+      if (!p.body.includes("{{figures}}")) problems.push(`${where}: a tool page shows the date of its figures with {{figures}}`);
+      if (!/\]\(app:/.test(p.body)) problems.push(`${where}: no link to the app`);
+    } else if (p.type === "toolhub") {
+      if (!p.body.includes("{{tools}}")) problems.push(`${where}: the tools index lists them with {{tools}}`);
     } else if (p.type !== "hub" && !/\]\(app:/.test(p.body)) problems.push(`${where}: no link to the app`);
   }
   const seen = new Set();
@@ -350,19 +427,22 @@ ${urls.join("\n")}
 
 /** Build every page into `out` (normally dist/web). */
 export function buildSite(siteDir, out) {
-  const pages = loadPages(siteDir);
+  const pages = [...loadPages(siteDir), ...loadToolPages(siteDir)];
+  const figures = JSON.parse(readFileSync(join(siteDir, "tools", "data", "kdp-figures.json"), "utf8"));
   const problems = auditPages(pages);
   if (problems.length) throw new Error(`Site pages have problems:\n${problems.join("\n")}`);
   const dl = join(out, "downloads", "downloads.json");
   if (!existsSync(dl)) throw new Error(`${dl} is missing: run \`npm run downloads\` first`);
   const downloads = JSON.parse(readFileSync(dl, "utf8"));
-  const ctx = { pages, downloads };
+  const ctx = { pages, downloads, figures };
   for (const page of pages) {
     const file = join(out, pagePath(page), "index.html");
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, renderPage(page, ctx));
   }
   cpSync(join(siteDir, "site.css"), join(out, "site.css"));
+  // The one script on the site, for the tool pages: the calculators, bundled from site/tools/src.
+  buildSync({ entryPoints: [join(siteDir, "tools", "src", "client.ts")], bundle: true, minify: true, format: "iife", target: "es2020", outfile: join(out, "tools", "tools.js"), logLevel: "warning" });
   cpSync(join(siteDir, "img"), join(out, "img"), { recursive: true });
   writeFileSync(join(out, "sitemap.xml"), sitemap(pages));
   writeFileSync(join(out, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${SITE}sitemap.xml\n`);

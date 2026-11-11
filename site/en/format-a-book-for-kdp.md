@@ -68,3 +68,7 @@ Check the page count first. If it crossed a threshold in the table above, the in
 For a short overview of what the app does, read [the free KDP book formatter page](guide:free-kdp-book-formatter), or go back to [all guides](hub:).
 
 Ready to export? [Open the app](app:) and load your folder.
+
+## Free KDP calculators
+
+Do the arithmetic in your browser, with KDP's own numbers: the [margins for your size and page count](tool:margins), the [trim size chooser](tool:trim), the [spine width](tool:spine) and [cover size](tool:cover), the [printing cost and royalty](tool:cost) and an [ISBN barcode](tool:isbn). All are on the [free KDP tools page](tool:).

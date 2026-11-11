@@ -9,6 +9,7 @@ import { LicenseManager } from "../app/license-manager";
 import { backupDue } from "../project/backup";
 import { vaultToProjects, type ImportFiles, type ImportResult } from "../project/from-vault";
 import { createProject, renameProject } from "../project/ops";
+import { startSettings } from "../project/start-link";
 import { exportZip, importZip, zipName } from "../project/zip";
 import { projectFromText } from "../project/import-text";
 import { remoteLayout } from "./layout-remote";
@@ -520,6 +521,9 @@ function firstSeen(p: Project): number {
 // Showing the list takes a moment; when two calls overlap (the page's own and a click), only the last one goes on.
 let showing = 0;
 
+/** Size and paper a link asked for (the site's KDP calculators send them); they apply to books made from this page. */
+const startLink = startSettings(location.search);
+
 async function showProjects(focus?: string): Promise<void> {
   const mine = ++showing;
   await workspace.close();
@@ -535,6 +539,7 @@ async function showProjects(focus?: string): Promise<void> {
       list: listProjects,
       create: async (name, template) => {
         const p = createProject({ id: crypto.randomUUID(), name, now: Date.now(), template, language: locale, firstChapterTitle: t("proj.firstChapter") });
+        Object.assign(p.settings, startLink);
         await putProject(p);
         return p;
       },
@@ -554,10 +559,12 @@ async function showProjects(focus?: string): Promise<void> {
             if (answer === "ok") imported = await importFile(bytes, parse, fileName, { titleStyles: own.map((x) => x.id) });
           }
           const project = projectFromImport(imported, opts);
+          Object.assign(project.settings, startLink);
           await putProject(project);
           return { project, notes: imported.notes, report: imported.report };
         }
         const { project, imported } = projectFromText(text ?? "", opts);
+        Object.assign(project.settings, startLink);
         await putProject(project);
         return { project, notes: imported.notes };
       },

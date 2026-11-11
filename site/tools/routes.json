@@ -1,0 +1,12 @@
+{
+  "hub": { "en": "tools", "es": "herramientas" },
+  "tools": {
+    "spine": { "en": "spine-width-calculator", "es": "calculadora-lomo-kdp" },
+    "cover": { "en": "cover-size-calculator", "es": "calculadora-tamano-cubierta-kdp" },
+    "cost": { "en": "printing-cost-royalty-calculator", "es": "calculadora-costes-regalias-kdp" },
+    "margins": { "en": "margins-calculator", "es": "calculadora-margenes-kdp" },
+    "trim": { "en": "trim-size-chooser", "es": "elegir-tamano-libro-kdp" },
+    "isbn": { "en": "isbn-barcode-checker", "es": "comprobar-isbn-codigo-barras" },
+    "pages": { "en": "words-to-pages-calculator", "es": "palabras-a-paginas" }
+  }
+}

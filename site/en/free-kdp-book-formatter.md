@@ -63,3 +63,7 @@ There is no full word processor: the web app has a simple chapter editor, with n
 Book Studio Pro adds the genre themes (Thriller, Romance, Fantasy), a back-of-book index, several editions in one export, box sets and the accessible-EPUB pack (one-time purchase). [Read about Book Studio Pro](pro:).
 
 When you are ready, [open the app](app:) and export your first PDF. Or see [all guides](hub:).
+
+## Free KDP calculators
+
+Do the arithmetic in your browser, with KDP's own numbers: the [margins for your size and page count](tool:margins), the [trim size chooser](tool:trim), the [spine width](tool:spine) and [cover size](tool:cover), the [printing cost and royalty](tool:cost) and an [ISBN barcode](tool:isbn). All are on the [free KDP tools page](tool:).
