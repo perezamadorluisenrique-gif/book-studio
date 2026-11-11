@@ -155,7 +155,7 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilo D, órdenes Hilo D terminado (T4.1 a T4.5). Siguiente: hilo E (T5.1 en adelante). Hilos A, B y C terminados.
+Hilos A, B, C y D terminados. Siguiente: hilo E, que empieza en **T5.0** (no en T5.1): el plan del hilo E se revisó el 2026-11-11 y la versión anterior está caducada. Después, hilo E2 (tapa dura). Lo Pro de la fase 5 queda aplazado y fuera de este repositorio.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
