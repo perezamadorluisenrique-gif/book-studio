@@ -15,8 +15,7 @@ import { SALES_PAGE } from "../engine/pro-config";
 import { fmString, isManifestFrontmatter, manifestTemplate } from "../engine/manifest";
 import type { SourceRef } from "../engine/model";
 import { loadBundledFont } from "./fonts";
-
-const VIEW_TYPE = "book-studio";
+import { bothOnNotice, inheritedSettings, siblingOf } from "./side-by-side";
 
 interface Settings {
   exportFolder: string;
@@ -36,6 +35,7 @@ export default class BookStudioPlugin extends Plugin {
   override async onload(): Promise<void> {
     setElementFactory((tag) => createEl(tag));
     await this.loadSettings();
+    await this.inheritFromSibling();
     this.store = {
       get: <T>(k: string) => this.settings.data[k] as T | undefined,
       set: (k, v) => {
@@ -46,8 +46,8 @@ export default class BookStudioPlugin extends Plugin {
     };
     this.license = new LicenseManager({ store: this.store });
 
-    this.registerView(VIEW_TYPE, (leaf) => new StudioView(leaf, this));
-    this.addRibbonIcon("book-open", "Open Book Studio", () => void this.openStudio());
+    this.registerView(this.viewType, (leaf) => new StudioView(leaf, this));
+    this.addRibbonIcon("book-open", `Open ${this.manifest.name}`, () => void this.openStudio());
 
     this.addCommand({ id: "open", name: "Open studio", icon: "book-open", callback: () => void this.openStudio() });
     this.addCommand({ id: "export-pdf", name: "Export print PDF", icon: "printer", callback: () => void this.withStudio((s) => s.exportPdf()) });
@@ -84,6 +84,34 @@ export default class BookStudioPlugin extends Plugin {
     );
 
     this.addSettingTab(new BookStudioSettingTab(this.app, this));
+    this.app.workspace.onLayoutReady(() => this.warnIfBothOn());
+  }
+
+  /** The view type is the plugin id, so the free plugin and the paid edition can run side by side. */
+  get viewType(): string {
+    return this.manifest.id;
+  }
+
+  /** On the paid edition's first run, start from the free plugin's settings. */
+  private async inheritFromSibling(): Promise<void> {
+    const sibling = siblingOf(this.manifest.id);
+    if (!sibling) return;
+    const path = normalizePath(`${this.app.vault.configDir}/plugins/${sibling}/data.json`);
+    try {
+      if (!(await this.app.vault.adapter.exists(path))) return;
+      const taken = inheritedSettings(this.manifest.id, await this.loadData(), JSON.parse(await this.app.vault.adapter.read(path)));
+      if (!taken) return;
+      this.settings = { ...DEFAULT_SETTINGS, ...taken, data: { ...((taken.data as Record<string, unknown> | undefined) ?? {}) } };
+      await this.saveData(this.settings);
+    } catch {
+      // Unreadable or not JSON: start from the defaults.
+    }
+  }
+
+  private warnIfBothOn(): void {
+    const enabled = (this.app as unknown as { plugins?: { enabledPlugins?: Set<string> } }).plugins?.enabledPlugins;
+    const text = enabled ? bothOnNotice(this.manifest.id, enabled) : null;
+    if (text) new Notice(text, 15000);
   }
 
   override onunload(): void {
@@ -112,7 +140,7 @@ export default class BookStudioPlugin extends Plugin {
 
   private studios(): Studio[] {
     const out: Studio[] = [];
-    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) {
+    for (const leaf of this.app.workspace.getLeavesOfType(this.viewType)) {
       const view = leaf.view;
       if (view instanceof StudioView && view.studio) out.push(view.studio);
     }
@@ -125,10 +153,10 @@ export default class BookStudioPlugin extends Plugin {
 
   async openStudio(): Promise<Studio | null> {
     const { workspace } = this.app;
-    let leaf = workspace.getLeavesOfType(VIEW_TYPE)[0];
+    let leaf = workspace.getLeavesOfType(this.viewType)[0];
     if (!leaf) {
       leaf = workspace.getLeaf("tab");
-      await leaf.setViewState({ type: VIEW_TYPE, active: true });
+      await leaf.setViewState({ type: this.viewType, active: true });
     }
     await workspace.revealLeaf(leaf);
     const view = leaf.view;
@@ -253,11 +281,11 @@ class StudioView extends ItemView {
   }
 
   getViewType(): string {
-    return VIEW_TYPE;
+    return this.plugin.viewType;
   }
 
   getDisplayText(): string {
-    return "Book Studio";
+    return this.plugin.manifest.name;
   }
 
   override getIcon(): string {
