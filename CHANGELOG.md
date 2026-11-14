@@ -4,16 +4,18 @@ The release workflow uses the section named after the version being released
 as the release description, so every version needs one. `npm version <x.y.z>`
 renames the `Unreleased` heading below to that version.
 
-## Unreleased
+## 0.2.0
 
-- Free: unlimited books, and the 5" × 8" and 5.5" × 8.5" trims next to 6" × 9".
-- Book Studio Pro, a one-time payment unlocked by the license key from the purchase email (checked once with the payment service when you press Activate; offline signed keys are also accepted): more themes and trims, large print, KDP preflight with an HTML report, a full wraparound cover with barcode space, footnotes at the page foot, a back-of-book index, editions, a KDP details sheet and box sets.
-- Activate is the only network request, and nothing else is ever sent.
-- Without a key, the print PDF of a Pro design carries a SAMPLE watermark.
-- New manifest properties: `paper`, `footnotes`, `index-terms`, `editions`, `back-blurb`, `author-bio`, `author-photo`, `tagline`, `cover-background`, `cover-ink`, `spine-title`.
-- Book notes can use Spanish section headings: `## Preliminares`, `## Capítulos`, `## Parte final` or `## Apéndices`.
+- Free: unlimited books, every trim size, the full wraparound cover with barcode space, footnotes at the page foot and the KDP checks.
+- Better pages: a page builder that searches each chapter for full, even pages, balanced facing pages, optical margins, no hyphen ladders or runts, per-language hyphenation and Spanish typography.
+- Faster layout: paginating is cached and runs off the main thread in the web app.
+- Cover editor with templates, back cover, barcode and cover exports.
+- Import a Word, ODT or RTF manuscript with a word-count check, and export the book back to Word.
+- Portrait photos that carry an EXIF orientation tag now keep their orientation in the PDF instead of turning sideways.
+- Callout paragraphs after the first are set flush left, without a first-line indent.
 - Checkboxes are 24 px on touch screens and narrow windows.
-- Web app: guides for KDP authors in English and Spanish, a second sample book (Bécquer, *Leyendas y rimas*) and downloadable sample PDFs, EPUBs and sources.
+- Book notes can use Spanish section headings: `## Preliminares`, `## Capítulos`, `## Parte final` or `## Apéndices`.
+- Web app: guides for KDP authors in English and Spanish, sample books and downloadable sample PDFs, EPUBs and sources.
 
 ## 0.1.3
 

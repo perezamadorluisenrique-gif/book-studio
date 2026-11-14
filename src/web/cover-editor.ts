@@ -240,8 +240,6 @@ class CoverEditor {
     const scale = width / cover.layout.widthPt;
     this.stage.style.width = `${Math.round(width)}px`;
     this.stage.style.height = `${Math.round(cover.layout.heightPt * scale)}px`;
-    this.canvas.style.width = "100%";
-    this.canvas.style.height = "100%";
     this.canvas.setAttribute("role", "img");
     const g = cover.geometry;
     this.canvas.setAttribute("aria-label", t("cv.canvas", { width: g.width.toFixed(2), height: g.height.toFixed(2) }));
