@@ -27,6 +27,8 @@ export interface CoverFinding {
 }
 
 export interface CoverOptions {
+  /** Another sheet than the paperback one, e.g. an edition's hardcover case; the panels say where things go. */
+  geometry?: CoverGeometry;
   /** Draw bleed, safe-area, spine and barcode guides, for the preview only. */
   guides?: boolean;
 }
@@ -46,7 +48,7 @@ function rs(ts: TextStyle, oldstyle: boolean, size = ts.size): RunStyle {
 export function composeCover(book: Book, fonts: FontSet, pages: number, opts: CoverOptions = {}): Cover {
   const { meta, settings } = book;
   const theme = themeById(settings.theme);
-  const g = coverGeometry(trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!, pages, settings.paper);
+  const g = opts.geometry ?? coverGeometry(trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!, pages, settings.paper);
   const design = meta.coverDesign;
   const findings: CoverFinding[] = [];
   const bg = hexToRgb(design.background ?? theme.cover.background);

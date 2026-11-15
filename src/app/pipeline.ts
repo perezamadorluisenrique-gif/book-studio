@@ -5,7 +5,7 @@ import { FREE_EDITION, PRODUCT_NAME, VERSION } from "../config";
 import { auditBook, type AuditResult } from "../engine/a11y";
 import { accessibilityReport } from "../engine/a11y-report";
 import { loadBook, type VaultSource } from "../engine/book";
-import { planEditions, type Edition } from "../engine/editions";
+import { editionBinding, planEditions, type Edition } from "../engine/editions";
 import { runPreflight } from "../engine/preflight";
 import { preflightReport } from "../engine/preflight-report";
 import { epubBlockers, hasFeature, printBlockers, type ExportBlocker, type Plan } from "../engine/entitlements";
@@ -14,7 +14,7 @@ import type { FontSet } from "../engine/fonts";
 import { loadHyphenator } from "../engine/hyphenate";
 import { layoutBook, type Layout, type LayoutCache } from "../engine/layout/index";
 import type { Book, BookSettings } from "../engine/model";
-import { composeCover, type Cover } from "../engine/cover/cover";
+import { composeCover, type Cover, type CoverOptions } from "../engine/cover/cover";
 import { writePdf } from "../engine/pdf";
 
 export const GENERATOR = `${PRODUCT_NAME} ${VERSION}`;
@@ -61,12 +61,12 @@ export async function exportPdf(built: Built, fonts: FontSet, opts: { sample?: b
 }
 
 /** The flat paperback cover for the book as laid out, sized to its page count and paper. */
-export function buildCover(built: Built, fonts: FontSet, opts: { guides?: boolean } = {}): Cover {
+export function buildCover(built: Built, fonts: FontSet, opts: CoverOptions = {}): Cover {
   return composeCover(built.book, fonts, built.layout.pages.length, opts);
 }
 
-export async function exportCover(built: Built, fonts: FontSet): Promise<{ name: string; data: Uint8Array; cover: Cover }> {
-  const cover = buildCover(built, fonts);
+export async function exportCover(built: Built, fonts: FontSet, opts: CoverOptions = {}): Promise<{ name: string; data: Uint8Array; cover: Cover }> {
+  const cover = buildCover(built, fonts, opts);
   const data = await writePdf(built.book, cover.layout, fonts, { producer: GENERATOR, title: `${built.book.meta.title}: cover` });
   return { name: `${bookSlug(built.book)}-cover-${built.layout.trim.id}-${built.layout.pages.length}p.pdf`, data, cover };
 }
@@ -105,6 +105,8 @@ export interface EditionFile {
   name: string;
   mime: string;
   data: Uint8Array | string;
+  /** On the preflight report: what KDP would refuse in this edition. */
+  errors?: string[];
 }
 
 /**
@@ -121,12 +123,14 @@ export async function exportEdition(source: VaultSource, manifestPath: string, f
     out.push({ name: prefix + epub.name, mime: "application/epub+zip", data: epub.data });
     return out;
   }
+  // A hardcover has its own page range and case cover; the interior PDF is named after it too.
+  const binding = editionBinding(edition, built.layout.pages.length) ?? undefined;
   const pdf = await exportPdf(built, fonts);
-  out.push({ name: prefix + pdf.name, mime: "application/pdf", data: pdf.data });
-  const cover = await exportCover(built, fonts);
+  out.push({ name: prefix + (binding ? pdf.name.replace("-paperback-", `-${binding.name}-`) : pdf.name), mime: "application/pdf", data: pdf.data });
+  const cover = await exportCover(built, fonts, { geometry: binding?.cover });
   out.push({ name: prefix + cover.name, mime: "application/pdf", data: cover.data });
-  const report = await runPreflight({ book: built.book, layout: built.layout, fonts, pdf: pdf.data });
-  out.push({ name: `${prefix}${bookSlug(built.book)}-kdp-preflight.html`, mime: "text/html", data: preflightReport(built.book, report, { generator: GENERATOR }) });
+  const report = await runPreflight({ book: built.book, layout: built.layout, fonts, pdf: pdf.data, binding });
+  out.push({ name: `${prefix}${bookSlug(built.book)}-kdp-preflight.html`, mime: "text/html", data: preflightReport(built.book, report, { generator: GENERATOR }), errors: report.findings.filter((f) => f.severity === "error").map((f) => f.message) });
   return out;
 }
 
