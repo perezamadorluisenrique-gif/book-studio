@@ -17,6 +17,14 @@ import type { SourceRef } from "../engine/model";
 import { loadBundledFont } from "./fonts";
 import { bothOnNotice, inheritedSettings, siblingOf } from "./side-by-side";
 
+/**
+ * The view type and tab name are the plugin's id and name, so a second edition with its
+ * own id runs side by side. Module-level because ItemView's constructor asks for them
+ * before the view's own fields are set; each plugin has its own bundle, so one value.
+ */
+let viewType = "book-studio";
+let viewName = "Book Studio";
+
 interface Settings {
   exportFolder: string;
   author: string;
@@ -33,6 +41,8 @@ export default class BookStudioPlugin extends Plugin {
   private saveTimer = 0;
 
   override async onload(): Promise<void> {
+    viewType = this.manifest.id;
+    viewName = this.manifest.name;
     setElementFactory((tag) => createEl(tag));
     await this.loadSettings();
     await this.inheritFromSibling();
@@ -87,9 +97,8 @@ export default class BookStudioPlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => this.warnIfBothOn());
   }
 
-  /** The view type is the plugin id, so the free plugin and the paid edition can run side by side. */
   get viewType(): string {
-    return this.manifest.id;
+    return viewType;
   }
 
   /** On the paid edition's first run, start from the free plugin's settings. */
@@ -281,11 +290,11 @@ class StudioView extends ItemView {
   }
 
   getViewType(): string {
-    return this.plugin.viewType;
+    return viewType;
   }
 
   getDisplayText(): string {
-    return this.plugin.manifest.name;
+    return viewName;
   }
 
   override getIcon(): string {
