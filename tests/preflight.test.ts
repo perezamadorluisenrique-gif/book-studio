@@ -5,6 +5,9 @@ import { buildBook, exportPdf } from "../src/app/pipeline";
 import { runPreflight, PREFLIGHT_RULES, type PreflightReport } from "../src/engine/preflight";
 import type { FontSet } from "../src/engine/fonts";
 import { writePdf } from "../src/engine/pdf";
+import { coverGeometry } from "../src/engine/cover/geometry";
+import { composeCover } from "../src/engine/cover/cover";
+import { editionBinding } from "../src/engine/editions";
 import { testFonts } from "./helpers/fonts";
 import { memVault } from "./helpers/memVault";
 import { pngHeader } from "./helpers/png";
@@ -123,5 +126,22 @@ describe("preflight", () => {
     expect(real.length).toBeGreaterThan(0);
     const r = await check({ theme: "modern" });
     expect(r.passed.map((x) => x.id)).toContain("pdf-fonts");
+  });
+});
+
+describe("an edition printed another way (binding)", () => {
+  it("uses the binding's page range in the rule and the message, and its cover sheet", async () => {
+    const built = await buildBook(vault(), "Book.md", fonts);
+    const n = built.layout.pages.length;
+    const cover = { ...coverGeometry(built.layout.trim, n), width: 20, height: 12 };
+    const r = await runPreflight({ book: built.book, layout: built.layout, fonts, binding: { name: "hardcover", minPages: n + 1, maxPages: 550, cover } });
+    expect(r.findings.find((f) => f.rule === "page-count")?.message).toMatch(new RegExp(`KDP hardcovers need at least ${n + 1}`));
+    const ok = await runPreflight({ book: built.book, layout: built.layout, fonts, binding: { name: "hardcover", minPages: 1, maxPages: 550, cover } });
+    expect(ok.passed.find((p) => p.id === "page-count")?.title).toBe("1 to 550 pages");
+    expect(composeCover(built.book, fonts, n, { geometry: cover }).layout.widthPt).toBe(20 * 72);
+  });
+
+  it("the free build has no other binding", () => {
+    expect(editionBinding({ id: "x", format: "print", settings: {} } as never, 100)).toBeNull();
   });
 });

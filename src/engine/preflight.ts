@@ -10,7 +10,7 @@
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRef, PDFStream } from "pdf-lib";
 import { composeCover } from "./cover/cover";
 import { checkIsbn } from "./cover/isbn";
-import { SPINE_TEXT_MIN_PAGES } from "./cover/geometry";
+import { SPINE_TEXT_MIN_PAGES, type CoverGeometry } from "./cover/geometry";
 import type { FontSet } from "./fonts";
 import type { Layout } from "./layout/types";
 import type { Book, SourceRef } from "./model";
@@ -53,6 +53,16 @@ export interface PreflightInput {
   fonts: FontSet;
   /** The PDF as written, for the checks that need the file itself. */
   pdf?: Uint8Array;
+  /** An edition printed another way (a hardcover): its own page range and cover sheet. */
+  binding?: PreflightBinding;
+}
+
+export interface PreflightBinding {
+  /** "hardcover", as said in the messages. */
+  name: string;
+  minPages: number;
+  maxPages: number;
+  cover: CoverGeometry;
 }
 
 export const KDP_MAX_FILE_BYTES = 650 * 1024 * 1024;
@@ -63,7 +73,7 @@ export const MAX_BLANK_RUN = 2;
 
 export const PREFLIGHT_DISCLAIMER = "The preflight reduces rejections; KDP's own review makes the final decision.";
 
-type Rule = PreflightRule & { run(input: PreflightInput, facts: PdfFacts | null): PreflightFinding[] | Promise<PreflightFinding[]> };
+type Rule = Omit<PreflightRule, "title"> & { title: string | ((input: PreflightInput) => string); run(input: PreflightInput, facts: PdfFacts | null): PreflightFinding[] | Promise<PreflightFinding[]> };
 
 const inch = (pt: number) => pt / 72;
 const fmtIn = (n: number) => n.toFixed(3).replace(/\.?0+$/, "");
@@ -75,11 +85,14 @@ function folioOf(layout: Layout, index: number): string {
 const RULES: Rule[] = [
   {
     id: "page-count",
-    title: `${KDP_MIN_PAGES} to ${KDP_MAX_PAGES} pages`,
-    run: ({ layout }) => {
+    title: ({ binding }) => `${binding?.minPages ?? KDP_MIN_PAGES} to ${binding?.maxPages ?? KDP_MAX_PAGES} pages`,
+    run: ({ layout, binding }) => {
       const n = layout.pages.length;
-      if (n < KDP_MIN_PAGES) return [{ rule: "page-count", severity: "error", message: `The book has ${n} pages; KDP paperbacks need at least ${KDP_MIN_PAGES}. Add pages or blank pages at the end.` }];
-      if (n > KDP_MAX_PAGES) return [{ rule: "page-count", severity: "error", message: `The book has ${n} pages; KDP paperbacks allow at most ${KDP_MAX_PAGES}. Use a larger trim size, a smaller type size, or split the book into volumes.` }];
+      const min = binding?.minPages ?? KDP_MIN_PAGES;
+      const max = binding?.maxPages ?? KDP_MAX_PAGES;
+      const kind = binding ? `${binding.name}s` : "paperbacks";
+      if (n < min) return [{ rule: "page-count", severity: "error", message: `The book has ${n} pages; KDP ${kind} need at least ${min}. Add pages or blank pages at the end${binding ? ", or leave this edition out" : ""}.` }];
+      if (n > max) return [{ rule: "page-count", severity: "error", message: `The book has ${n} pages; KDP ${kind} allow at most ${max}. Use a larger trim size, a smaller type size, or split the book into volumes.` }];
       return [];
     },
   },
@@ -230,7 +243,7 @@ const RULES: Rule[] = [
   {
     id: "cover",
     title: "Cover ready",
-    run: ({ book, layout, fonts }) => composeCover(book, fonts, layout.pages.length).findings.filter((f) => f.severity !== "info").map((f) => ({ rule: "cover", severity: f.severity, message: `Cover: ${f.message}` })),
+    run: ({ book, layout, fonts, binding }) => composeCover(book, fonts, layout.pages.length, { geometry: binding?.cover }).findings.filter((f) => f.severity !== "info").map((f) => ({ rule: "cover", severity: f.severity, message: `Cover: ${f.message}` })),
   },
   {
     id: "pdf-pages",
@@ -265,7 +278,8 @@ const RULES: Rule[] = [
   },
 ];
 
-export const PREFLIGHT_RULES: readonly PreflightRule[] = RULES.map(({ id, title, pdf }) => ({ id, title, pdf }));
+/** The rules as a paperback sees them. */
+export const PREFLIGHT_RULES: readonly PreflightRule[] = RULES.map(({ id, title, pdf }) => ({ id, title: typeof title === "function" ? title({} as PreflightInput) : title, pdf }));
 
 interface PdfFacts {
   pageCount: number;
@@ -308,7 +322,7 @@ export async function runPreflight(input: PreflightInput): Promise<PreflightRepo
   const passed: PreflightRule[] = [];
   const skipped: PreflightRule[] = [];
   for (const rule of RULES) {
-    const info: PreflightRule = { id: rule.id, title: rule.title, pdf: rule.pdf };
+    const info: PreflightRule = { id: rule.id, title: typeof rule.title === "function" ? rule.title(input) : rule.title, pdf: rule.pdf };
     if (rule.pdf && !facts) {
       skipped.push(info);
       continue;

@@ -400,13 +400,18 @@ export class Studio {
     const before = this.status.textContent ?? "";
     try {
       // One edition at a time: a phone shouldn't have to hold several books in memory.
+      const refused: string[] = [];
       for (const [i, edition] of plan.editions.entries()) {
         this.setStatus(t("export.buildingEdition", { id: edition.id, i: i + 1, total: plan.editions.length }), true);
         await nextFrame();
         const files = await exportEdition(source, path, fonts, edition, this.plan(), this.choices());
-        for (const f of files) await this.host.save(f);
+        for (const f of files) {
+          await this.host.save({ name: f.name, mime: f.mime, data: f.data });
+          for (const e of f.errors ?? []) refused.push(`${edition.id}: ${e}`);
+        }
       }
       this.host.notify(tn("export.editionsDone", plan.editions.length));
+      if (refused.length) await this.host.ask({ title: t("export.editionsRefusedTitle"), message: refused.join("\n"), ok: t("gate.ok") });
       this.setStatus(before);
     } catch (e) {
       console.error("Book Studio:", e);
