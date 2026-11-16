@@ -1146,7 +1146,6 @@ describe("web app, first-book guide", () => {
   it("previews the ebook in three readers, with text size, dark mode and paging, and nothing leaves the page", async () => {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "en-US" });
     const page = await context.newPage();
-    page.setDefaultTimeout(20_000);
     const outside: string[] = [];
     page.on("request", (r) => {
       if (!/^(data:|blob:|about:)/.test(r.url()) && !r.url().startsWith(base)) outside.push(r.url());
@@ -1192,16 +1191,23 @@ describe("web app, first-book guide", () => {
     for (const [label, [w, h]] of Object.entries(sizes)) {
       await page.getByLabel("Reader", { exact: true }).selectOption({ label });
       await page.waitForFunction(([ww, hh]) => {
-        const f = document.querySelector("iframe.bs-ebook-screen") as HTMLIFrameElement | null;
+        const f = document.querySelector<HTMLIFrameElement>("iframe.bs-ebook-screen");
         return !!f && f.clientWidth === ww && f.clientHeight === hh;
       }, [w, h], { timeout: 30_000 });
       await frameDoc().locator("#page").waitFor();
-      const r = await new AxeBuilder({ page }).include(".bs-panel-ebook").withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+      // Axe cannot run inside the script-free frame, so the panel is checked with the frame left out, and the frame's own
+      // page (its srcdoc) is opened alone in another tab and checked there.
+      const r = await new AxeBuilder({ page }).include(".bs-panel-ebook").exclude("iframe").withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
       expect(r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id), label).toEqual([]);
+      const solo = await context.newPage();
+      await solo.setContent((await iframe.getAttribute("srcdoc")) ?? "");
+      const inner = await new AxeBuilder({ page: solo }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).disableRules(["document-title"]).analyze();
+      expect(inner.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id), `${label} page`).toEqual([]);
+      await solo.close();
     }
     expect(outside).toEqual([]);
     await context.close();
-  }, 240_000);
+  });
 
   it("offers four covers with the book's title, and the chosen one opens in the cover designer", async () => {
     const context = await browser.newContext({ locale: "en-US" });
