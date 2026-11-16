@@ -13,12 +13,13 @@ import { PagePainter } from "../preview/canvas";
 import { append, clear, h, nextFrame, select } from "./dom";
 import type { BookChoice, StudioHost } from "./host";
 import type { LicenseManager } from "./license-manager";
+import { EbookPanel } from "./ebook-preview";
 import { KdpPanel } from "./kdp-panel";
 import { StylePanel } from "./style-panel";
 import { t, tn } from "./ui-i18n";
 import { buildBook, ebookBlockers, exportCover, exportEdition, exportEpub, exportPdf, exportReport, pdfBlockers, planEditions, spineWidth, type Built, type EpubChoices } from "./pipeline";
 
-type Tab = "preview" | "problems" | "kdp" | "accessibility";
+type Tab = "preview" | "problems" | "kdp" | "ebook" | "accessibility";
 type Zoom = "page" | "fit" | "0.5" | "0.75" | "1" | "1.5" | "2";
 
 const zooms = (): { value: Zoom; label: string }[] => [
@@ -65,6 +66,7 @@ export class Studio {
   private unsubscribe: () => void;
   private disposed = false;
   private kdp: KdpPanel;
+  private ebook: EbookPanel;
 
   private bookSelect = h("select", { cls: "bs-book", attr: { "aria-label": t("studio.book") } });
   private planBox = h("div", { cls: "bs-plan" });
@@ -85,7 +87,7 @@ export class Studio {
     container: HTMLElement,
     private license: LicenseManager,
   ) {
-    const tabIds: Tab[] = ["preview", "problems", "kdp", "accessibility"];
+    const tabIds: Tab[] = ["preview", "problems", "kdp", "ebook", "accessibility"];
     const uid = Math.random().toString(36).slice(2, 8);
     this.tabs = {} as Record<Tab, HTMLButtonElement>;
     this.panels = {} as Record<Tab, HTMLElement>;
@@ -132,6 +134,7 @@ export class Studio {
         if (index >= 0) this.scrollToPage(index);
       },
     });
+    this.ebook = new EbookPanel(this.panels.ebook, { built: () => this.built, fonts: () => this.loadFonts() });
     container.appendChild(this.root);
     this.unsubscribe = this.license.onChange(() => this.planChanged());
     this.showTab("preview");
@@ -474,6 +477,7 @@ export class Studio {
     this.renderPreview();
     this.renderProblems();
     this.kdp.render();
+    this.ebook.render();
     this.renderAccessibility();
     this.renderTabs();
   }
@@ -822,6 +826,7 @@ export class Studio {
     this.tabs.preview.textContent = t("tab.preview");
     this.tabs.problems.textContent = problems ? t("tab.problemsN", { n: problems }) : t("tab.problems");
     this.tabs.kdp.textContent = t("tab.kdp");
+    this.tabs.ebook.textContent = t("tab.ebook");
     // The free edition's EPUB has no accessibility pack, so there is nothing to show.
     this.tabs.accessibility.hidden = FREE_EDITION;
     this.tabs.accessibility.textContent = audit && pro && !audit.passed ? t("tab.accessibilityFix") : pro || FREE_EDITION ? t("tab.accessibility") : t("tab.accessibilityPro");
@@ -851,10 +856,11 @@ export class Studio {
       this.tabs[t].tabIndex = on ? 0 : -1;
       this.panels[t].hidden = !on;
     }
+    this.ebook?.setActive(tab === "ebook");
   }
 
   private tabKey(e: KeyboardEvent, tab: Tab): void {
-    const order: Tab[] = FREE_EDITION ? ["preview", "problems", "kdp"] : ["preview", "problems", "kdp", "accessibility"];
+    const order: Tab[] = FREE_EDITION ? ["preview", "problems", "kdp", "ebook"] : ["preview", "problems", "kdp", "ebook", "accessibility"];
     const i = order.indexOf(tab);
     let next: Tab | null = null;
     if (e.key === "ArrowRight") next = order[(i + 1) % order.length];
