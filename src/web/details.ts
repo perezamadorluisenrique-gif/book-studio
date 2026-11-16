@@ -276,7 +276,7 @@ export class DetailsForm {
     const p = this.project;
     if (!p) return;
     const trim = trimById(p.settings.trim || DEFAULT_TRIM) ?? TRIMS[0];
-    const need = frontCoverPixels(trim.id);
+    const need = frontCoverPixels(trim.id, bindingOf(p.settings.binding));
     const asset = coverAsset(p);
     this.coverBox.append(h("p", { cls: "dt-hint", text: t("dt.cover.pixels", { trim: trim.label, w: need.width, h: need.height }) }), h("p", { cls: "dt-err", attr: { role: "status" } }));
     if (!asset) {
