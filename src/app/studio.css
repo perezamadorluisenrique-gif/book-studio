@@ -415,3 +415,35 @@
   font: inherit;
   max-width: 38em;
 }
+
+.bs-style {
+  padding: 4px 12px 8px;
+  border-bottom: 1px solid var(--bs-line);
+}
+
+.bs-style > summary {
+  cursor: pointer;
+  color: var(--bs-muted);
+}
+
+.bs-style-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding-top: 8px;
+}
+
+.bs-style-body input[type="number"] {
+  width: 5.5em;
+}
+
+.bs-style-warning {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--bs-muted);
+}
+
+.bs-style-warning:empty {
+  display: none;
+}

@@ -1094,6 +1094,55 @@ describe("web app, first-book guide", () => {
     await context.close();
   });
 
+  it("changes the book with the style panel, keeps the change after a reload and goes back with Reset", async () => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: "en-US" });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.locator("#land-drop").waitFor();
+    await dropFile(page, "diary.docx", await bigDocx(12000, 3));
+    await page.getByRole("heading", { name: "Step 1 of 5: Upload" }).waitFor({ timeout: 60_000 });
+    await page.getByRole("button", { name: "Skip the first book guide" }).click();
+    await page.locator(".wiz-box").waitFor({ state: "hidden" });
+    const pages = async () => {
+      const text = (await page.locator(".bs-status").textContent()) ?? "";
+      return Number(/: (\d+) pages/.exec(text)?.[1] ?? 0);
+    };
+    const settle = async (n: number) => {
+      await page.waitForFunction((want) => new RegExp(`: ${want} pages`).test(document.querySelector(".bs-status")?.textContent ?? ""), n, { timeout: 60_000 });
+    };
+    await page.locator(".bs-style > summary").click();
+    await page.locator(".bs-status", { hasText: " pages at " }).waitFor({ timeout: 60_000 });
+    const before = await pages();
+    const size = page.getByLabel("Size (pt)");
+    await size.fill("14");
+    await page.waitForFunction((was) => {
+      const m = /: (\d+) pages/.exec(document.querySelector(".bs-status")?.textContent ?? "");
+      return !!m && Number(m[1]) !== was;
+    }, before, { timeout: 60_000 });
+    const bigger = await pages();
+    expect(bigger).toBeGreaterThan(before);
+    // The change is kept: reload, open the book again, same size and same page count.
+    await page.waitForTimeout(800);
+    await page.reload();
+    await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
+    await page.locator("#ed-text").waitFor();
+    await page.locator(".bs-status", { hasText: " pages at " }).waitFor({ timeout: 60_000 });
+    await settle(bigger);
+    await page.locator(".bs-style > summary").click();
+    expect(await page.getByLabel("Size (pt)").inputValue()).toBe("14");
+    // Reset gives the original book back.
+    await page.getByRole("button", { name: "Reset" }).click();
+    await settle(before);
+    expect(await page.getByLabel("Size (pt)").inputValue()).toBe("11.5");
+    // No serious accessibility problem with the panel open, on a desktop and on a phone.
+    for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      const r = await new AxeBuilder({ page }).include(".bs-style").withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+      expect(r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id), `${viewport.width}px`).toEqual([]);
+    }
+    await context.close();
+  });
+
   it("offers four covers with the book's title, and the chosen one opens in the cover designer", async () => {
     const context = await browser.newContext({ locale: "en-US" });
     const page = await context.newPage();

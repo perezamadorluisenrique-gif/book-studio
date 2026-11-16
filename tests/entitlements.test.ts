@@ -97,7 +97,7 @@ describe("no free feature is ever taken away", () => {
 });
 
 // Free since the style work of the Vellum plan (T5): four more general styles. They stay free.
-const FREE_SINCE_2026_11_T5 = { themes: ["literary", "minimal", "memoir", "textbook"] };
+const FREE_SINCE_2026_11_T5 = { themes: ["literary", "minimal", "memoir", "textbook"], features: ["style"] as const };
 describe("the T5 styles stay free", () => {
   it("lets a free user print and publish each of them", () => {
     for (const theme of FREE_SINCE_2026_11_T5.themes) {
@@ -105,5 +105,9 @@ describe("the T5 styles stay free", () => {
       expect(printBlockers("free", { theme, trim: "6x9" }), theme).toEqual([]);
       expect(epubBlockers("free", { theme }), theme).toEqual([]);
     }
+  });
+
+  it("keeps the style editor and saving its changes with the book free", () => {
+    for (const f of FREE_SINCE_2026_11_T5.features) expect(hasFeature("free", f), f).toBe(true);
   });
 });

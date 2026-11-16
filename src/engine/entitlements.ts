@@ -17,10 +17,10 @@ export type Plan = "free" | "pro";
 export const FREE_THEMES: readonly string[] = ["classic", "modern", "elegant", "nonfiction", "large-print", "literary", "minimal", "memoir", "textbook"];
 export { FREE_TRIMS };
 
-export type ProFeature = "theme" | "trim" | "accessiblePack" | "boxSets" | "largePrint" | "preflight" | "cover" | "footnotes" | "index" | "editions" | "kdpSheet";
+export type ProFeature = "theme" | "trim" | "accessiblePack" | "boxSets" | "largePrint" | "preflight" | "cover" | "footnotes" | "index" | "editions" | "kdpSheet" | "style";
 
 /** Features that were Pro and are now free; they stay in the type so an old export blocker still reads right. */
-export const FREE_FEATURES: readonly ProFeature[] = ["trim", "largePrint", "preflight", "cover", "footnotes", "kdpSheet"];
+export const FREE_FEATURES: readonly ProFeature[] = ["trim", "largePrint", "preflight", "cover", "footnotes", "kdpSheet", "style"];
 
 /** What only Pro has. */
 type PaidFeature = "theme" | "index" | "editions" | "boxSets" | "accessiblePack";
