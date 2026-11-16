@@ -15,7 +15,7 @@
 //   ## Back matter
 //   - [[Acknowledgments]]
 
-import type { BookSettings, Matter } from "./model";
+import type { BookSettings, Matter, StyleOverrides } from "./model";
 import { DEFAULT_SETTINGS } from "./model";
 import { splitFrontmatter } from "./markdown";
 
@@ -88,6 +88,34 @@ export function isManifestFrontmatter(fm: Record<string, unknown> | undefined | 
   return type?.toLowerCase() === "book";
 }
 
+function numberIn(fm: Record<string, unknown>, key: string): number | undefined {
+  const raw = fmString(fm, key)?.replace(",", ".");
+  const n = raw === undefined ? NaN : Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** The person's style changes, kept as flat front matter keys (style-size, style-margin-top…). */
+export function styleFromFrontmatter(fm: Record<string, unknown>, base?: StyleOverrides): StyleOverrides | undefined {
+  const out: StyleOverrides = { ...base };
+  const size = numberIn(fm, "style-size");
+  const leading = numberIn(fm, "style-leading");
+  const indent = numberIn(fm, "style-indent");
+  const drop = numberIn(fm, "style-drop-cap");
+  if (size !== undefined) out.size = size;
+  if (leading !== undefined) out.leading = leading;
+  if (indent !== undefined) out.indent = indent;
+  if (drop === 0 || drop === 2 || drop === 3) out.dropCap = drop;
+  const glyph = fmString(fm, "style-scene-break");
+  if (glyph) out.sceneBreak = glyph;
+  const margins: NonNullable<StyleOverrides["margins"]> = { ...base?.margins };
+  for (const side of ["top", "bottom", "outside", "inside"] as const) {
+    const v = numberIn(fm, `style-margin-${side}`);
+    if (v !== undefined) margins[side] = v;
+  }
+  if (Object.keys(margins).length) out.margins = margins;
+  return Object.keys(out).length ? out : undefined;
+}
+
 export function settingsFromFrontmatter(fm: Record<string, unknown>, base: BookSettings = DEFAULT_SETTINGS): BookSettings {
   const start = fmString(fm, "chapter-start")?.toLowerCase();
   const heads = fmString(fm, "running-heads")?.toLowerCase();
@@ -108,6 +136,7 @@ export function settingsFromFrontmatter(fm: Record<string, unknown>, base: BookS
     fontSize: Number.isFinite(size) && size >= 7 && size <= 24 ? size : base.fontSize,
     smartTypography: fmBool(fm, base.smartTypography, "smart-quotes", "smart-typography"),
     sceneBreak: fmString(fm, "scene-break") ?? base.sceneBreak,
+    style: styleFromFrontmatter(fm, base.style),
   };
 }
 

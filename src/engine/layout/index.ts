@@ -6,7 +6,7 @@ import type { Hyphenator } from "../hyphenate";
 import { chapterLabel, partHeading, roman, strings } from "../i18n";
 import { buildIndex, parseIndexSpecs } from "../index-terms";
 import { INDEX_ID, NOTES_ID, notesHeadingId, type Book, type Chapter, type Matter, type Note } from "../model";
-import { themeById } from "../themes";
+import { resolveTheme } from "../themes";
 import { DEFAULT_TRIM, KDP_MAX_PAGES, KDP_MIN_PAGES, BLEED, kdpMinInside, kdpMinOutside, trimById } from "../trims";
 import { FlowBuilder, type FlowEnv } from "./blocks";
 import { alsoByPage, copyrightPage, dedicationPage, epigraphPage, halfTitlePage, partPage, titlePage, tocPages, type DisplayPage, type TocLine } from "./front";
@@ -105,7 +105,7 @@ function fingerprint(text: string): string {
 
 export function layoutBook(book: Book, fonts: FontSet, options: LayoutOptions = {}): Layout {
   const settings = book.settings;
-  const theme = themeById(settings.theme);
+  const theme = resolveTheme(settings);
   const trim = trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!;
   const minOut = kdpMinOutside(settings.bleed);
   let inside = Math.max(theme.margins.inside, kdpMinInside(1));
@@ -165,7 +165,7 @@ export function measureQuality(pages: LayoutPage[]): Quality {
 
 function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphenator | null, cache: LayoutCache): { pages: LayoutPage[]; toc: TocEntry[]; warnings: LayoutWarning[]; bodyStart: number } {
   const { settings, meta } = book;
-  const theme = themeById(settings.theme);
+  const theme = resolveTheme(settings);
   const trim = trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!;
   const lang = meta.language;
   const minOut = kdpMinOutside(settings.bleed);
@@ -175,8 +175,8 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
   const bottom = Math.max(theme.margins.bottom, minOut) * PT;
   const pageW = trim.width * PT;
   const pageH = trim.height * PT;
-  const bodySize = settings.fontSize ?? theme.body.size;
-  const leading = (theme.body.leading * bodySize) / theme.body.size;
+  const bodySize = theme.body.size;
+  const leading = theme.body.leading;
   const width = pageW - inside - outside;
   const capacity = Math.floor((pageH - top - bottom) / leading + 0.001) * leading;
   // Lowest baseline a folio at the foot may have, and where it goes on a facing pair that runs a line long.
@@ -200,7 +200,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
     width,
     capacity,
     hyphenate,
-    sceneGlyph: settings.sceneBreak ?? theme.sceneBreak.glyph,
+    sceneGlyph: theme.sceneBreak.glyph,
     images: book.images,
     noteNumber: (id) => noteNumbers.get(id),
     warn: (w) => warnings.push(w),

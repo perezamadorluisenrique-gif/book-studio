@@ -2,6 +2,8 @@
 // everything stays on the baseline grid. The genre themes are Pro and live in
 // themes-pro.ts, which the public repository ships empty.
 
+import type { BookSettings } from "./model";
+import { kdpMinOutside } from "./trims";
 import { PRO_THEMES } from "./themes-pro";
 
 export interface TextStyle {
@@ -54,6 +56,8 @@ export interface Theme {
   titlePage: { title: TextStyle; subtitle: TextStyle; author: TextStyle; publisher: TextStyle };
   /** Colours of a typographic cover (no front image) as hex, unless the manifest sets its own. */
   cover: { background: string; ink: string };
+  /** Set by resolveTheme: the body size and leading the style was designed with, before the person changed them. */
+  designBody?: { size: number; leading: number };
 }
 
 const classic: Theme = {
@@ -212,4 +216,44 @@ export const THEMES: Theme[] = [classic, modern, elegant, nonfiction, largePrint
 
 export function themeById(id: string): Theme {
   return THEMES.find((t) => t.id === id) ?? classic;
+}
+
+/** Limits of the body size in points; Large Print has its own. */
+export function sizeRange(themeId: string): { min: number; max: number } {
+  return themeId === "large-print" ? { min: 16, max: 20 } : { min: 9, max: 14 };
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+/**
+ * The one place a book's style is decided: the style picked by id, then the person's changes (settings.style),
+ * then the two older settings (fontSize, sceneBreak) which are still read. Limits live here, not on the screen.
+ * Without any change the result is the style as designed.
+ */
+export function resolveTheme(settings: Pick<BookSettings, "theme" | "fontSize" | "sceneBreak" | "style" | "bleed">): Theme {
+  const base = themeById(settings.theme);
+  const st = settings.style;
+  const range = sizeRange(base.id);
+  const designSize = base.body.size;
+  const wantedSize = finite(st?.size) ? clamp(st.size, range.min, range.max) : settings.fontSize;
+  const size = finite(wantedSize) ? wantedSize : designSize;
+  // Leading keeps the style's proportion unless the person sets one; then it is a multiple of the size on a 0.25 pt grid.
+  const leading = finite(st?.leading) ? Math.round((size * clamp(st.leading, 1.2, 1.5)) / 0.25) * 0.25 : (base.body.leading * size) / designSize;
+  const minOut = kdpMinOutside(!!settings.bleed);
+  const m = st?.margins;
+  const margin = (side: "top" | "bottom" | "outside" | "inside") => {
+    const v = m?.[side];
+    return finite(v) ? Math.max(minOut, clamp(v, 0, 2)) : base.margins[side];
+  };
+  const dropCap = st?.dropCap === 0 || st?.dropCap === 2 || st?.dropCap === 3 ? st.dropCap : base.firstParagraph.dropCap;
+  const glyph = st?.sceneBreak ?? settings.sceneBreak ?? base.sceneBreak.glyph;
+  return {
+    ...base,
+    body: { ...base.body, size, leading, indent: finite(st?.indent) ? clamp(st.indent, 0, 3) : base.body.indent },
+    margins: { top: margin("top"), bottom: margin("bottom"), outside: margin("outside"), inside: margin("inside") },
+    firstParagraph: { ...base.firstParagraph, dropCap },
+    sceneBreak: { ...base.sceneBreak, glyph },
+    designBody: { size: designSize, leading: base.body.leading },
+  };
 }

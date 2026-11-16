@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HYPHENATION_LANGUAGES, loadHyphenator, type Hyphenator } from "../src/engine/hyphenate";
 import { ParagraphSetter } from "../src/engine/layout/inline";
 import { fromTextStyle, Styler } from "../src/engine/layout/style";
-import { themeById } from "../src/engine/themes";
+import { resolveTheme } from "../src/engine/themes";
 import { testFonts } from "./helpers/fonts";
 
 /** The word with its break points shown as dots. */
@@ -65,7 +65,7 @@ describe("hyphenation", () => {
 });
 
 describe("the author's controls over where a word splits", () => {
-  const body = themeById("classic").body;
+  const body = resolveTheme({ theme: "classic", bleed: false }).body;
   const run = async (text: string, width: number) => {
     const fonts = await testFonts();
     const setter = new ParagraphSetter(new Styler(fonts, "es"), await loadHyphenator("es"));

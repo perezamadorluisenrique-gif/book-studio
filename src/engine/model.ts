@@ -177,6 +177,22 @@ export type Paper = "white" | "cream" | "color";
 /** Where notes go in print: all together at the end of the book, or at the foot of the page that calls them. */
 export type NotePlacement = "end" | "page";
 
+/** What a person may change about the style they picked. Every field is optional; resolveTheme() applies and limits them. */
+export interface StyleOverrides {
+  /** Body size in points. */
+  size?: number;
+  /** Line spacing as a multiple of the size (1.2 to 1.5). */
+  leading?: number;
+  /** Margins in inches; any side left out keeps the style's. */
+  margins?: { top?: number; bottom?: number; outside?: number; inside?: number };
+  /** First-line indent in ems. */
+  indent?: number;
+  /** Drop cap height in lines; 0 for none. */
+  dropCap?: 0 | 2 | 3;
+  /** Glyph for scene breaks. */
+  sceneBreak?: string;
+}
+
 export interface BookSettings {
   theme: string;
   trim: string;
@@ -193,6 +209,8 @@ export interface BookSettings {
   fontSize?: number;
   smartTypography: boolean;
   sceneBreak?: string;
+  /** The person's changes to the style; see resolveTheme(). */
+  style?: StyleOverrides;
 }
 
 export const DEFAULT_SETTINGS: BookSettings = {

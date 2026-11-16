@@ -28,7 +28,7 @@ const MIME: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg
 
 /** Front matter keys that are layout settings; the rest are book details. */
 const SETTING_KEYS = new Set(
-  ["theme", "trim", "trim-size", "paper", "paper-color", "footnotes", "note-placement", "bleed", "chapter-start", "running-heads", "toc", "table-of-contents", "half-title", "hyphenate", "hyphenation", "font-size", "smart-quotes", "smart-typography", "scene-break"].map((k) => k.replace(/[\s_-]/g, "")),
+  ["theme", "trim", "trim-size", "paper", "paper-color", "footnotes", "note-placement", "bleed", "chapter-start", "running-heads", "toc", "table-of-contents", "half-title", "hyphenate", "hyphenation", "font-size", "smart-quotes", "smart-typography", "scene-break", "style-size", "style-leading", "style-indent", "style-drop-cap", "style-scene-break", "style-margin-top", "style-margin-bottom", "style-margin-outside", "style-margin-inside"].map((k) => k.replace(/[\s_-]/g, "")),
 );
 const isSetting = (k: string) => SETTING_KEYS.has(k.toLowerCase().replace(/[\s_-]/g, ""));
 const SKIPPED_KEYS = new Set(["book", "type", "cover-design", "cover-layout"]);
