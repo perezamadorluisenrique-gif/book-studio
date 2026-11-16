@@ -97,7 +97,7 @@ Chapter notes are ordinary Markdown:
 | `dedication`, `epigraph`, `epigraph-source` | Their own pages in the front matter |
 | `cover` | Cover image for the EPUB |
 | `theme` | `classic`, `modern`, `elegant`, `nonfiction` or `large-print`; the genre themes `thriller`, `romance` and `fantasy` need Pro |
-| `trim` | Any of the twelve KDP trims, for example `6x9`, `5x8` or `5.5x8.5` |
+| `trim` | Any of the sixteen KDP trims, for example `6x9`, `5x8` or `5.5x8.5` |
 | `paper` | `white`, `cream` or `color`: sets the spine width |
 | `footnotes` | `end` (default) or `page` for notes at the foot of the page |
 | `index-terms` | A list of words and phrases for the back-of-book index (Pro) |

@@ -28,7 +28,7 @@ const info: CoverInfo = {
   variant: 1,
 };
 
-const FORMATS = ["5x8", "6x9", "8.5x11"];
+const FORMATS = ["5x8", "6x9", "8.5x11", "8.25x6", "8.25x8.25", "8.5x8.5", "8.27x11.69"];
 const PAGES = [120, 300, 600];
 
 /** Colours a text layer can sit on: the block it is inside, or everything the background can show. */

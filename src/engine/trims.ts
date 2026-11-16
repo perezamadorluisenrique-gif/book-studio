@@ -9,6 +9,8 @@ export interface Trim {
   /** Inches. */
   width: number;
   height: number;
+  /** Most pages KDP prints at this trim (black ink, white paper); other papers allow fewer. */
+  maxPages?: number;
 }
 
 export const TRIMS: Trim[] = [
@@ -23,7 +25,13 @@ export const TRIMS: Trim[] = [
   { id: "7.44x9.69", label: '7.44" × 9.69" (Crown Quarto)', width: 7.44, height: 9.69 },
   { id: "7.5x9.25", label: '7.5" × 9.25"', width: 7.5, height: 9.25 },
   { id: "8x10", label: '8" × 10"', width: 8, height: 10 },
-  { id: "8.5x11", label: '8.5" × 11" (Letter)', width: 8.5, height: 11 },
+  { id: "8.5x11", label: '8.5" × 11" (Letter)', width: 8.5, height: 11, maxPages: 590 },
+  // The four sizes added in T5.3. Source: the page-count table in KDP's help "Print options" (read 2026-11-11,
+  // recorded in site/tools/data/kdp-figures.json): 8.25 × 6 and 8.25 × 8.25 up to 800 pages, 8.5 × 8.5 up to 590, A4 up to 780.
+  { id: "8.25x6", label: '8.25" × 6" (landscape)', width: 8.25, height: 6, maxPages: 800 },
+  { id: "8.25x8.25", label: '8.25" × 8.25" (square)', width: 8.25, height: 8.25, maxPages: 800 },
+  { id: "8.5x8.5", label: '8.5" × 8.5" (square)', width: 8.5, height: 8.5, maxPages: 590 },
+  { id: "8.27x11.69", label: '8.27" × 11.69" (A4)', width: 8.27, height: 11.69, maxPages: 780 },
 ];
 
 /** The default trim, and the one every plan can fall back to. */
@@ -38,6 +46,9 @@ export function trimById(id: string): Trim | undefined {
 
 export const KDP_MIN_PAGES = 24;
 export const KDP_MAX_PAGES = 828;
+
+/** The most pages KDP prints at this trim. */
+export const trimMaxPages = (trim: Trim): number => trim.maxPages ?? KDP_MAX_PAGES;
 export const BLEED = 0.125;
 
 /** KDP's minimum inside (gutter) margin in inches for a page count. */

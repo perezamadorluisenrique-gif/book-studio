@@ -29,7 +29,7 @@ compare:
     - ["Cubierta completa", "Sí: hoja con lomo, sangrado y código de barras (sin diseñador todavía)", "No lo indica su web", "No lo indica su web", "No lo indica su web"]
     - ["En español", "Sí: interfaz, guiones y ortotipografía", "No lo indica su web", "No lo indica su web", "No lo indica su web"]
 faq:
-  - { q: "¿Es gratis de verdad?", a: "Sí. La app web es gratuita y de licencia MIT, sin cuenta, sin marca de agua y sin límite de libros ni de páginas. Los doce formatos de KDP, nueve estilos, las notas al pie, la cubierta completa y la revisión previa de KDP son gratis para siempre. [Book Studio Pro](pro:) añade estilos de género, índice analítico, cajas de libros y el paquete de EPUB accesible." }
+  - { q: "¿Es gratis de verdad?", a: "Sí. La app web es gratuita y de licencia MIT, sin cuenta, sin marca de agua y sin límite de libros ni de páginas. Los dieciséis formatos de KDP, nueve estilos, las notas al pie, la cubierta completa y la revisión previa de KDP son gratis para siempre. [Book Studio Pro](pro:) añade estilos de género, índice analítico, cajas de libros y el paquete de EPUB accesible." }
   - { q: "¿Qué necesito?", a: "Un navegador moderno y tu manuscrito en Word (.docx), Markdown o texto, de hasta 40 MB. No hay nada que instalar ni cuenta que crear. Los archivos .doc antiguos hay que guardarlos antes como .docx." }
   - { q: "¿Sirve para tapa dura?", a: "Hoy el PDF sigue las reglas de KDP para tapa blanda. KDP tiene otras reglas para tapa dura que Book Studio todavía no comprueba." }
   - { q: "¿Y las imágenes?", a: "Las imágenes PNG y JPG de tu Word se conservan con su descripción, y la revisión te avisa de las que no la tienen. La cubierta puede ser una imagen JPG o PNG tuya, o una tipográfica." }

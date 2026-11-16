@@ -536,7 +536,7 @@ class CoverEditor {
       }
       const cover = composeCover(book, this.fonts, this.built.layout.pages.length);
       if (kind === "png") return this.saved(await this.deps.save({ name: `${slug}-social.png`, mime: "image/png", data: await socialPng(cover, this.painter, this.history.present.background.color) }));
-      const jpg = await ebookCoverJpeg(cover, this.painter);
+      const jpg = await ebookCoverJpeg(cover, this.painter, this.history.present.background.color);
       if (kind === "jpg") return this.saved(await this.deps.save({ name: `${slug}-front-cover.jpg`, mime: "image/jpeg", data: jpg }));
       this.ebook = jpg;
       this.dirty = true;
