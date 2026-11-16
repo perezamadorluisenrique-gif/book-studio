@@ -7,7 +7,7 @@ import type { Ink } from "./kdp";
 /** The paper the app calls the same thing: standard colour has the spine of white paper. */
 export const APP_PAPER: Record<Ink, "white" | "cream" | "color"> = { bw_white: "white", bw_cream: "cream", color_standard: "white", color_premium: "color" };
 
-/** True when the app can set a book in this trim (it supports 12 of KDP's 16). */
+/** True when the app can set a book in this trim (it supports all 16). */
 export const appHasTrim = (id: string): boolean => TRIMS.some((t) => t.id === id);
 
 export function query(values: Record<string, string | number | undefined>): string {

@@ -18,7 +18,7 @@ Two things are facts and one is taste:
 - **Cost.** Sizes wider than 6.12 in or taller than 9 in count as *large trim* and cost more to print. 6 × 9 in is not large; 6.14 × 9.21 in is.
 - **Convention.** The lists of "common" sizes are editorial advice from how self-published books are usually made: novels in 5.5 × 8.5 or 5.25 × 8, memoirs and non-fiction in 6 × 9, picture books in a square, workbooks and cookbooks bigger. KDP prints every size in its table, and none of this is a KDP rule.
 
-Page count also decides how much room the binding takes: see the [margins calculator](tool:margins). Book Studio sets books in 12 of KDP's 16 sizes; the ones it doesn't set yet are 8.25 × 6, 8.25 × 8.25, 8.5 × 8.5 and 8.27 × 11.69 in.
+Page count also decides how much room the binding takes: see the [margins calculator](tool:margins). Book Studio sets books in all 16 of these sizes.
 
 ## Next
 

@@ -263,7 +263,8 @@ describe("the ISBN barcode", () => {
 describe("links into the app", () => {
   it("carry the size and the paper the app understands, and leave out a size it can't set", () => {
     expect(appLink("../../../", "7x10", "bw_cream")).toBe("../../../?start=import&trim=7x10&paper=cream");
-    expect(appLink("../", "8.5x8.5", "color_premium")).toBe("../?start=import&paper=color");
+    expect(appLink("../", "8.5x8.5", "color_premium")).toBe("../?start=import&trim=8.5x8.5&paper=color");
+    expect(appLink("../", "9x9", "color_premium")).toBe("../?start=import&paper=color");
     expect(appLink("../", "6x9", "color_standard")).toBe("../?start=import&trim=6x9&paper=white");
     expect(query({ a: 1, b: undefined, c: "" })).toBe("?a=1");
   });

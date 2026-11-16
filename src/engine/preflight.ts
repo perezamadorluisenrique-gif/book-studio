@@ -14,7 +14,7 @@ import { SPINE_TEXT_MIN_PAGES, type CoverGeometry } from "./cover/geometry";
 import type { FontSet } from "./fonts";
 import type { Layout } from "./layout/types";
 import type { Book, SourceRef } from "./model";
-import { BLEED, KDP_MAX_PAGES, KDP_MIN_PAGES, kdpMinInside, kdpMinOutside } from "./trims";
+import { BLEED, KDP_MAX_PAGES, KDP_MIN_PAGES, kdpMinInside, kdpMinOutside, trimMaxPages } from "./trims";
 
 export type PreflightSeverity = "error" | "warning" | "info";
 
@@ -75,6 +75,26 @@ export const PREFLIGHT_DISCLAIMER = "The preflight reduces rejections; KDP's own
 
 type Rule = Omit<PreflightRule, "title"> & { title: string | ((input: PreflightInput) => string); run(input: PreflightInput, facts: PdfFacts | null): PreflightFinding[] | Promise<PreflightFinding[]> };
 
+/** Lines longer than this many characters on average are hard to read. */
+export const MAX_LINE_CHARS = 80;
+
+/** Average characters per line over the full-width lines of the body pages (headings and short lines left out). */
+export function averageLineLength(layout: Layout): number {
+  let chars = 0;
+  let lines = 0;
+  for (const page of layout.pages) {
+    if (page.role !== "body") continue;
+    const rows = new Map<number, number>();
+    for (const d of page.draws) if (d.kind === "text") rows.set(Math.round(d.y * 10), (rows.get(Math.round(d.y * 10)) ?? 0) + d.text.length);
+    for (const n of rows.values()) {
+      if (n < 40) continue;
+      chars += n;
+      lines++;
+    }
+  }
+  return lines ? chars / lines : 0;
+}
+
 const inch = (pt: number) => pt / 72;
 const fmtIn = (n: number) => n.toFixed(3).replace(/\.?0+$/, "");
 
@@ -85,11 +105,11 @@ function folioOf(layout: Layout, index: number): string {
 const RULES: Rule[] = [
   {
     id: "page-count",
-    title: ({ binding }) => `${binding?.minPages ?? KDP_MIN_PAGES} to ${binding?.maxPages ?? KDP_MAX_PAGES} pages`,
+    title: ({ binding, layout }) => `${binding?.minPages ?? KDP_MIN_PAGES} to ${binding?.maxPages ?? (layout?.trim ? trimMaxPages(layout.trim) : KDP_MAX_PAGES)} pages`,
     run: ({ layout, binding }) => {
       const n = layout.pages.length;
       const min = binding?.minPages ?? KDP_MIN_PAGES;
-      const max = binding?.maxPages ?? KDP_MAX_PAGES;
+      const max = binding?.maxPages ?? trimMaxPages(layout.trim);
       const kind = binding ? `${binding.name}s` : "paperbacks";
       if (n < min) return [{ rule: "page-count", severity: "error", message: `The book has ${n} pages; KDP ${kind} need at least ${min}. Add pages or blank pages at the end${binding ? ", or leave this edition out" : ""}.` }];
       if (n > max) return [{ rule: "page-count", severity: "error", message: `The book has ${n} pages; KDP ${kind} allow at most ${max}. Use a larger trim size, a smaller type size, or split the book into volumes.` }];
@@ -113,6 +133,15 @@ const RULES: Rule[] = [
       const m = layout.margins;
       const low = (["top", "bottom", "outside"] as const).filter((k) => inch(m[k]) + 1e-6 < need);
       return low.length ? [{ rule: "outside-margins", severity: "error", message: `The ${low.join(", ")} margin${low.length > 1 ? "s are" : " is"} under KDP's ${need} in minimum${book.settings.bleed ? " with bleed" : ""}.` }] : [];
+    },
+  },
+  {
+    id: "line-length",
+    title: "Line length",
+    run: ({ layout }) => {
+      const avg = averageLineLength(layout);
+      if (avg <= MAX_LINE_CHARS) return [];
+      return [{ rule: "line-length", severity: "warning", message: `Lines in the body average ${Math.round(avg)} characters; past ${MAX_LINE_CHARS} the eye loses its place from one line to the next. Raise the type size or widen the margins.` }];
     },
   },
   {

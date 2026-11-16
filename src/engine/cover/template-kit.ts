@@ -92,7 +92,11 @@ const joinAuthors = (info: CoverInfo) => info.authors.join(info.language.startsW
 function frontLayers(look: Look, info: CoverInfo, g: CoverGeometry): CoverLayer[] {
   const out: CoverLayer[] = [];
   const W = g.trim.width * 72;
-  const titleMax = Math.min(Math.max(W * 0.14, 26), 64);
+  // Keyed to the shorter side too, so a landscape or square front (where the height is the tight side) still fits its lines.
+  const H = g.trim.height * 72;
+  // The lowest a line may end, as a fraction of the front: 0.96 on a tall cover, higher up when the cover is short.
+  const foot = Math.min(0.96, 1 - 21.6 / H);
+  const titleMax = Math.min(Math.max(Math.min(W * 0.14, H * 0.1), 26), 64);
   const author = joinAuthors(info);
   const title = look.upper ? info.title.toUpperCase() : info.title;
   const titleOf = (x: number, y: number, w: number, h: number, align: TextLayer["align"], valign: TextLayer["valign"], color: string) =>
@@ -110,7 +114,7 @@ function frontLayers(look: Look, info: CoverInfo, g: CoverGeometry): CoverLayer[
       out.push(titleOf(0.1, 0.07, 0.8, 0.36, "left", "top", look.ink), rect("front", 0.1, 0.445, 0.18, 0.006, look.accent), ...sub(0.1, 0.47, 0.8, 0.12, "left", look.ink), ...by(0.1, 0.84, 0.8, 0.1, "left", "bottom", look.ink));
       break;
     case "bottom":
-      out.push(...by(0.1, 0.06, 0.8, 0.07, "center", "top", look.ink), rect("front", 0.1, 0.52, 0.8, 0.004, look.accent), titleOf(0.1, 0.54, 0.8, 0.34, "center", "top", look.ink), ...sub(0.12, 0.89, 0.76, 0.07, "center", look.ink));
+      out.push(...by(0.1, 0.06, 0.8, 0.07, "center", "top", look.ink), rect("front", 0.1, 0.52, 0.8, 0.004, look.accent), titleOf(0.1, 0.54, 0.8, 0.34, "center", "top", look.ink), ...sub(0.12, 0.89, 0.76, foot - 0.89, "center", look.ink));
       break;
     case "bar":
       out.push(rect("front", 0, 0, 0.055, 1, look.block ?? look.accent, true), titleOf(0.14, 0.12, 0.76, 0.4, "left", "top", look.ink), ...sub(0.14, 0.54, 0.76, 0.12, "left", look.ink), ...by(0.14, 0.84, 0.76, 0.1, "left", "bottom", look.ink));
@@ -123,7 +127,7 @@ function frontLayers(look: Look, info: CoverInfo, g: CoverGeometry): CoverLayer[
     }
     case "band": {
       const bandInk = look.blockInk ?? look.ink;
-      out.push(rect("front", 0, 0.6, 1, 0.4, look.block ?? look.accent, true), ...by(0.1, 0.07, 0.8, 0.09, "left", "top", look.ink), titleOf(0.1, 0.63, 0.8, 0.26, "left", "top", bandInk), ...sub(0.1, 0.89, 0.8, 0.07, "left", bandInk));
+      out.push(rect("front", 0, 0.6, 1, 0.4, look.block ?? look.accent, true), ...by(0.1, 0.07, 0.8, 0.09, "left", "top", look.ink), titleOf(0.1, 0.63, 0.8, 0.26, "left", "top", bandInk), ...sub(0.1, 0.89, 0.8, foot - 0.89, "left", bandInk));
       break;
     }
     case "split": {

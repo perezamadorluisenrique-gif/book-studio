@@ -49,7 +49,7 @@ describe("no free feature is ever taken away", () => {
 
   // Free since November 2026 (the Vellum plan, section 3): every trim, five themes and six functions.
   const FREE_SINCE_2026_11 = {
-    trims: TRIMS.map((t) => t.id),
+    trims: ["5x8", "5.06x7.81", "5.25x8", "5.5x8.5", "6x9", "6.14x9.21", "6.69x9.61", "7x10", "7.44x9.69", "7.5x9.25", "8x10", "8.5x11"],
     themes: ["classic", "modern", "elegant", "nonfiction", "large-print"],
     features: ["trim", "largePrint", "preflight", "cover", "footnotes", "kdpSheet"] as const,
   };
@@ -97,13 +97,20 @@ describe("no free feature is ever taken away", () => {
 });
 
 // Free since the style work of the Vellum plan (T5): four more general styles. They stay free.
-const FREE_SINCE_2026_11_T5 = { themes: ["literary", "minimal", "memoir", "textbook"], features: ["style"] as const };
+const FREE_SINCE_2026_11_T5 = { themes: ["literary", "minimal", "memoir", "textbook"], features: ["style"] as const, trims: ["8.25x6", "8.25x8.25", "8.5x8.5", "8.27x11.69"] };
 describe("the T5 styles stay free", () => {
   it("lets a free user print and publish each of them", () => {
     for (const theme of FREE_SINCE_2026_11_T5.themes) {
       expect(FREE_THEMES, theme).toContain(theme);
       expect(printBlockers("free", { theme, trim: "6x9" }), theme).toEqual([]);
       expect(epubBlockers("free", { theme }), theme).toEqual([]);
+    }
+  });
+
+  it("prints every one of the four added KDP trims for free", () => {
+    for (const trim of FREE_SINCE_2026_11_T5.trims) {
+      expect(FREE_TRIMS, trim).toContain(trim);
+      expect(printBlockers("free", { theme: "classic", trim }), trim).toEqual([]);
     }
   });
 
