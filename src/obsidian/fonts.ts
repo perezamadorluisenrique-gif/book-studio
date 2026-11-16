@@ -19,6 +19,8 @@ import atkinsonHyperlegibleItalic from "../../fonts/AtkinsonHyperlegible-Italic.
 import atkinsonHyperlegibleBold from "../../fonts/AtkinsonHyperlegible-Bold.ttf";
 import atkinsonHyperlegibleBoldItalic from "../../fonts/AtkinsonHyperlegible-BoldItalic.ttf";
 import inconsolataRegular from "../../fonts/Inconsolata-Regular.ttf";
+import stixTwoMathRegular from "../../fonts/STIXTwoMath-Regular.ttf";
+import stixTwoMathItalic from "../../fonts/STIXTwoMath-Italic.ttf";
 
 const FONTS: Record<FontFile, Uint8Array> = {
   "EBGaramond-Regular": eBGaramondRegular,
@@ -38,6 +40,8 @@ const FONTS: Record<FontFile, Uint8Array> = {
   "AtkinsonHyperlegible-Bold": atkinsonHyperlegibleBold,
   "AtkinsonHyperlegible-BoldItalic": atkinsonHyperlegibleBoldItalic,
   "Inconsolata-Regular": inconsolataRegular,
+  "STIXTwoMath-Regular": stixTwoMathRegular,
+  "STIXTwoMath-Italic": stixTwoMathItalic,
 };
 
 export const loadBundledFont: FontLoader = async (file) => FONTS[file];
