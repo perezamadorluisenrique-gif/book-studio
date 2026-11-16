@@ -9,7 +9,7 @@ import { FAMILIES, type Family, type FontFile, type FontSet } from "./fonts";
 import { chapterLabel, partHeading, strings } from "./i18n";
 import type { Layout } from "./layout/types";
 import { NOTES_ID, notesHeadingId, type Block, type Book, type Chapter, type Inline, type InlineStyle, type Matter, type SectionType } from "./model";
-import { themeById, type TextStyle, type Theme } from "./themes";
+import { resolveTheme, type TextStyle, type Theme } from "./themes";
 
 export interface EpubOptions {
   /** Pro: schema.org accessibility metadata, the print page list and the conformance claim. */
@@ -467,8 +467,8 @@ function usesCode(book: Book): boolean {
 }
 
 function bookCss(book: Book, theme: Theme, faces: { family: Family; file: FontFile; bold: boolean; italic: boolean }[], sceneGlyph: string): string {
-  const size = book.settings.fontSize ?? theme.body.size;
-  const base = theme.body.size;
+  const size = theme.body.size;
+  const base = theme.designBody?.size ?? theme.body.size;
   const lh = theme.body.leading / theme.body.size;
   const t = (ts: TextStyle) => textCss(ts, base);
   const ch = theme.chapter;
@@ -583,11 +583,11 @@ interface NavEntry {
 
 export async function writeEpub(book: Book, opts: EpubOptions): Promise<Uint8Array> {
   const { meta, settings } = book;
-  const theme = themeById(settings.theme);
+  const theme = resolveTheme(settings);
   const lang = meta.language || "en";
   const s = strings(lang);
   const pack = opts.accessiblePack;
-  const sceneGlyph = settings.sceneBreak ?? theme.sceneBreak.glyph;
+  const sceneGlyph = theme.sceneBreak.glyph;
 
   const front = book.chapters.filter((c) => c.matter === "front");
   const body = book.chapters.filter((c) => c.matter === "body");

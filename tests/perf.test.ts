@@ -47,7 +47,7 @@ describe("layout cache", () => {
   it("does not reuse a chapter when the settings, the language or the hyphenation change", () => {
     const cache = new LayoutCache();
     layoutBook(leyendas, fonts, { hyphenator, cache });
-    for (const change of [{ fontSize: 12 }, { trim: "5x8" }, { hyphenate: false }, { theme: "modern" }]) {
+    for (const change of [{ style: { size: 12 } }, { fontSize: 12 }, { trim: "5x8" }, { hyphenate: false }, { theme: "modern" }]) {
       const book: Book = { ...leyendas, settings: { ...leyendas.settings, ...change } };
       const fresh = layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? hyphenator : null });
       const warm = layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? hyphenator : null, cache });

@@ -9,7 +9,7 @@ import { contrastInk, fitSize, hexToRgb, Painter, pt } from "./paint";
 import { emptyStats } from "../layout/paginate";
 import type { Draw, Layout, Rgb } from "../layout/types";
 import type { Book } from "../model";
-import { themeById, type TextStyle } from "../themes";
+import { resolveTheme, type TextStyle } from "../themes";
 import { renderDesign } from "./render-design";
 import { checkIsbn, displayIsbn, ean13Modules } from "./isbn";
 import { DEFAULT_TRIM, trimById } from "../trims";
@@ -47,7 +47,7 @@ function rs(ts: TextStyle, oldstyle: boolean, size = ts.size): RunStyle {
 
 export function composeCover(book: Book, fonts: FontSet, pages: number, opts: CoverOptions = {}): Cover {
   const { meta, settings } = book;
-  const theme = themeById(settings.theme);
+  const theme = resolveTheme(settings);
   const g = opts.geometry ?? coverGeometry(trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!, pages, settings.paper);
   const design = meta.coverDesign;
   const findings: CoverFinding[] = [];
@@ -160,7 +160,7 @@ function typographicFront(p: Painter, g: CoverGeometry, book: Book, tp: { title:
 function backCover(p: Painter, g: CoverGeometry, book: Book, bg: Rgb, old: boolean, findings: CoverFinding[]): void {
   const { meta } = book;
   const design = meta.coverDesign;
-  const theme = themeById(book.settings.theme);
+  const theme = resolveTheme(book.settings);
   const left = pt(g.back.x) + pt(0.6);
   const right = pt(g.back.x + g.back.w) - pt(0.55);
   const width = right - left;
@@ -210,7 +210,7 @@ function backCover(p: Painter, g: CoverGeometry, book: Book, bg: Rgb, old: boole
     findings.push({ severity: "info", message: "The back cover has no text. Add back-blurb (or description) to the manifest to print a blurb there." });
     return;
   }
-  const taglineStyle = (size: number): RunStyle => ({ family: themeById(book.settings.theme).titlePage.subtitle.family, size, italic: true, oldstyle: old });
+  const taglineStyle = (size: number): RunStyle => ({ family: resolveTheme(book.settings).titlePage.subtitle.family, size, italic: true, oldstyle: old });
   const para = 0.6;
   const fit = fitSize(12, 8.5, (size) => {
     const tagH = design.tagline ? p.wrap(design.tagline, taglineStyle(size * 1.35), width).length * size * 1.35 * 1.25 + size : 0;
@@ -245,7 +245,7 @@ function bgMix(ink: number, bg: number): number {
 
 function spine(p: Painter, g: CoverGeometry, book: Book, old: boolean, findings: CoverFinding[]): void {
   const { meta } = book;
-  const theme = themeById(book.settings.theme);
+  const theme = resolveTheme(book.settings);
   if (!g.spineText) {
     findings.push({ severity: "info", message: `No text on the spine: KDP prints spine text only on books of ${SPINE_TEXT_MIN_PAGES} pages or more, and this one has ${g.pages}.` });
     return;
