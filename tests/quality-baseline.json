@@ -53,5 +53,209 @@
     "widows": 0,
     "orphans": 0,
     "hyphenTurns": 0
+  },
+  "by-style": {
+    "oz": {
+      "classic": {
+        "pages": 140,
+        "shortPages": 2,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 7,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "modern": {
+        "pages": 144,
+        "shortPages": 5,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 16,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "elegant": {
+        "pages": 142,
+        "shortPages": 1,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 1,
+        "loose": 20,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "nonfiction": {
+        "pages": 142,
+        "shortPages": 8,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 5,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "large-print": {
+        "pages": 250,
+        "shortPages": 41,
+        "unevenSpreads": 2,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 0,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "literary": {
+        "pages": 142,
+        "shortPages": 0,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 4,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "minimal": {
+        "pages": 138,
+        "shortPages": 2,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 6,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "memoir": {
+        "pages": 132,
+        "shortPages": 1,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 3,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "textbook": {
+        "pages": 142,
+        "shortPages": 2,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 1,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 1
+      }
+    },
+    "ensayo-es": {
+      "classic": {
+        "pages": 82,
+        "shortPages": 0,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 1,
+        "loose": 2,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "modern": {
+        "pages": 82,
+        "shortPages": 0,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 1,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "elegant": {
+        "pages": 86,
+        "shortPages": 0,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 0,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 1
+      },
+      "nonfiction": {
+        "pages": 82,
+        "shortPages": 0,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 3,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "large-print": {
+        "pages": 176,
+        "shortPages": 0,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 0,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "literary": {
+        "pages": 82,
+        "shortPages": 0,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 1,
+        "loose": 1,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "minimal": {
+        "pages": 82,
+        "shortPages": 0,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 1,
+        "loose": 2,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "memoir": {
+        "pages": 76,
+        "shortPages": 0,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 1,
+        "loose": 2,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      },
+      "textbook": {
+        "pages": 76,
+        "shortPages": 0,
+        "unevenSpreads": 0,
+        "ladders": 0,
+        "veryLoose": 0,
+        "loose": 0,
+        "widows": 0,
+        "orphans": 0,
+        "hyphenTurns": 0
+      }
+    }
   }
 }

@@ -4,11 +4,12 @@
 import { chapterLabel } from "../i18n";
 import { formatPages, type IndexEntry } from "../index-terms";
 import type { Block, Chapter, ImageAsset, Inline, Note, SourceRef } from "../model";
-import type { Theme, TextStyle } from "../themes";
+import { ornamentHeight, scaleOps, type VectorOrnament } from "../ornaments";
+import { isVector, type Theme, type TextStyle } from "../themes";
 import type { Align, ParagraphSetter, SetOptions, SetParagraph } from "./inline";
 import { NO_BREAK, offsetDraw, type VBox, type VItem } from "./paginate";
 import { fromTextStyle, type RunStyle, type Styler } from "./style";
-import type { Draw, LayoutWarning, TextDraw } from "./types";
+import type { Draw, LayoutWarning, PathDraw, TextDraw } from "./types";
 
 export interface FlowEnv {
   styler: Styler;
@@ -21,7 +22,6 @@ export interface FlowEnv {
   width: number;
   capacity: number;
   hyphenate: boolean;
-  sceneGlyph: string;
   images: Map<string, ImageAsset>;
   noteNumber: (id: string) => number | undefined;
   warn: (w: LayoutWarning) => void;
@@ -125,6 +125,12 @@ export class FlowBuilder {
   }
 
   /** One line of plain text, positioned within `width`. */
+  /** A drawn ornament centred (or left-aligned) in a frame, with its middle `cy` points below the top of the box. */
+  vectorDraw(o: VectorOrnament, align: "left" | "center", left: number, width: number, cy: number): PathDraw {
+    const x = align === "left" ? left : left + (width - o.width) / 2;
+    return { kind: "path", ops: scaleOps(o.path, o.width, x, cy - ornamentHeight(o) / 2), fill: [0, 0, 0] };
+  }
+
   textLine(text: string, style: RunStyle, width: number, align: "left" | "center" | "right", baseline: number, left = 0): TextDraw[] {
     const parts = this.env.styler.parts(text, style);
     const total = parts.reduce((s, p) => s + this.env.styler.partWidth(p), 0);
@@ -176,8 +182,12 @@ export class FlowBuilder {
       }
     }
     if (ch.ornament) {
-      const os: RunStyle = { family: ch.ornament.family, size: ch.ornament.size };
-      items.push({ type: "box", height: 2 * L, draws: this.textLine(ch.ornament.glyph, os, this.env.width, ch.title.align === "left" ? "left" : "center", L + os.size * 0.3), breakAfter: NO_BREAK });
+      const align = ch.title.align === "left" ? "left" : "center";
+      if (isVector(ch.ornament)) items.push({ type: "box", height: 2 * L, draws: [this.vectorDraw(ch.ornament, align, 0, this.env.width, L)], breakAfter: NO_BREAK });
+      else {
+        const os: RunStyle = { family: ch.ornament.family, size: ch.ornament.size };
+        items.push({ type: "box", height: 2 * L, draws: this.textLine(ch.ornament.glyph, os, this.env.width, align, L + os.size * 0.3), breakAfter: NO_BREAK });
+      }
     }
     items.push(strut(ch.spaceAfter * L));
     return items;
@@ -317,12 +327,12 @@ export class FlowBuilder {
           break;
         }
         case "sceneBreak": {
-          const glyph = this.env.sceneGlyph;
-          const ss: RunStyle = { family: theme.sceneBreak.family, size: theme.sceneBreak.size };
+          const sb = theme.sceneBreak;
+          const draws = isVector(sb) ? [this.vectorDraw(sb, "center", frame.left, frame.width, L)] : sb.glyph ? this.textLine(sb.glyph, { family: sb.family, size: sb.size }, frame.width, "center", L + sb.size * 0.3, frame.left) : [];
           items.push({
             type: "box",
             height: 2 * L,
-            draws: glyph ? this.textLine(glyph, ss, frame.width, "center", L + ss.size * 0.3, frame.left) : [],
+            draws,
             breakAfter: NO_BREAK,
             start: { blockId: b.id, offset: 0 },
             src: b.src,

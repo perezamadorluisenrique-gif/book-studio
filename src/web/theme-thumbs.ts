@@ -1,5 +1,5 @@
 // A small picture of the first page of chapter one in a style, for the first-book guide's style step.
-// It sets only the start of that chapter, so five styles cost a fraction of one full layout.
+// It sets only the start of that chapter, so nine styles cost a fraction of one full layout.
 
 import { loadBook } from "../engine/book";
 import type { FontSet } from "../engine/fonts";

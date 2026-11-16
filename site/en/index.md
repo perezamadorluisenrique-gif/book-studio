@@ -29,7 +29,7 @@ compare:
     - ["Full wraparound cover", "Yes: sheet with spine, bleed and barcode area (no designer yet)", "Its site doesn't say", "Its site doesn't say", "Its site doesn't say"]
     - ["In Spanish", "Yes: interface, hyphenation and typography", "Its site doesn't say", "Its site doesn't say", "Its site doesn't say"]
 faq:
-  - { q: "Is it really free?", a: "Yes. The web app is free and MIT licensed, with no account, no watermark and no limit on books or pages. All twelve KDP trim sizes, five styles, footnotes, the full cover and the KDP preflight are free for good. [Book Studio Pro](pro:) adds genre styles, a back-of-book index, box sets and the accessible EPUB pack." }
+  - { q: "Is it really free?", a: "Yes. The web app is free and MIT licensed, with no account, no watermark and no limit on books or pages. All twelve KDP trim sizes, nine styles, footnotes, the full cover and the KDP preflight are free for good. [Book Studio Pro](pro:) adds genre styles, a back-of-book index, box sets and the accessible EPUB pack." }
   - { q: "What do I need?", a: "A modern browser and your manuscript as Word (.docx), Markdown or plain text, up to 40 MB. There is nothing to install and no account to make. Old .doc files need saving as .docx first." }
   - { q: "Does it work for hardcover?", a: "Today the PDF follows KDP's paperback rules. KDP has different rules for hardcover that Book Studio doesn't check yet." }
   - { q: "What about images?", a: "PNG and JPG pictures in your Word file are kept with their descriptions, and the check flags any without one. The cover can be your own JPG or PNG, or a typographic one." }
