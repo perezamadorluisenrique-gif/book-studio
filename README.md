@@ -98,6 +98,7 @@ Chapter notes are ordinary Markdown:
 | `cover` | Cover image for the EPUB |
 | `theme` | `classic`, `modern`, `elegant`, `nonfiction` or `large-print`; the genre themes `thriller`, `romance` and `fantasy` need Pro |
 | `trim` | Any of the sixteen KDP trims, for example `6x9`, `5x8` or `5.5x8.5` |
+| `binding` | `paperback` (default) or `hardcover`: hardcover offers 5 trims (`5.5x8.5`, `6x9`, `6.14x9.21`, `7x10`, `8.25x11`), 75 to 550 pages and its own cover sheet (the sheet's total size is not on KDP's help pages, so check it against KDP's cover calculator) |
 | `paper` | `white`, `cream` or `color`: sets the spine width |
 | `footnotes` | `end` (default) or `page` for notes at the foot of the page |
 | `index-terms` | A list of words and phrases for the back-of-book index (Pro) |
@@ -110,6 +111,7 @@ Chapter notes are ordinary Markdown:
 | `toc`, `half-title`, `hyphenate`, `smart-quotes` | Turn those features on or off |
 | `font-size` | Body size in points, from 7 to 24 |
 | `scene-break` | Glyph to use for scene breaks, such as `❦` |
+| `chapter-image`, `chapter-image-alt` | In a chapter note (not the book note): a picture that opens the chapter, above the title, in every style. Describe it in `chapter-image-alt`, or write `decorative`. A warning appears when it would print under 300 ppi |
 
 The studio's toolbar can override the theme and trim for a single export without editing the note.
 

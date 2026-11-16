@@ -81,6 +81,8 @@ export interface Chapter {
   /** Plain-text title, for the TOC, running heads and metadata. */
   titleText: string;
   subtitle?: string;
+  /** A picture that opens the chapter (`chapter-image:` in the chapter note). */
+  openerImage?: ImageRef;
   /** 1-based chapter number for numbered body chapters, undefined otherwise. */
   number?: number;
   /** 1-based number of a part, counted separately for box-set volumes. */
