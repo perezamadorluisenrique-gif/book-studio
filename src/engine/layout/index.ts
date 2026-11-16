@@ -7,7 +7,7 @@ import { chapterLabel, partHeading, roman, strings } from "../i18n";
 import { buildIndex, parseIndexSpecs } from "../index-terms";
 import { INDEX_ID, NOTES_ID, notesHeadingId, type Book, type Chapter, type Matter, type Note } from "../model";
 import { resolveTheme } from "../themes";
-import { DEFAULT_TRIM, KDP_MIN_PAGES, BLEED, kdpMinInside, kdpMinOutside, trimById, trimMaxPages } from "../trims";
+import { DEFAULT_TRIM, KDP_MIN_PAGES, BLEED, kdpMinInside, kdpMinOutside, trimById, bindingOf, pageRange } from "../trims";
 import { FlowBuilder, type FlowEnv } from "./blocks";
 import { alsoByPage, copyrightPage, dedicationPage, epigraphPage, halfTitlePage, partPage, titlePage, tocPages, type DisplayPage, type TocLine } from "./front";
 import { ParagraphSetter } from "./inline";
@@ -123,9 +123,10 @@ export function layoutBook(book: Book, fonts: FontSet, options: LayoutOptions = 
   const warnings = result.warnings;
   const pages = result.pages;
   const count = pages.length;
-  const maxPages = trimMaxPages(trim);
+  const hard = bindingOf(settings.binding) === "hardcover";
+  const maxPages = pageRange(hard ? "hardcover" : "paperback", trim).max;
   if (count > maxPages) {
-    warnings.push({ severity: "error", message: `The book has ${count} pages; KDP paperbacks at ${trim.label} allow at most ${maxPages}. Use a larger trim size or a smaller type size.` });
+    warnings.push({ severity: "error", message: `The book has ${count} pages; KDP ${hard ? "hardcovers" : "paperbacks"} at ${trim.label} allow at most ${maxPages}. Use a larger trim size or a smaller type size.` });
   }
   warnings.push({
     severity: "info",

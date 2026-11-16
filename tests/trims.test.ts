@@ -4,7 +4,8 @@ import { buildBook, exportPdf } from "../src/app/pipeline";
 import { FREE_THEMES } from "../src/engine/entitlements";
 import type { FontSet } from "../src/engine/fonts";
 import { averageLineLength, MAX_LINE_CHARS, runPreflight } from "../src/engine/preflight";
-import { TRIMS, trimMaxPages } from "../src/engine/trims";
+import { FREE_TRIMS, TRIMS, trimMaxPages, trimsFor } from "../src/engine/trims";
+import { settingsFromFrontmatter } from "../src/engine/manifest";
 import { testFonts } from "./helpers/fonts";
 import { checkKdpPdf } from "../tools/kdp-check";
 import { trimById } from "../src/engine/trims";
@@ -16,12 +17,12 @@ beforeAll(async () => {
 });
 
 const para = "A line of the story that goes on for a while, as stories do, with a comma here and a clause there. ".repeat(30);
-function vault(extra: Record<string, string> = {}) {
+function vault(extra: Record<string, string> = {}, paras = 8) {
   const fm = Object.entries({ book: "true", title: "Trim Book", author: "Ada Writer", ...extra }).map(([k, v]) => `${k}: ${v}`);
   const names = ["One", "Two", "Three", "Four"];
   return memVault({
     "Book.md": `---\n${fm.join("\n")}\n---\n## Chapters\n${names.map((n, i) => `${i + 1}. [[${n}]]`).join("\n")}\n`,
-    ...Object.fromEntries(names.map((n) => [`${n}.md`, `# ${n}\n\n${Array(8).fill(para).join("\n\n")}\n`])),
+    ...Object.fromEntries(names.map((n) => [`${n}.md`, `# ${n}\n\n${Array(paras).fill(para).join("\n\n")}\n`])),
   });
 }
 
@@ -75,5 +76,44 @@ describe("line length", () => {
     const normal = await buildBook(vault(), "Book.md", fonts, { trim: "6x9" });
     expect(averageLineLength(normal.layout)).toBeLessThan(MAX_LINE_CHARS);
     expect((await runPreflight({ book: normal.book, layout: normal.layout, fonts })).findings.some((f) => f.rule === "line-length")).toBe(false);
+  });
+});
+
+describe("hardcover interiors", () => {
+  const hard = (front: Record<string, string> = {}) => vault({ binding: "hardcover", trim: "6x9", ...front });
+
+  it("reads the binding from the book note and offers only the five hardcover sizes", async () => {
+    expect(settingsFromFrontmatter({ binding: "hardcover" }).binding).toBe("hardcover");
+    expect(settingsFromFrontmatter({}).binding).toBeUndefined();
+    expect(trimsFor("hardcover").map((t) => t.id)).toEqual(["5.5x8.5", "6x9", "6.14x9.21", "7x10", "8.25x11"]);
+    expect(trimsFor("paperback").map((t) => t.id)).not.toContain("8.25x11");
+    expect(trimById("8.25x11")).toMatchObject({ width: 8.25, height: 11 });
+    expect(FREE_TRIMS).toContain("8.25x11");
+  });
+
+  it("blocks a hardcover under 75 pages with its own message, and a paperback of the same length passes", async () => {
+    const built = await buildBook(hard(), "Book.md", fonts);
+    expect(built.layout.pages.length).toBeLessThan(75);
+    const r = await runPreflight({ book: built.book, layout: built.layout, fonts });
+    expect(r.findings.find((f) => f.rule === "page-count")?.message).toMatch(/KDP hardcovers need at least 75/);
+    const pb = await buildBook(vault({ trim: "6x9" }), "Book.md", fonts);
+    expect((await runPreflight({ book: pb.book, layout: pb.layout, fonts })).findings.some((f) => f.rule === "page-count")).toBe(false);
+  });
+
+  it("passes a hardcover of 75 pages or more at a hardcover size", async () => {
+    const big = await buildBook(vault({ binding: "hardcover", trim: "6x9" }, 40), "Book.md", fonts);
+    expect(big.layout.pages.length).toBeGreaterThanOrEqual(75);
+    const r = await runPreflight({ book: big.book, layout: big.layout, fonts });
+    expect(r.findings.filter((f) => f.rule === "page-count" || f.rule === "binding-trim")).toEqual([]);
+    expect(r.passed.find((p) => p.id === "page-count")?.title).toBe("75 to 550 pages");
+  });
+
+  it("blocks a size KDP does not print as hardcover, and prints the hardcover-only size", async () => {
+    const odd = await buildBook(hard({ trim: "8x10" }), "Book.md", fonts);
+    const r = await runPreflight({ book: odd.book, layout: odd.layout, fonts });
+    expect(r.findings.find((f) => f.rule === "binding-trim")?.message).toMatch(/does not print hardcovers at 8" × 10"/);
+    const tall = await buildBook(hard({ trim: "8.25x11" }), "Book.md", fonts);
+    expect(tall.layout.trim.id).toBe("8.25x11");
+    expect((await runPreflight({ book: tall.book, layout: tall.layout, fonts })).findings.some((f) => f.rule === "binding-trim")).toBe(false);
   });
 });

@@ -190,3 +190,8 @@ New tab "Ebook" (`src/app/ebook-preview.ts`). `epubParts` was split out of `writ
 - Tests: `tests/ebook-preview.test.ts` (CSP present, only data:/# addresses, chapter order, size and dark mode); e2e "previews the ebook in three readers..." (sandbox has no allow-scripts, three frames, text size, dark mode, paging, no request leaves the page, axe on the panel and on the frame's own page opened alone, because axe cannot run inside a script-free frame and hangs waiting for it).
 - Default chapter: the first document with a real run of text, not the title page.
 - Not verified: how it looks in a real Kindle, Apple Books or Kobo.
+
+## T5.5 hardcover interiors (2026-11-17)
+
+`settings.binding` (`paperback` default, or `hardcover`; front matter `binding:`) with `trimsFor(binding)` and `pageRange(binding, trim)` in `trims.ts`. Hardcover: 5 sizes (5.5×8.5, 6×9, 6.14×9.21, 7×10 and the hardcover-only 8.25×11) and 75 to 550 pages whatever the paper. Source: KDP help "Print options" (GVBQ3CMEQW3W2VL6), read 2026-11-17; that page gives no separate hardcover margin table, so the paperback margins apply. The preflight reads the binding: its own page-count message ("KDP hardcovers…") and a new `binding-trim` error. A Pro edition's `PreflightBinding` still wins. The settings bar and the book form got a "Binding" selector; choosing hardcover moves a size KDP does not print to 6×9. Free for good (`hardcoverTrims` in `tests/entitlements.test.ts`). Not done here: the hardcover cover sheet (T5.6).
+- Not verified: the cover figures (wrap, hinge); that page does not list them.

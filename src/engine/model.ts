@@ -1,6 +1,7 @@
 // The book model every output (print PDF, EPUB, preview, audit) is built from.
 
 import type { CoverDesign } from "./cover/design";
+import type { Binding } from "./trims";
 
 export interface SourceRef {
   file: string;
@@ -196,6 +197,8 @@ export interface StyleOverrides {
 export interface BookSettings {
   theme: string;
   trim: string;
+  /** Paperback (the default) or hardcover; sets the trim sizes and page range KDP accepts. */
+  binding?: Binding;
   /** Interior paper, which sets the spine width. */
   paper: Paper;
   footnotes: NotePlacement;

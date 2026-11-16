@@ -34,14 +34,46 @@ export const TRIMS: Trim[] = [
   { id: "8.27x11.69", label: '8.27" × 11.69" (A4)', width: 8.27, height: 11.69, maxPages: 780 },
 ];
 
+// Hardcover (case laminate) books. Source: KDP help "Print options", the same page as the paperback table
+// (kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6, read 2026-11-17): five trim sizes, one of them (8.25 × 11)
+// only for hardcover, and 75 to 550 pages whatever the ink and paper. The page lists no separate hardcover
+// margin table: the paperback one applies. Cover figures (wrap, hinge) are in cover/geometry.ts.
+
+export type Binding = "paperback" | "hardcover";
+
+export const BINDINGS: readonly Binding[] = ["paperback", "hardcover"];
+
+/** Trim sizes that exist only as hardcover; paperbacks never list them. */
+export const HARDCOVER_ONLY_TRIMS: Trim[] = [{ id: "8.25x11", label: '8.25" × 11" (hardcover only)', width: 8.25, height: 11 }];
+
+export const HARDCOVER = {
+  minPages: 75,
+  maxPages: 550,
+  trims: ["5.5x8.5", "6x9", "6.14x9.21", "7x10", "8.25x11"] as readonly string[],
+};
+
+/** The binding a settings value asks for; anything else is a paperback. */
+export const bindingOf = (v: unknown): Binding => (v === "hardcover" ? "hardcover" : "paperback");
+
 /** The default trim, and the one every plan can fall back to. */
 export const DEFAULT_TRIM = "6x9";
 
 /** Every KDP trim is free: without the size the author wants, there is no book "ready for Amazon". */
-export const FREE_TRIMS: readonly string[] = TRIMS.map((t) => t.id);
+export const FREE_TRIMS: readonly string[] = [...TRIMS, ...HARDCOVER_ONLY_TRIMS].map((t) => t.id);
 
 export function trimById(id: string): Trim | undefined {
-  return TRIMS.find((t) => t.id === id);
+  return TRIMS.find((t) => t.id === id) ?? HARDCOVER_ONLY_TRIMS.find((t) => t.id === id);
+}
+
+/** The trim sizes KDP offers for a binding. */
+export function trimsFor(binding: Binding): Trim[] {
+  if (binding === "paperback") return TRIMS;
+  return [...TRIMS, ...HARDCOVER_ONLY_TRIMS].filter((t) => HARDCOVER.trims.includes(t.id));
+}
+
+/** The page range KDP prints for a binding at a trim. */
+export function pageRange(binding: Binding, trim: Trim): { min: number; max: number } {
+  return binding === "hardcover" ? { min: HARDCOVER.minPages, max: HARDCOVER.maxPages } : { min: KDP_MIN_PAGES, max: trimMaxPages(trim) };
 }
 
 export const KDP_MIN_PAGES = 24;

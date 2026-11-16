@@ -6,7 +6,7 @@ import { t, getLocale } from "../app/ui-i18n";
 import { FREE_EDITION } from "../config";
 import { themeAllowed, type Plan } from "../engine/entitlements";
 import { THEMES } from "../engine/themes";
-import { DEFAULT_TRIM, trimById, TRIMS } from "../engine/trims";
+import { bindingOf, DEFAULT_TRIM, HARDCOVER, trimById, TRIMS, trimsFor } from "../engine/trims";
 import { coverAsset, frontCoverPixels, imageSize, MAX_COVER_BYTES, removeCover, setCover, sniffImage } from "../project/cover-image";
 import { isbnProblem, keywordsValue, MAX_KEYWORDS, parseKeywords, readDetails, setDetail, setSetting, type DetailField } from "../project/details";
 import type { Project } from "../project/model";
@@ -169,14 +169,29 @@ export class DetailsForm {
       { cls: "dt-group" },
       h("legend", { text: t("dt.sectionLayout") }),
       make(this.id("theme"), t("dt.f.theme"), "theme", theme, THEMES.map((x) => ({ value: x.id, label: x.name, ok: themeAllowed(plan, x.id) }))),
-      make(this.id("trim"), t("dt.f.trim"), "trim", trim, TRIMS.map((x) => ({ value: x.id, label: x.label, ok: true }))),
+      make(this.id("binding"), t("dt.f.binding"), "binding", bindingOf(project.settings.binding), [
+        { value: "paperback", label: t("set.paperback"), ok: true },
+        { value: "hardcover", label: t("set.hardcover"), ok: true },
+      ]),
+      make(this.id("trim"), t("dt.f.trim"), "trim", trim, trimsFor(bindingOf(project.settings.binding)).map((x) => ({ value: x.id, label: x.label, ok: true }))),
     );
   }
 
   private layout(key: string, value: string): void {
     if (!this.project) return;
-    this.deps.change(setSetting(this.project, key, value, Date.now()), [key]);
-    if (key === "trim") this.drawCover();
+    let next = setSetting(this.project, key, value, Date.now());
+    const keys = [key];
+    // A size the new binding does not print moves to the default size.
+    if (key === "binding" && value === "hardcover" && !HARDCOVER.trims.includes(next.settings.trim || DEFAULT_TRIM)) {
+      next = setSetting(next, "trim", DEFAULT_TRIM, Date.now());
+      keys.push("trim");
+    }
+    this.deps.change(next, keys);
+    if (key === "trim" || key === "binding") this.drawCover();
+    if (key === "binding") {
+      this.show();
+      document.getElementById(this.id("binding"))?.focus();
+    }
   }
 
   private typed(field: DetailField, value: string): void {

@@ -8,7 +8,7 @@ import { FontSet } from "../engine/fonts";
 import { LayoutCache } from "../engine/layout/index";
 import type { BookSettings, SourceRef } from "../engine/model";
 import { THEMES } from "../engine/themes";
-import { TRIMS } from "../engine/trims";
+import { bindingOf, DEFAULT_TRIM, HARDCOVER, trimsFor } from "../engine/trims";
 import { PagePainter } from "../preview/canvas";
 import { append, clear, h, nextFrame, select } from "./dom";
 import type { BookChoice, StudioHost } from "./host";
@@ -501,8 +501,18 @@ export class Studio {
       s.theme,
       { attr: { "aria-label": t("set.theme") }, on: { change: () => this.setOverride({ theme: theme.value }) } },
     );
+    const hard = bindingOf(s.binding) === "hardcover";
+    const binding = select(
+      [
+        { value: "paperback", label: t("set.paperback") },
+        { value: "hardcover", label: t("set.hardcover") },
+      ],
+      hard ? "hardcover" : "paperback",
+      // A size the new binding does not print moves to the default size, so the book never sits on a combination KDP refuses.
+      { attr: { "aria-label": t("set.bindingAria") }, on: { change: () => this.setOverride({ binding: binding.value as BookSettings["binding"], ...(binding.value === "hardcover" && !HARDCOVER.trims.includes(s.trim) ? { trim: DEFAULT_TRIM } : {}) }) } },
+    );
     const trim = select(
-      TRIMS.map((tr) => ({ value: tr.id, label: tr.label })),
+      trimsFor(hard ? "hardcover" : "paperback").map((tr) => ({ value: tr.id, label: tr.label })),
       s.trim,
       { attr: { "aria-label": t("set.trimAria") }, on: { change: () => this.setOverride({ trim: trim.value }) } },
     );
@@ -523,6 +533,7 @@ export class Studio {
     append(
       this.settingsBar,
       h("label", { cls: "bs-field" }, h("span", { text: t("set.theme") }), theme),
+      h("label", { cls: "bs-field" }, h("span", { text: t("set.binding") }), binding),
       h("label", { cls: "bs-field" }, h("span", { text: t("set.trim") }), trim),
       h("label", { cls: "bs-field" }, h("span", { text: t("set.paper") }), paper),
       h("label", { cls: "bs-field" }, h("span", { text: t("set.chapterStart") }), start),
