@@ -5,6 +5,8 @@ import { App, getLinkpath, requestUrl, ItemView, Modal, normalizePath, Notice, P
 import { FREE_EDITION, PRO_PREVIEW } from "../config";
 import { append, h, setElementFactory } from "../app/dom";
 import type { BookChoice, Dialog, OutputFile, Store, StudioHost } from "../app/host";
+import { mountCatalogPanel, type Disposer } from "../app/catalog-panel";
+import { PRO_INCLUDED } from "../edition";
 import { LicenseError, LicenseManager } from "../app/license-manager";
 import { pickLicenseFile } from "../app/license-panel";
 import { Studio } from "../app/studio";
@@ -62,6 +64,7 @@ export default class BookStudioPlugin extends Plugin {
     this.addCommand({ id: "open", name: "Open studio", icon: "book-open", callback: () => void this.openStudio() });
     this.addCommand({ id: "export-pdf", name: "Export print PDF", icon: "printer", callback: () => void this.withStudio((s) => s.exportPdf()) });
     this.addCommand({ id: "export-epub", name: "Export EPUB", icon: "tablet-smartphone", callback: () => void this.withStudio((s) => s.exportEpub()) });
+    if (PRO_INCLUDED) this.addCommand({ id: "catalog", name: "Open the catalog", icon: "library", callback: () => new CatalogModal(this.app, this).open() });
     if (!FREE_EDITION) this.addCommand({ id: "export-accessibility-report", name: "Export accessibility report", icon: "accessibility", callback: () => void this.withStudio((s) => s.exportReport()) });
     this.addCommand({
       id: "create-book",
@@ -422,6 +425,26 @@ function licenseSettings(containerEl: HTMLElement, plugin: BookStudioPlugin, red
   }
 
   containerEl.createEl("p", { cls: "setting-item-description", text: "A key never expires. Activate is the only network request Book Studio makes: your notes and books never leave your device." });
+}
+
+/** The Pro catalog screen in a window; the free edition never opens it. */
+class CatalogModal extends Modal {
+  private dispose: Disposer | null = null;
+  constructor(
+    app: App,
+    private plugin: BookStudioPlugin,
+  ) {
+    super(app);
+  }
+
+  override onOpen(): void {
+    this.dispose = mountCatalogPanel(this.contentEl, { studio: this.plugin.hostFor(), close: () => this.close() });
+  }
+
+  override onClose(): void {
+    this.dispose?.();
+    this.contentEl.empty();
+  }
 }
 
 class LicenseModal extends Modal {

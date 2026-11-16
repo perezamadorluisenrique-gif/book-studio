@@ -98,11 +98,17 @@ function listFiles(dir, root = dir, out = []) {
   return out;
 }
 
+// The studio's styles; a Pro tree adds src/app/pro.css (its own screens) to the end when the edition is full.
+function studioCss() {
+  const pro = "src/app/pro.css";
+  return readFileSync("src/app/studio.css", "utf8") + (!freeEdition && existsSync(pro) ? `\n${readFileSync(pro, "utf8")}` : "");
+}
+
 function copyWebStatic() {
   mkdirSync("dist/web", { recursive: true });
   cpSync("src/web/index.html", "dist/web/index.html");
   cpSync("src/web/app.css", "dist/web/app.css");
-  cpSync("src/app/studio.css", "dist/web/studio.css");
+  writeFileSync("dist/web/studio.css", studioCss());
   cpSync("src/web/app.webmanifest", "dist/web/app.webmanifest");
   cpSync("src/web/icons", "dist/web/icons", { recursive: true, filter: (src) => !src.endsWith(".svg") });
   cpSync("sample", "dist/web/sample", { recursive: true });
@@ -129,7 +135,7 @@ function writeServiceWorker() {
 
 // Obsidian loads a plugin's styles from styles.css next to main.js.
 function copyPluginStatic() {
-  cpSync("src/app/studio.css", "styles.css");
+  writeFileSync("styles.css", studioCss());
 }
 
 const targets = [];

@@ -2,6 +2,7 @@
 // see the list, open, rename or delete one. It draws the screen and calls back; it saves nothing itself.
 
 import { append, clear, h } from "../app/dom";
+import { PRO_INCLUDED } from "../edition";
 import type { Dialog } from "../app/host";
 import { t, tn, getLocale } from "../app/ui-i18n";
 import type { DocxReport } from "../project/import-docx";
@@ -33,6 +34,8 @@ export interface ProjectsDeps {
   sample(): void;
   /** Whether the browser promised to keep the books (false: it may clear them when space is short). */
   persisted(): Promise<boolean>;
+  /** Pro: open the catalog screen in `box`; the screen's back button redraws this one. Absent in the free edition. */
+  catalog?(box: HTMLElement, back: () => void): void;
 }
 
 const ACCEPT = ".md,.markdown,.txt,.docx,.odt,.rtf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,application/rtf,text/rtf";
@@ -323,6 +326,7 @@ export async function renderProjects(box: HTMLElement, deps: ProjectsDeps, focus
     ...(landing ? [landing.el] : []),
     h("h2", { text: t("proj.title"), attr: { id: "proj-title", tabindex: "-1" } }),
     h("p", { cls: "proj-intro", text: t("proj.intro") }),
+    PRO_INCLUDED && deps.catalog ? h("p", null, h("button", { text: t("proj.catalog"), attr: { type: "button", id: "proj-catalog" }, on: { click: () => deps.catalog?.(box, () => again("title")) } })) : null,
     note,
     form,
     importBox,

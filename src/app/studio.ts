@@ -14,11 +14,12 @@ import { append, clear, h, nextFrame, select } from "./dom";
 import type { BookChoice, StudioHost } from "./host";
 import type { LicenseManager } from "./license-manager";
 import { KdpPanel } from "./kdp-panel";
+import { mountMarketingPanel, type MarketingPanel } from "./marketing-panel";
 import { StylePanel } from "./style-panel";
 import { t, tn } from "./ui-i18n";
 import { buildBook, ebookBlockers, exportCover, exportEdition, exportEpub, exportPdf, exportReport, pdfBlockers, planEditions, spineWidth, type Built, type EpubChoices } from "./pipeline";
 
-type Tab = "preview" | "problems" | "kdp" | "accessibility";
+type Tab = "preview" | "problems" | "kdp" | "accessibility" | "kit";
 type Zoom = "page" | "fit" | "0.5" | "0.75" | "1" | "1.5" | "2";
 
 const zooms = (): { value: Zoom; label: string }[] => [
@@ -65,6 +66,7 @@ export class Studio {
   private unsubscribe: () => void;
   private disposed = false;
   private kdp: KdpPanel;
+  private kit: MarketingPanel | null = null;
 
   private bookSelect = h("select", { cls: "bs-book", attr: { "aria-label": t("studio.book") } });
   private planBox = h("div", { cls: "bs-plan" });
@@ -85,7 +87,7 @@ export class Studio {
     container: HTMLElement,
     private license: LicenseManager,
   ) {
-    const tabIds: Tab[] = ["preview", "problems", "kdp", "accessibility"];
+    const tabIds: Tab[] = FREE_EDITION ? ["preview", "problems", "kdp", "accessibility"] : ["preview", "problems", "kdp", "accessibility", "kit"];
     const uid = Math.random().toString(36).slice(2, 8);
     this.tabs = {} as Record<Tab, HTMLButtonElement>;
     this.panels = {} as Record<Tab, HTMLElement>;
@@ -132,6 +134,8 @@ export class Studio {
         if (index >= 0) this.scrollToPage(index);
       },
     });
+    // The Pro sales kit has a tab of its own; the free edition has no such tab.
+    if (!FREE_EDITION) this.kit = mountMarketingPanel(this.panels.kit, { host: this.host, built: () => this.built, fonts: () => this.loadFonts(), painter: () => this.painter, plan: () => this.plan() });
     container.appendChild(this.root);
     this.unsubscribe = this.license.onChange(() => this.planChanged());
     this.showTab("preview");
@@ -474,6 +478,7 @@ export class Studio {
     this.renderPreview();
     this.renderProblems();
     this.kdp.render();
+    this.kit?.refresh();
     this.renderAccessibility();
     this.renderTabs();
   }
@@ -825,6 +830,7 @@ export class Studio {
     // The free edition's EPUB has no accessibility pack, so there is nothing to show.
     this.tabs.accessibility.hidden = FREE_EDITION;
     this.tabs.accessibility.textContent = audit && pro && !audit.passed ? t("tab.accessibilityFix") : pro || FREE_EDITION ? t("tab.accessibility") : t("tab.accessibilityPro");
+    if (this.tabs.kit) this.tabs.kit.textContent = t("tab.kit");
   }
 
   /** What the publishing checklist needs from the built book; null before the first build. */
@@ -854,7 +860,7 @@ export class Studio {
   }
 
   private tabKey(e: KeyboardEvent, tab: Tab): void {
-    const order: Tab[] = FREE_EDITION ? ["preview", "problems", "kdp"] : ["preview", "problems", "kdp", "accessibility"];
+    const order: Tab[] = FREE_EDITION ? ["preview", "problems", "kdp"] : ["preview", "problems", "kdp", "accessibility", "kit"];
     const i = order.indexOf(tab);
     let next: Tab | null = null;
     if (e.key === "ArrowRight") next = order[(i + 1) % order.length];
@@ -879,6 +885,7 @@ export class Studio {
     this.observer?.disconnect();
     this.resize?.disconnect();
     this.painter?.dispose();
+    this.kit?.dispose();
     this.unsubscribe();
     this.root.remove();
   }
