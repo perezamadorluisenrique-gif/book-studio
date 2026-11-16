@@ -528,7 +528,7 @@ function bookCss(book: Book, theme: Theme, faces: { family: Family; file: FontFi
   if (theme.blockquote.italic) css.push("blockquote { font-style: italic; } blockquote em { font-style: normal; }");
   css.push("ol, ul { margin: 0.6em 0; padding-left: 1.8em; } li ol, li ul { margin: 0; } li p { text-indent: 0; text-align: left; }");
   css.push("figure { margin: 1em 0; text-align: center; page-break-inside: avoid; break-inside: avoid; }");
-  css.push("figure img { max-width: 100%; height: auto; }");
+  css.push("figure img { max-width: 100%; height: auto; image-orientation: from-image; }");
   css.push("figcaption { font-style: italic; font-size: 0.9em; margin-top: 0.4em; }");
   css.push("table { border-collapse: collapse; margin: 1em auto; font-size: 0.9em; border-top: 1px solid; border-bottom: 1px solid; }");
   css.push("th { border-bottom: 1px solid; font-weight: bold; } th, td { padding: 0.25em 0.6em; text-align: left; vertical-align: top; } .ac { text-align: center; } .ar { text-align: right; }");

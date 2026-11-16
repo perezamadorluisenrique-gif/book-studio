@@ -1,9 +1,9 @@
-oz 660830 bytes
+oz 660844 bytes
   mimetype e468e350d1143eb6
   META-INF/container.xml d573ec3f393c16e5
   EPUB/package.opf 3d42bf7cebb4f1f6
   EPUB/toc.ncx a18f4fa429e6717c
-  EPUB/css/book.css c224da41ba8f0e05
+  EPUB/css/book.css de0749769888f90f
   EPUB/text/cover.xhtml 2b3dce8de6fbac59
   EPUB/text/titlepage.xhtml c2d4b514e7c01572
   EPUB/text/copyright.xhtml 8c4afd7780b83023
@@ -42,12 +42,12 @@ oz 660830 bytes
   EPUB/fonts/EBGaramond-Italic.ttf d0441aefa20bf527
   EPUB/fonts/EBGaramond-Bold.ttf 16c50b8c896cf482
   EPUB/fonts/EBGaramond-BoldItalic.ttf cbb11adbdaab5c2d
-leyendas 372588 bytes
+leyendas 372600 bytes
   mimetype e468e350d1143eb6
   META-INF/container.xml d573ec3f393c16e5
   EPUB/package.opf 541c7c4753b9e3d9
   EPUB/toc.ncx 2c3fab8f3e088bcd
-  EPUB/css/book.css 07cc66b3bd10795c
+  EPUB/css/book.css 6891f395585acb2e
   EPUB/text/cover.xhtml c9189789863de8bf
   EPUB/text/titlepage.xhtml ad760de04927e3a7
   EPUB/text/copyright.xhtml 7a3010b3c10821c8

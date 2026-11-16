@@ -47,6 +47,13 @@ describe("callouts", () => {
     expect(bq.blocks).toHaveLength(3);
   });
 
+  it("uses the capitalised type as the title when there is none, as Obsidian does", async () => {
+    const { blocks } = await parseMarkdown("> [!quote]\n> Body", ctx());
+    const bq = blocks[0] as Extract<(typeof blocks)[number], { kind: "blockquote" }>;
+    expect(bq.blocks).toHaveLength(2);
+    expect(bq.blocks[0]).toMatchObject({ kind: "paragraph", inlines: [{ text: "Quote", style: { bold: true } }] });
+  });
+
   it("does not mark an ordinary quote as a callout", async () => {
     const { blocks } = await parseMarkdown("> Just a quote", ctx());
     expect(blocks[0]).not.toHaveProperty("callout");
