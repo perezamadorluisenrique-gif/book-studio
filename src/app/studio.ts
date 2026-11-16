@@ -14,6 +14,7 @@ import { append, clear, h, nextFrame, select } from "./dom";
 import type { BookChoice, StudioHost } from "./host";
 import type { LicenseManager } from "./license-manager";
 import { KdpPanel } from "./kdp-panel";
+import { StylePanel } from "./style-panel";
 import { t, tn } from "./ui-i18n";
 import { buildBook, ebookBlockers, exportCover, exportEdition, exportEpub, exportPdf, exportReport, pdfBlockers, planEditions, spineWidth, type Built, type EpubChoices } from "./pipeline";
 
@@ -68,6 +69,7 @@ export class Studio {
   private bookSelect = h("select", { cls: "bs-book", attr: { "aria-label": t("studio.book") } });
   private planBox = h("div", { cls: "bs-plan" });
   private settingsBar = h("div", { cls: "bs-bar bs-settings" });
+  private stylePanel = new StylePanel((style) => this.setOverride({ style }));
   private status = h("p", { cls: "bs-status", attr: { role: "status", "aria-live": "polite" } });
   private tabs: Record<Tab, HTMLButtonElement>;
   private panels: Record<Tab, HTMLElement>;
@@ -113,6 +115,7 @@ export class Studio {
         this.planBox,
       ),
       this.settingsBar,
+      this.stylePanel.root,
       h("div", { cls: "bs-bar bs-actions" }, this.pdfButton, this.epubButton, this.reportButton, this.editionsButton),
       this.status,
       h("div", { cls: "bs-tabs", attr: { role: "tablist", "aria-label": t("studio.views") } }, ...tabIds.map((id) => this.tabs[id])),
@@ -487,6 +490,7 @@ export class Studio {
     const { book } = this.built!;
     const s = book.settings;
     const plan = this.plan();
+    this.stylePanel.update(this.built!);
     clear(this.settingsBar);
     const theme = select(
       THEMES.filter((th) => !FREE_EDITION || themeAllowed(plan, th.id) || th.id === s.theme).map((th) => ({ value: th.id, label: th.name, badge: themeAllowed(plan, th.id) ? undefined : FREE_EDITION ? t("set.notIncluded") : t("set.pro") })),

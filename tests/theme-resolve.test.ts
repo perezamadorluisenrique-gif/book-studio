@@ -55,3 +55,17 @@ describe("resolveTheme is the one place a style is decided", () => {
     expect(settingsFromFrontmatter({}).style).toBeUndefined();
   });
 });
+
+import { setStyleField } from "../src/engine/style-ops";
+
+describe("style operations", () => {
+  it("sets and clears one field at a time", () => {
+    let s = setStyleField(undefined, "size", 12);
+    s = setStyleField(s, "inside", 0.9);
+    s = setStyleField(s, "dropCap", 2);
+    expect(s).toEqual({ size: 12, margins: { inside: 0.9 }, dropCap: 2 });
+    s = setStyleField(s, "inside", undefined);
+    expect(s).toEqual({ size: 12, dropCap: 2 });
+    expect(setStyleField(setStyleField(s, "size", undefined), "dropCap", undefined)).toBeUndefined();
+  });
+});
