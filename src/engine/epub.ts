@@ -591,7 +591,11 @@ interface NavEntry {
   children: NavEntry[];
 }
 
-export async function writeEpub(book: Book, opts: EpubOptions): Promise<Uint8Array> {
+/**
+ * Every file of the EPUB, by its path inside the zip, in the order they are written. `writeEpub` zips these and
+ * the ebook preview reads them, so the preview shows the same chapters, CSS and pictures a reader gets.
+ */
+export async function epubParts(book: Book, opts: EpubOptions): Promise<Map<string, string | Uint8Array>> {
   const { meta, settings } = book;
   const theme = resolveTheme(settings);
   const lang = meta.language || "en";
@@ -875,10 +879,9 @@ ${ncxPoints(navTree.length ? navTree : [{ label: meta.title, href: "text/titlepa
 </ncx>
 `;
 
-  const zip = new JSZip();
-  const date = opts.modified ?? new Date();
-  zip.file("mimetype", "application/epub+zip", { compression: "STORE", date });
-  zip.file(
+  const parts = new Map<string, string | Uint8Array>();
+  parts.set("mimetype", "application/epub+zip");
+  parts.set(
     "META-INF/container.xml",
     `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -887,14 +890,25 @@ ${ncxPoints(navTree.length ? navTree : [{ label: meta.title, href: "text/titlepa
   </rootfiles>
 </container>
 `,
-    { date },
   );
-  zip.file("EPUB/package.opf", opf, { date });
-  zip.file("EPUB/toc.ncx", ncx, { date });
-  zip.file("EPUB/css/book.css", bookCss(book, theme, faces, sceneGlyph), { date });
-  for (const d of docs) zip.file(`EPUB/${d.href}`, d.content, { date });
-  for (const [path, href] of imageHref) zip.file(`EPUB/${href}`, book.images.get(path)!.bytes, { date, compression: "STORE" });
-  for (const f of faces) zip.file(`EPUB/fonts/${f.file}.ttf`, opts.fonts!.bytes.get(f.file)!, { date });
+  parts.set("EPUB/package.opf", opf);
+  parts.set("EPUB/toc.ncx", ncx);
+  parts.set("EPUB/css/book.css", bookCss(book, theme, faces, sceneGlyph));
+  for (const d of docs) parts.set(`EPUB/${d.href}`, d.content);
+  for (const [path, href] of imageHref) parts.set(`EPUB/${href}`, book.images.get(path)!.bytes);
+  for (const f of faces) parts.set(`EPUB/fonts/${f.file}.ttf`, opts.fonts!.bytes.get(f.file)!);
+  return parts;
+}
+
+export async function writeEpub(book: Book, opts: EpubOptions): Promise<Uint8Array> {
+  const parts = await epubParts(book, opts);
+  const zip = new JSZip();
+  const date = opts.modified ?? new Date();
+  for (const [path, data] of parts) {
+    // The mimetype and the pictures are stored as they are; everything else is compressed.
+    const stored = path === "mimetype" || path.startsWith("EPUB/images/");
+    zip.file(path, data, stored ? { date, compression: "STORE" } : { date });
+  }
   return zip.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 9 }, mimeType: "application/epub+zip" });
 }
 
