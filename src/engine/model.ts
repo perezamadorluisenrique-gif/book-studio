@@ -15,6 +15,8 @@ export interface InlineStyle {
   strike?: boolean;
   sup?: boolean;
   sub?: boolean;
+  /** Part of a formula (from `$...$`): typography rules skip it. */
+  math?: boolean;
   href?: string;
 }
 

@@ -7,6 +7,7 @@
 import { Lexer, type Token, type Tokens } from "marked";
 import { parseDocument } from "yaml";
 import type { Block, BookWarning, ImageRef, Inline, InlineStyle, SourceRef } from "./model";
+import { latexToMarkup, MATH_CLOSE, MATH_IT_CLOSE, MATH_IT_OPEN, MATH_OPEN, MATH_SUB_CLOSE, MATH_SUB_OPEN, MATH_SUP_CLOSE, MATH_SUP_OPEN } from "./math";
 import { smartenInlines } from "./typography";
 
 const NOTE_OPEN = "";
@@ -73,7 +74,12 @@ function outsideCode(line: string, fn: (s: string) => string): string {
 let inlineNoteCounter = 0;
 
 /** Rewrite Obsidian-only syntax into plain Markdown plus private-use placeholders. */
-export function preprocess(body: string, noteDefs: Map<string, NoteDef>): string {
+export function preprocess(body: string, noteDefs: Map<string, NoteDef>, warnings: BookWarning[] = [], file = ""): string {
+  const math = (latex: string, line: number): string => {
+    const r = latexToMarkup(latex);
+    if (r.unsupported.length) warnings.push({ message: `Formula set as plain text, not fully supported: ${r.unsupported.join(", ")}.`, src: { file, line } });
+    return MATH_OPEN + r.text + MATH_CLOSE;
+  };
   const lines = body.split("\n");
   const out: string[] = [];
   let fence: string | null = null;
@@ -90,6 +96,26 @@ export function preprocess(body: string, noteDefs: Map<string, NoteDef>): string
       fence = fenceMatch[1];
       out.push(line);
       continue;
+    }
+    // Display math: $$ ... $$ on its own, possibly over several lines.
+    const disp = /^\s*\$\$(.*)$/.exec(line);
+    if (disp && !inComment) {
+      let body = disp[1];
+      let j = i;
+      let closed = body.includes("$$");
+      while (!closed && j + 1 < lines.length && j - i < 40) {
+        j++;
+        body += "\n" + lines[j];
+        closed = lines[j].includes("$$");
+      }
+      const end = body.indexOf("$$");
+      if (closed && body.slice(end + 2).trim() === "") {
+        if (out.length && out[out.length - 1].trim() !== "") out.push("");
+        out.push(math(body.slice(0, end), i + 1) + "{.center}");
+        for (let k = i + 1; k <= j; k++) out.push("");
+        i = j;
+        continue;
+      }
     }
     // %% comments %%, possibly spanning lines.
     let kept = "";
@@ -121,6 +147,8 @@ export function preprocess(body: string, noteDefs: Map<string, NoteDef>): string
     }
     line = outsideCode(line, (s) =>
       s
+        // Inline math $...$ (opening $ not before a space, closing $ not before a digit).
+        .replace(/(?<![\\$])\$\$?(?![\s$])((?:\\.|[^$\\\n])+?)(?<![\s\\])\$\$?(?!\d)/g, (_m, latex: string) => math(latex, i + 1))
         // HTML comments on one line, except page-break markers.
         .replace(/<!--(?!\s*page-?break\s*-->)[\s\S]*?-->/gi, "")
         // Inline footnotes ^[text]
@@ -191,12 +219,43 @@ export function decodeEntities(s: string): string {
   });
 }
 
+/** Split text on formula markers into runs; formula runs carry `math` so typography leaves them alone. */
+function mathRuns(text: string, base: InlineStyle): Inline[] {
+  if (!text.includes(MATH_OPEN)) return [{ kind: "text", text, style: base }];
+  const out: Inline[] = [];
+  let style: InlineStyle = base;
+  let inMath = false;
+  let buf = "";
+  const emit = () => {
+    if (buf) out.push({ kind: "text", text: buf, style: inMath ? { ...style, math: true } : style });
+    buf = "";
+  };
+  for (const ch of text) {
+    const next = (change: () => void) => {
+      emit();
+      change();
+    };
+    if (ch === MATH_OPEN) next(() => (inMath = true));
+    else if (ch === MATH_CLOSE) next(() => ((inMath = false), (style = base)));
+    else if (!inMath) buf += ch;
+    else if (ch === MATH_SUP_OPEN) next(() => (style = { ...style, sup: true }));
+    else if (ch === MATH_SUB_OPEN) next(() => (style = { ...style, sub: true }));
+    else if (ch === MATH_SUP_CLOSE) next(() => (style = { ...style, sup: false }));
+    else if (ch === MATH_SUB_CLOSE) next(() => (style = { ...style, sub: false }));
+    else if (ch === MATH_IT_OPEN) next(() => (style = { ...style, italic: !base.italic }));
+    else if (ch === MATH_IT_CLOSE) next(() => (style = { ...style, italic: base.italic }));
+    else buf += ch;
+  }
+  emit();
+  return out;
+}
+
 function textInlines(text: string, style: InlineStyle): Inline[] {
   const out: Inline[] = [];
   const parts = decodeEntities(text).split(new RegExp(`${NOTE_OPEN}([^${NOTE_CLOSE}]+)${NOTE_CLOSE}`));
   parts.forEach((p, i) => {
     if (i % 2 === 1) out.push({ kind: "noteRef", noteId: p });
-    else if (p) out.push({ kind: "text", text: p, style });
+    else if (p) out.push(...mathRuns(p, style));
   });
   return out;
 }
@@ -504,7 +563,7 @@ function smartenBlocks(blocks: Block[], lang: string): void {
 export async function parseMarkdown(text: string, ctx: ParseContext): Promise<ParsedNote> {
   const { frontmatter, body } = splitFrontmatter(text);
   const noteDefs = new Map<string, NoteDef>();
-  const md = preprocess(body, noteDefs);
+  const md = preprocess(body, noteDefs, ctx.warnings, ctx.file);
   const tokens = new Lexer({ gfm: true, breaks: false }).lex(md);
   const blocks = await convertBlocks(tokens, { ...ctx, noteDefs }, 1);
   if (ctx.smart) smartenBlocks(blocks, ctx.lang);

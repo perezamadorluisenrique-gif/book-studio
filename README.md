@@ -205,7 +205,7 @@ fonts/         Bundled typefaces
 ## Credits and licenses
 
 - Book Studio is released under the [MIT License](LICENSE).
-- The bundled fonts are under the [SIL Open Font License 1.1](fonts/OFL.txt): EB Garamond, Crimson Pro, Cormorant Garamond, Montserrat, Atkinson Hyperlegible and Inconsolata.
+- The bundled fonts are under the [SIL Open Font License 1.1](fonts/OFL.txt): EB Garamond, Crimson Pro, Cormorant Garamond, Montserrat, Atkinson Hyperlegible, Inconsolata and STIX Two Math (formulas).
 - The text of *The Wonderful Wizard of Oz* (L. Frank Baum, 1900) is in the public domain. The sample's cover and illustration were made for this project and are under the MIT License.
 - Libraries: [pdf-lib](https://pdf-lib.js.org), [fontkit](https://github.com/foliojs/fontkit), [JSZip](https://stuk.github.io/jszip/), [marked](https://marked.js.org), [yaml](https://eemeli.org/yaml/) and [hyphen](https://github.com/ytiurin/hyphen).
 
