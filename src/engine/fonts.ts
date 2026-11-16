@@ -22,6 +22,8 @@ export const FONT_FILES = [
   "AtkinsonHyperlegible-Bold",
   "AtkinsonHyperlegible-BoldItalic",
   "Inconsolata-Regular",
+  "STIXTwoMath-Regular",
+  "STIXTwoMath-Italic",
 ] as const;
 
 export type FontFile = (typeof FONT_FILES)[number];
@@ -97,6 +99,17 @@ export const FAMILIES: Record<string, Family> = {
     italic: "Inconsolata-Regular",
     bold: "Inconsolata-Regular",
     boldItalic: "Inconsolata-Regular",
+    smallCaps: false,
+    oldstyle: false,
+  },
+  // Formulas ($...$): Greek, operators and math italics, which the text faces lack.
+  stixmath: {
+    id: "stixmath",
+    name: "STIX Two Math",
+    regular: "STIXTwoMath-Regular",
+    italic: "STIXTwoMath-Italic",
+    bold: "STIXTwoMath-Regular",
+    boldItalic: "STIXTwoMath-Italic",
     smallCaps: false,
     oldstyle: false,
   },

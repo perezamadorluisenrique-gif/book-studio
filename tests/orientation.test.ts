@@ -61,3 +61,18 @@ describe("EXIF orientation", () => {
     expect(orientedMatrix(1, 10, 20, 100, 200)).toEqual([100, 0, 0, 200, 10, 20]);
   });
 });
+
+describe("image placement in the print layout", () => {
+  it("keeps a tall portrait image portrait, scaling it down to fit instead of turning it", async () => {
+    const { loadBook } = await import("../src/engine/book");
+    const { memVault } = await import("./helpers/memVault");
+    const { layoutHyphenated } = await import("./helpers/layout");
+    const { testFonts } = await import("./helpers/fonts");
+    const { pngHeader } = await import("./helpers/png");
+    const vault = memVault({ "Book.md": "---\nbook: true\ntitle: Tiny\n---\n- [[One]]\n", "One.md": "# One\n\nText.\n\n![[tall.png]]\n", "tall.png": pngHeader(1200, 3000) });
+    const layout = await layoutHyphenated(await loadBook(vault, "Book.md", {}), await testFonts());
+    const img = layout.pages.flatMap((p) => p.draws).find((d) => d.kind === "image");
+    expect(img && img.kind === "image" && img.h > img.w).toBe(true);
+    expect(img && img.kind === "image" && Math.abs(img.h / img.w - 2.5) < 0.01).toBe(true);
+  });
+});
