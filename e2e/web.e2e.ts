@@ -1053,10 +1053,16 @@ describe("web app, first-book guide", () => {
     await page.getByRole("heading", { name: "Step 1 of 5: Upload" }).waitFor({ timeout: 60_000 });
     await page.getByRole("button", { name: "Next" }).click();
     await page.getByRole("heading", { name: "Step 2 of 5: Style" }).waitFor();
-    // Five free styles, each with a picture of the first page, and 6 × 9 chosen.
+    // Nine free styles, each with a picture of the first page, and 6 × 9 chosen.
+    // The time to the fifth picture and to the ninth is logged: T5.1 asks that nine take less than twice what five took.
+    const t0 = Date.now();
     await page.locator(".wiz-thumb canvas").nth(4).waitFor({ timeout: 30_000 });
-    expect(await page.locator(".wiz-style input").count()).toBe(5);
-    expect(await page.locator(".wiz-thumb canvas").count()).toBe(5);
+    const five = Date.now() - t0;
+    await page.locator(".wiz-thumb canvas").nth(8).waitFor({ timeout: 30_000 });
+    await writeFile("out/style-step-timing.txt", `five pictures after ${five} ms, nine after ${Date.now() - t0} ms\n`);
+    expect(Date.now() - t0).toBeLessThan(Math.max(2 * five, five + 1500));
+    expect(await page.locator(".wiz-style input").count()).toBe(9);
+    expect(await page.locator(".wiz-thumb canvas").count()).toBe(9);
     expect(await page.locator("#wiz-trim").inputValue()).toBe("6x9");
     // Thumbnails are not blank: some pixels are dark.
     const ink = await page.locator(".wiz-thumb canvas").first().evaluate((c) => {

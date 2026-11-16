@@ -17,7 +17,7 @@ beforeAfter:
   caption: "El mismo libro, la misma letra y el mismo motor; cambia solo la maquetación. A la izquierda, líneas llenadas una a una sin guiones, como hace un procesador de textos. A la derecha, el corte de líneas de Knuth–Plass (el de TeX) con guiones en español y microtipografía."
 steps:
   - { title: "1. Sube tu Word", text: "Arrastra tu archivo .docx (o .odt, .rtf, .md o .txt). Se lee en tu navegador y se convierte en capítulos, con sus notas al pie e imágenes.", img: img/landing-es-step1.webp, alt: "Pantalla inicial de Book Studio con una zona para soltar el archivo de Word." }
-  - { title: "2. Elige un estilo", text: "Cinco estilos gratis y todos los formatos de KDP. La vista previa se rehace al instante, página por página.", img: img/landing-es-step2.webp, alt: "Book Studio mostrando la vista previa a doble página de un libro con su estilo." }
+  - { title: "2. Elige un estilo", text: "Nueve estilos gratis y todos los formatos de KDP. La vista previa se rehace al instante, página por página.", img: img/landing-es-step2.webp, alt: "Book Studio mostrando la vista previa a doble página de un libro con su estilo." }
   - { title: "3. Descarga y publica", text: "El PDF de imprenta, la cubierta completa y el EPUB, con una lista de comprobación para KDP.", img: img/landing-es-step3.webp, alt: "Los botones para descargar el PDF de imprenta, la cubierta y el EPUB." }
 compare:
   label: "Comparación"
@@ -29,7 +29,7 @@ compare:
     - ["Cubierta completa", "Sí: hoja con lomo, sangrado y código de barras (sin diseñador todavía)", "No lo indica su web", "No lo indica su web", "No lo indica su web"]
     - ["En español", "Sí: interfaz, guiones y ortotipografía", "No lo indica su web", "No lo indica su web", "No lo indica su web"]
 faq:
-  - { q: "¿Es gratis de verdad?", a: "Sí. La app web es gratuita y de licencia MIT, sin cuenta, sin marca de agua y sin límite de libros ni de páginas. Los doce formatos de KDP, cinco estilos, las notas al pie, la cubierta completa y la revisión previa de KDP son gratis para siempre. [Book Studio Pro](pro:) añade estilos de género, índice analítico, cajas de libros y el paquete de EPUB accesible." }
+  - { q: "¿Es gratis de verdad?", a: "Sí. La app web es gratuita y de licencia MIT, sin cuenta, sin marca de agua y sin límite de libros ni de páginas. Los doce formatos de KDP, nueve estilos, las notas al pie, la cubierta completa y la revisión previa de KDP son gratis para siempre. [Book Studio Pro](pro:) añade estilos de género, índice analítico, cajas de libros y el paquete de EPUB accesible." }
   - { q: "¿Qué necesito?", a: "Un navegador moderno y tu manuscrito en Word (.docx), Markdown o texto, de hasta 40 MB. No hay nada que instalar ni cuenta que crear. Los archivos .doc antiguos hay que guardarlos antes como .docx." }
   - { q: "¿Sirve para tapa dura?", a: "Hoy el PDF sigue las reglas de KDP para tapa blanda. KDP tiene otras reglas para tapa dura que Book Studio todavía no comprueba." }
   - { q: "¿Y las imágenes?", a: "Las imágenes PNG y JPG de tu Word se conservan con su descripción, y la revisión te avisa de las que no la tienen. La cubierta puede ser una imagen JPG o PNG tuya, o una tipográfica." }

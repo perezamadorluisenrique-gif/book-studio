@@ -95,3 +95,15 @@ describe("no free feature is ever taken away", () => {
     for (const file of walk(dir).filter((f) => f.endsWith(".ts"))) expect(readFileSync(file, "utf8"), file).not.toMatch(/freeBook|multiBook|checkFreeBook/);
   });
 });
+
+// Free since the style work of the Vellum plan (T5): four more general styles. They stay free.
+const FREE_SINCE_2026_11_T5 = { themes: ["literary", "minimal", "memoir", "textbook"] };
+describe("the T5 styles stay free", () => {
+  it("lets a free user print and publish each of them", () => {
+    for (const theme of FREE_SINCE_2026_11_T5.themes) {
+      expect(FREE_THEMES, theme).toContain(theme);
+      expect(printBlockers("free", { theme, trim: "6x9" }), theme).toEqual([]);
+      expect(epubBlockers("free", { theme }), theme).toEqual([]);
+    }
+  });
+});

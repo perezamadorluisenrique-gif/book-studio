@@ -9,7 +9,8 @@ import { FAMILIES, type Family, type FontFile, type FontSet } from "./fonts";
 import { chapterLabel, partHeading, strings } from "./i18n";
 import type { Layout } from "./layout/types";
 import { NOTES_ID, notesHeadingId, type Block, type Book, type Chapter, type Inline, type InlineStyle, type Matter, type SectionType } from "./model";
-import { resolveTheme, type TextStyle, type Theme } from "./themes";
+import { ornamentHeight, type VectorOrnament } from "./ornaments";
+import { isVector, resolveTheme, type TextStyle, type Theme } from "./themes";
 
 export interface EpubOptions {
   /** Pro: schema.org accessibility metadata, the print page list and the conformance claim. */
@@ -316,7 +317,7 @@ function renderBlocks(ctx: WriterCtx, blocks: Block[], state: ParaState, nested:
         break;
       }
       case "sceneBreak":
-        out += `${markers.before(b.id)}<hr class="scene"/>\n`;
+        out += `${markers.before(b.id)}${isVector(theme.sceneBreak) ? `<div class="scene-art" aria-hidden="true">${ornamentSvg(theme.sceneBreak)}</div>` : `<hr class="scene"/>`}\n`;
         state.noIndent = true;
         state.leadIn = theme.firstParagraph.leadInWords;
         break;
@@ -413,6 +414,11 @@ function textCss(ts: TextStyle, bodySize: number): string {
 }
 
 /** Generated decoration that screen readers skip where `content` alt text is supported. */
+/** A drawn ornament as inline SVG; hidden from readers because it only decorates. */
+function ornamentSvg(o: VectorOrnament): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20" aria-hidden="true" focusable="false"><path d="${o.path}"/></svg>`;
+}
+
 function decoration(glyph: string): string {
   return `content: ${cssString(glyph)}; content: ${cssString(glyph)} / ""`;
 }
@@ -430,8 +436,8 @@ function themeFonts(theme: Theme, book: Book): { family: Family; file: FontFile;
   const styles: TextStyle[] = [theme.chapter.label.style, theme.chapter.title, theme.part.label, theme.part.title, theme.heading2, theme.heading3, theme.titlePage.title, theme.titlePage.subtitle, theme.titlePage.author, theme.titlePage.publisher];
   for (const s of styles) want(s.family, !!s.bold, !!s.italic);
   want(theme.chapter.title.family, !!theme.chapter.title.bold, !theme.chapter.title.italic);
-  if (theme.chapter.ornament) want(theme.chapter.ornament.family, false, false);
-  want(theme.sceneBreak.family, false, false);
+  if (theme.chapter.ornament && !isVector(theme.chapter.ornament)) want(theme.chapter.ornament.family, false, false);
+  if (!isVector(theme.sceneBreak)) want(theme.sceneBreak.family, false, false);
   want(theme.firstParagraph.dropCapFamily, false, false);
   if (usesCode(book)) want("inconsolata", false, false);
 
@@ -500,7 +506,9 @@ function bookCss(book: Book, theme: Theme, faces: { family: Family; file: FontFi
   css.push(`.chapter-head .label { display: block; ${t(ch.label.style)}; margin-bottom: 0.9em; }`);
   css.push(`.chapter-head .title { display: block; ${t(ch.title)}; }`);
   css.push(`.chapter-head .subtitle { margin-top: 0.5em; text-indent: 0; text-align: ${ch.title.align}; font-family: ${fontStack(ch.title.family)}; font-size: ${em((ch.title.size * 0.6) / base)}; font-style: ${ch.title.italic ? "normal" : "italic"}; }`);
-  if (ch.ornament) {
+  if (ch.ornament && isVector(ch.ornament)) {
+    css.push(`.chapter-head .orn { margin-top: 0.8em; text-align: ${ch.title.align}; }`, `.chapter-head .orn svg { width: ${em(ch.ornament.width / base)}; height: ${em(ornamentHeight(ch.ornament) / base)}; fill: currentColor; }`);
+  } else if (ch.ornament) {
     css.push(`.chapter-head::after { display: block; ${decoration(ch.ornament.glyph)}; font-family: ${fontStack(ch.ornament.family)}; font-size: ${em(ch.ornament.size / base)}; margin-top: 0.8em; }`);
   }
   css.push(`.part-head { margin-top: 30%; text-align: center; }`);
@@ -508,7 +516,9 @@ function bookCss(book: Book, theme: Theme, faces: { family: Family; file: FontFi
   css.push(`.part-head .title { display: block; ${t(theme.part.title)}; }`);
   css.push(`h2 { ${t(theme.heading2)}; text-align: ${theme.heading2.align}; margin: 1.4em 0 0.7em; }`);
   css.push(`h3, h4, h5, h6 { ${t(theme.heading3)}; text-align: ${theme.heading3.align}; margin: 1.2em 0 0.6em; }`);
-  if (sceneGlyph) {
+  if (isVector(theme.sceneBreak)) {
+    css.push(`.scene-art { margin: 0.9em 0; text-align: center; }`, `.scene-art svg { width: ${em(theme.sceneBreak.width / base)}; height: ${em(ornamentHeight(theme.sceneBreak) / base)}; fill: currentColor; }`);
+  } else if (sceneGlyph) {
     css.push(`hr.scene { border: 0; margin: 0.9em 0; text-align: center; height: auto; overflow: visible; color: inherit; }`);
     css.push(`hr.scene::after { display: block; ${decoration(sceneGlyph)}; font-family: ${fontStack(theme.sceneBreak.family)}; font-size: ${em(theme.sceneBreak.size / base)}; line-height: 1.4; }`);
   } else {
@@ -587,7 +597,7 @@ export async function writeEpub(book: Book, opts: EpubOptions): Promise<Uint8Arr
   const lang = meta.language || "en";
   const s = strings(lang);
   const pack = opts.accessiblePack;
-  const sceneGlyph = theme.sceneBreak.glyph;
+  const sceneGlyph = isVector(theme.sceneBreak) ? "" : theme.sceneBreak.glyph;
 
   const front = book.chapters.filter((c) => c.matter === "front");
   const body = book.chapters.filter((c) => c.matter === "body");
@@ -632,7 +642,7 @@ export async function writeEpub(book: Book, opts: EpubOptions): Promise<Uint8Arr
 
   const docs: XDoc[] = [];
   const page = (id: string, file: string, title: string, inner: string, o: { matter?: Matter; bodyClass?: string; linear?: boolean } = {}) => {
-    docs.push({ id, href: `text/${file}`, content: xhtml(title, lang, inner, { ...o, cssHref: "../css/book.css" }), linear: o.linear ?? true });
+    docs.push({ id, href: `text/${file}`, content: xhtml(title, lang, inner, { ...o, cssHref: "../css/book.css" }), linear: o.linear ?? true, properties: inner.includes("<svg") ? "svg" : undefined });
   };
   const section = (attrs: { id: string; type?: string; role?: string; labelledBy?: string; cls?: string }) =>
     `<section id="${attrs.id}"${attrs.type ? ` epub:type="${attrs.type}"` : ""}${attrs.role ? ` role="${attrs.role}"` : ""}${attrs.labelledBy ? ` aria-labelledby="${attrs.labelledBy}"` : ""}${attrs.cls ? ` class="${attrs.cls}"` : ""}>`;
@@ -695,7 +705,8 @@ export async function writeEpub(book: Book, opts: EpubOptions): Promise<Uint8Arr
     } else {
       const label = ch.number !== undefined && theme.chapter.label.show ? chapterLabel(ch.number, lang, theme.chapter.label.format, theme.chapter.label.prefix) : null;
       const subtitle = ch.subtitle ? `\n<p class="subtitle">${esc(ch.subtitle)}</p>` : "";
-      head = `<header class="chapter-head"><h1 id="${titleId}">${label ? `<span class="label">${esc(label)}</span> ` : ""}<span class="title">${renderInlines(ctx, ch.title)}</span></h1>${subtitle}</header>\n`;
+      const orn = isVector(theme.chapter.ornament) ? `<div class="orn" aria-hidden="true">${ornamentSvg(theme.chapter.ornament)}</div>` : "";
+      head = `<header class="chapter-head"><h1 id="${titleId}">${label ? `<span class="label">${esc(label)}</span> ` : ""}<span class="title">${renderInlines(ctx, ch.title)}</span></h1>${subtitle}${orn}</header>\n`;
     }
     const opening = ch.matter === "body" || ch.type === "prologue";
     const state: ParaState = { noIndent: true, leadIn: theme.firstParagraph.leadInWords, dropCap: opening && theme.firstParagraph.dropCap > 0 };

@@ -200,7 +200,6 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
     width,
     capacity,
     hyphenate,
-    sceneGlyph: theme.sceneBreak.glyph,
     images: book.images,
     noteNumber: (id) => noteNumbers.get(id),
     warn: (w) => warnings.push(w),

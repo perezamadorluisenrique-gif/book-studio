@@ -13,13 +13,13 @@ Book Studio comes in two forms that share one engine and one interface:
 - **An Obsidian plugin.** It works on the vault you write in, rebuilds the preview as you type and saves exports to a vault folder.
 - **A web app.** Open a folder of Markdown files, such as your vault, in the browser, or write a book right there: it has a chapter editor, a book-details form, a cover image, and a **Publish checklist** of what KDP still needs. You can also import a Word (`.docx`), Markdown or text manuscript. Books you write in the web app are kept in your browser only. Nothing is uploaded.
 
-Book Studio is free: unlimited books, every KDP trim size, the Classic, Modern, Elegant, Non-fiction and Large Print themes, footnotes at the page foot, the full wraparound cover, the KDP preflight and details sheet, the print PDF and EPUB 3. A separate **Book Studio Pro** edition, not on sale yet, will add genre themes, a back-of-book index, editions, box sets and the accessible-EPUB pack. See [Book Studio Pro](#book-studio-pro).
+Book Studio is free: unlimited books, every KDP trim size, the Classic, Modern, Elegant, Non-fiction, Large Print, Literary, Minimal, Memoir and Textbook themes, footnotes at the page foot, the full wraparound cover, the KDP preflight and details sheet, the print PDF and EPUB 3. A separate **Book Studio Pro** edition, not on sale yet, will add genre themes, a back-of-book index, editions, box sets and the accessible-EPUB pack. See [Book Studio Pro](#book-studio-pro).
 
 ## Features
 
 - **One note is the book.** A manifest note lists the chapters as links, in order, under *Front matter*, *Chapters* and *Back matter*. Its properties hold the title, author, theme and trim. To reorder chapters, reorder the links.
 - **Real typesetting.** Knuth–Plass line breaking, hyphenation in the book's language, smart quotes and dashes, old-style figures and small caps where the theme calls for them. Widows and orphans are avoided.
-- **Themes with character.** Drop caps, ornamental scene breaks, chapter openers, part pages and running heads. Themes: Classic, Modern, Elegant, Non-fiction and Large Print, plus the genre themes Thriller, Romance and Fantasy in Pro.
+- **Themes with character.** Drop caps, ornamental scene breaks, chapter openers, part pages and running heads. Themes: Classic, Modern, Elegant, Non-fiction, Large Print, Literary, Minimal, Memoir and Textbook, plus the genre themes Thriller, Romance and Fantasy in Pro.
 - **Ready for KDP.**
   - The 6" × 9" trim, the most common paperback size.
   - Inside margins that grow with the page count, as KDP requires.

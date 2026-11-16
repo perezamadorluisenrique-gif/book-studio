@@ -33,7 +33,7 @@ describe("resolveTheme is the one place a style is decided", () => {
     const t = resolveTheme({ ...DEFAULT_SETTINGS, fontSize: 12, sceneBreak: "~" });
     expect(t.body.size).toBe(12);
     expect(t.body.leading).toBeCloseTo((15 * 12) / 11.5, 6);
-    expect(t.sceneBreak.glyph).toBe("~");
+    expect(t.sceneBreak).toMatchObject({ glyph: "~" });
   });
 
   it("limits the size, the leading and the margins inside the function", () => {

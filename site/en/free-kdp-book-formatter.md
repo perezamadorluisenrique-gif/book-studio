@@ -22,7 +22,7 @@ It also collects nothing. There are no cookies and no analytics. Your manuscript
 
 ## What the free plan includes
 
-The free plan prints every trim size Book Studio supports (twelve of KDP's sixteen), starting with 6 × 9 in, KDP's most common paperback size. It includes five themes (Classic, Modern, Elegant, Non-fiction and Large Print), footnotes at the page foot, the full paperback cover, the KDP preflight check, the print PDF and the EPUB. The genre themes and the other extras are covered in the Pro section below.
+The free plan prints every trim size Book Studio supports (twelve of KDP's sixteen), starting with 6 × 9 in, KDP's most common paperback size. It includes nine themes (Classic, Modern, Elegant, Non-fiction, Large Print, Literary, Minimal, Memoir and Textbook), footnotes at the page foot, the full paperback cover, the KDP preflight check, the print PDF and the EPUB. The genre themes and the other extras are covered in the Pro section below.
 
 ## What the PDF does for you
 

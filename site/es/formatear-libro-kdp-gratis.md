@@ -22,7 +22,7 @@ Tampoco recoge nada. No hay cookies ni analítica. Tu manuscrito se queda en tu 
 
 ## Qué incluye el plan gratuito
 
-El plan gratuito imprime todos los formatos que Book Studio admite (doce de los dieciséis de KDP), empezando por el 6 × 9 pulgadas, el tamaño de tapa blanda más habitual en KDP. Incluye cinco temas (Classic, Modern, Elegant, Non-fiction y Large Print), notas al pie de página, la cubierta completa de tapa blanda, la revisión previa de KDP, el PDF de imprenta y el EPUB. De los temas de género y lo demás se habla en la sección Pro, más abajo.
+El plan gratuito imprime todos los formatos que Book Studio admite (doce de los dieciséis de KDP), empezando por el 6 × 9 pulgadas, el tamaño de tapa blanda más habitual en KDP. Incluye nueve temas (Classic, Modern, Elegant, Non-fiction, Large Print, Literary, Minimal, Memoir y Textbook), notas al pie de página, la cubierta completa de tapa blanda, la revisión previa de KDP, el PDF de imprenta y el EPUB. De los temas de género y lo demás se habla en la sección Pro, más abajo.
 
 ## Lo que hace el PDF por ti
 

@@ -14,7 +14,7 @@ import { FREE_TRIMS } from "./trims";
 
 export type Plan = "free" | "pro";
 
-export const FREE_THEMES: readonly string[] = ["classic", "modern", "elegant", "nonfiction", "large-print"];
+export const FREE_THEMES: readonly string[] = ["classic", "modern", "elegant", "nonfiction", "large-print", "literary", "minimal", "memoir", "textbook"];
 export { FREE_TRIMS };
 
 export type ProFeature = "theme" | "trim" | "accessiblePack" | "boxSets" | "largePrint" | "preflight" | "cover" | "footnotes" | "index" | "editions" | "kdpSheet";
@@ -55,7 +55,7 @@ export interface ExportBlocker {
   message: string;
 }
 
-const FREE_THEMES_TEXT = "Free includes Classic, Modern, Elegant, Non-fiction and Large Print.";
+const FREE_THEMES_TEXT = "Free includes Classic, Modern, Elegant, Non-fiction, Large Print, Literary, Minimal, Memoir and Textbook.";
 
 /**
  * Why a print export isn't included in the plan, if it isn't. Free users can

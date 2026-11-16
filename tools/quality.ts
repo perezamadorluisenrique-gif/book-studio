@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { FontSet } from "../src/engine/fonts";
-import { baselineOf, DEFECTS, measureAll } from "./quality-books";
+import { baselineOf, DEFECTS, measureAll, measureStyles, styleBaselineOf } from "./quality-books";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const say = (line: string): void => void process.stdout.write(`${line}\n`);
@@ -28,7 +28,13 @@ for (const r of results) {
   say(`| ${r.book} | ${r.pages} | ${q.lines} | ${DEFECTS.map((d) => q[d]).slice(0, 8).join(" | ")} | ${q.hyphens} | ${q.longPages} | ${r.ms} |`);
 }
 
+const styles = await measureStyles(root, fonts);
+say("");
+say(`| Book | Style | Pages | Short pages | Uneven spreads | Ladders | Very loose | Loose | Widows | Orphans | Hyphen turns | Layout ms |`);
+say(`|---|---|---|---|---|---|---|---|---|---|---|---|`);
+for (const r of styles) say(`| ${r.book} | ${r.style} | ${r.pages} | ${DEFECTS.map((d) => r.quality[d]).join(" | ")} | ${r.ms} |`);
+
 if (process.argv.includes("--write")) {
-  writeFileSync(new URL("../tests/quality-baseline.json", import.meta.url), `${JSON.stringify(baselineOf(results), null, 2)}\n`);
+  writeFileSync(new URL("../tests/quality-baseline.json", import.meta.url), `${JSON.stringify({ ...baselineOf(results), "by-style": styleBaselineOf(styles) }, null, 2)}\n`);
   say("\nWrote tests/quality-baseline.json");
 }
