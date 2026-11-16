@@ -43,8 +43,8 @@ describe.runIf(PRO_INCLUDED)("new themes", () => {
     expect(sig(built)).not.toBe(sig(classic));
   });
 
-  it("lists the new themes after the existing five", () => {
-    expect(THEMES.map((t) => t.id)).toEqual(["classic", "modern", "elegant", "nonfiction", "large-print", "thriller", "romance", "fantasy"]);
+  it("lists the new themes after the free ones", () => {
+    expect(THEMES.map((t) => t.id)).toEqual(["classic", "modern", "elegant", "nonfiction", "large-print", "literary", "minimal", "memoir", "textbook", "thriller", "romance", "fantasy"]);
   });
 });
 

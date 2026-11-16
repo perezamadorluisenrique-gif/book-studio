@@ -583,7 +583,7 @@ async function showProjects(focus?: string): Promise<void> {
         if (f) await saveImported(await vaultToProjects(filesOf(f), { now: Date.now(), newId }));
       },
       sample: () => void openSample(),
-      catalog: (box, back) => void mountCatalogPanel(box, { studio: host, close: back }),
+      catalog: (box, back) => void mountCatalogPanel(box, { studio: host, close: back, plan: () => license.plan() }),
       persisted: async () => {
         try {
           return (await navigator.storage?.persisted?.()) || (await navigator.storage?.persist?.()) || false;

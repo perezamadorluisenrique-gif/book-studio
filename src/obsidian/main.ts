@@ -438,7 +438,7 @@ class CatalogModal extends Modal {
   }
 
   override onOpen(): void {
-    this.dispose = mountCatalogPanel(this.contentEl, { studio: this.plugin.hostFor(), close: () => this.close() });
+    this.dispose = mountCatalogPanel(this.contentEl, { studio: this.plugin.hostFor(), close: () => this.close(), plan: () => this.plugin.license.plan() });
   }
 
   override onClose(): void {
