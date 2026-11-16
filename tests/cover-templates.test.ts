@@ -123,3 +123,20 @@ describe("generative backgrounds", () => {
     expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(0.8);
   });
 });
+
+describe("templates on a hardcover sheet", () => {
+  // Three trim sizes KDP prints as hardcover, three spine thicknesses (75 to 550 pages).
+  const hardCases = COVER_TEMPLATES.flatMap((t) => ["5.5x8.5", "6x9", "8.25x11"].flatMap((f) => [100, 300, 550].map((p) => [t.id, f, p] as const)));
+  it.each(hardCases)("%s on hardcover %s at %i pages: texts stay inside the safe area and fit", (id, format, pages) => {
+    const tpl = COVER_TEMPLATES.find((t) => t.id === id)!;
+    const g = coverGeometry(trimById(format)!, pages, "white", "hardcover");
+    const design = tpl.build(info, g);
+    const styler = new Styler(fonts, "en");
+    const { findings } = renderDesign(design, { geometry: g, images: new Map(), styler }, new Painter(styler, [0, 0, 0]));
+    expect(findings.filter((f) => f.severity !== "info").map((f) => f.message)).toEqual([]);
+    for (const l of design.layers) {
+      if (l.kind !== "text" || !l.text.trim()) continue;
+      for (const c of under(design, l, g)) expect(contrastRatio(hexToRgb(l.color), hexToRgb(c)), `${l.id} on ${c}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});

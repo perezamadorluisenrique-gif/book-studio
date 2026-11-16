@@ -209,4 +209,41 @@ describe("cover PDF", () => {
     expect(out.name).toContain("-cover-6x9-");
     expect(buildCover(built, fonts).geometry.pages).toBe(built.layout.pages.length);
   });
+
+  it("is the hardcover sheet when the book is a hardcover", async () => {
+    const built: Built = await buildBook(vault({ cover: "cover.jpg", isbn: "9780306406157", binding: "hardcover", trim: "6x9" }, { "cover.jpg": jpg }), "Book.md", fonts);
+    const pdf = await PDFDocument.load((await exportCover(built, fonts)).data);
+    const g = coverGeometry(trimById("6x9")!, built.layout.pages.length, "white", "hardcover");
+    expect(pdf.getPage(0).getWidth()).toBeCloseTo(g.width * 72, 3);
+    expect(pdf.getPage(0).getHeight()).toBeCloseTo(g.height * 72, 3);
+  });
+});
+
+describe("hardcover cover sheet", () => {
+  it("wraps 15 mm past the edge and keeps a 10 mm hinge, panels the size of the trim", () => {
+    const trim = trimById("6x9")!;
+    const g = coverGeometry(trim, 300, "white", "hardcover");
+    expect(g.binding).toBe("hardcover");
+    expect(g.verified).toBe(false);
+    expect(g.back.x).toBeCloseTo(0.591, 3);
+    expect(g.width).toBeCloseTo(2 * 6 + 300 * 0.002252 + 0.394 + 2 * 0.591, 3);
+    expect(g.height).toBeCloseTo(9 + 0.236 + 2 * 0.591, 3);
+    expect(g.front.x - (g.back.x + g.back.w)).toBeCloseTo(0.394 + g.spine, 3);
+    expect(g.spineBox.x + g.spineBox.w / 2).toBeCloseTo(g.width / 2, 3);
+    expect(g.front.x + g.front.w + 0.591).toBeCloseTo(g.width, 3);
+    // The barcode stays at least 0.25 in from the hinge and 0.76 in from the bottom of the sheet.
+    expect(g.back.x + g.back.w - (g.barcode.x + g.barcode.w)).toBeGreaterThan(0.2499);
+    expect(g.height - (g.barcode.y + g.barcode.h)).toBeGreaterThanOrEqual(0.76);
+  });
+
+  it("is the paperback sheet unless the book asks for a hardcover, and says what it could not verify", async () => {
+    const trim = trimById("6x9")!;
+    expect(coverGeometry(trim, 300, "white")).toEqual(coverGeometry(trim, 300, "white", "paperback"));
+    const built = await buildBook(vault({ binding: "hardcover", trim: "6x9" }), "Book.md", fonts);
+    const cover = composeCover(built.book, fonts, 120);
+    expect(cover.geometry.binding).toBe("hardcover");
+    expect(cover.findings.find((f) => /KDP's cover calculator/.test(f.message))?.severity).toBe("info");
+    const paper = composeCover((await buildBook(vault({ trim: "6x9" }), "Book.md", fonts)).book, fonts, 120);
+    expect(paper.findings.some((f) => /cover calculator/.test(f.message))).toBe(false);
+  });
 });

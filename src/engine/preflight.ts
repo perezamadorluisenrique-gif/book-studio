@@ -14,7 +14,7 @@ import { SPINE_TEXT_MIN_PAGES, type CoverGeometry } from "./cover/geometry";
 import type { FontSet } from "./fonts";
 import type { Layout } from "./layout/types";
 import type { Book, SourceRef } from "./model";
-import { BLEED, KDP_MAX_PAGES, KDP_MIN_PAGES, kdpMinInside, kdpMinOutside, trimMaxPages } from "./trims";
+import { BLEED, bindingOf, HARDCOVER, KDP_MAX_PAGES, KDP_MIN_PAGES, kdpMinInside, kdpMinOutside, pageRange, trimMaxPages } from "./trims";
 
 export type PreflightSeverity = "error" | "warning" | "info";
 
@@ -105,16 +105,27 @@ function folioOf(layout: Layout, index: number): string {
 const RULES: Rule[] = [
   {
     id: "page-count",
-    title: ({ binding, layout }) => `${binding?.minPages ?? KDP_MIN_PAGES} to ${binding?.maxPages ?? (layout?.trim ? trimMaxPages(layout.trim) : KDP_MAX_PAGES)} pages`,
-    run: ({ layout, binding }) => {
+    title: ({ binding, book, layout }) => {
+      if (binding) return `${binding.minPages} to ${binding.maxPages} pages`;
+      if (bindingOf(book?.settings.binding) === "hardcover") return `${HARDCOVER.minPages} to ${HARDCOVER.maxPages} pages`;
+      return `${KDP_MIN_PAGES} to ${layout?.trim ? trimMaxPages(layout.trim) : KDP_MAX_PAGES} pages`;
+    },
+    run: ({ book, layout, binding }) => {
       const n = layout.pages.length;
-      const min = binding?.minPages ?? KDP_MIN_PAGES;
-      const max = binding?.maxPages ?? trimMaxPages(layout.trim);
-      const kind = binding ? `${binding.name}s` : "paperbacks";
+      const hard = bindingOf(book.settings.binding) === "hardcover";
+      const r = pageRange(bindingOf(book.settings.binding), layout.trim);
+      const min = binding?.minPages ?? r.min;
+      const max = binding?.maxPages ?? r.max;
+      const kind = binding ? `${binding.name}s` : hard ? "hardcovers" : "paperbacks";
       if (n < min) return [{ rule: "page-count", severity: "error", message: `The book has ${n} pages; KDP ${kind} need at least ${min}. Add pages or blank pages at the end${binding ? ", or leave this edition out" : ""}.` }];
       if (n > max) return [{ rule: "page-count", severity: "error", message: `The book has ${n} pages; KDP ${kind} allow at most ${max}. Use a larger trim size, a smaller type size, or split the book into volumes.` }];
       return [];
     },
+  },
+  {
+    id: "binding-trim",
+    title: "Trim size offered for the binding",
+    run: ({ book, layout }) => (bindingOf(book.settings.binding) === "hardcover" && !HARDCOVER.trims.includes(layout.trim.id) ? [{ rule: "binding-trim", severity: "error", message: `KDP does not print hardcovers at ${layout.trim.label}. Hardcover sizes: 5.5" × 8.5", 6" × 9", 6.14" × 9.21", 7" × 10" and 8.25" × 11".` }] : []),
   },
   {
     id: "inside-margin",
