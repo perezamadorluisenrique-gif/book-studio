@@ -405,7 +405,7 @@ async function convertBlock(t: Token, ctx: ParseContext, src: SourceRef, blocks:
     case "blockquote": {
       const bq = t as Tokens.Blockquote;
       const inner = await convertBlocks(bq.tokens, ctx, src.line);
-      // Obsidian callouts: drop the [!type] marker, keep any title as a bold line.
+      // Obsidian callouts: drop the [!type] marker, keep the title (or the type name) as a bold line.
       const first = inner[0];
       let callout = false;
       if (first?.kind === "paragraph" && first.inlines[0]?.kind === "text") {
@@ -416,7 +416,9 @@ async function convertBlock(t: Token, ctx: ParseContext, src: SourceRef, blocks:
           const remaining = lead.text.slice(m[0].length);
           const restInlines = [...(remaining ? [{ ...lead, text: remaining }] : []), ...first.inlines.slice(1)];
           const replacement: Block[] = [];
-          if (m[2].trim()) replacement.push({ kind: "paragraph", id: ctx.nextId(), inlines: [{ kind: "text", text: m[2].trim(), style: { bold: true } }], src });
+          // Like Obsidian: with no title, the callout type (capitalised) is its title, so every callout reads the same way.
+          const title = m[2].trim() || m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
+          replacement.push({ kind: "paragraph", id: ctx.nextId(), inlines: [{ kind: "text", text: title, style: { bold: true } }], src });
           if (plain(restInlines).trim()) replacement.push({ ...first, inlines: restInlines.filter((x, i) => !(i === 0 && x.kind === "break")) });
           inner.splice(0, 1, ...replacement);
         }
