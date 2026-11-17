@@ -53,6 +53,8 @@ export class Workspace {
   private dirty = false;
   private timer = 0;
   private chain: Promise<void> = Promise.resolve();
+  /** Writes handed to the chain so far; only the last one may say "Saved", since an earlier one finishing says nothing about the rest. */
+  private writes = 0;
   private tabsEl = h("div", { cls: "ws-tabs", attr: { role: "tablist" } });
   private tabButtons = {} as Record<Tab, HTMLButtonElement>;
   private panels = {} as Record<Tab, HTMLElement>;
@@ -386,11 +388,12 @@ export class Workspace {
     if (this.dirty && this.project) {
       this.dirty = false;
       const snapshot = this.project;
+      const write = ++this.writes;
       this.chain = this.chain.then(async () => {
         try {
           await this.deps.save(snapshot);
           if (this.project?.id !== snapshot.id) return;
-          if (!this.dirty) this.editor.setStatus("saved");
+          if (!this.dirty && write === this.writes) this.editor.setStatus("saved");
           this.deps.changed(this.project, true);
         } catch (e) {
           this.dirty = true;
