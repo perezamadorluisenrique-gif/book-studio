@@ -1143,6 +1143,72 @@ describe("web app, first-book guide", () => {
     await context.close();
   });
 
+  it("previews the ebook in three readers, with text size, dark mode and paging, and nothing leaves the page", async () => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "en-US" });
+    const page = await context.newPage();
+    const outside: string[] = [];
+    page.on("request", (r) => {
+      if (!/^(data:|blob:|about:)/.test(r.url()) && !r.url().startsWith(base)) outside.push(r.url());
+    });
+    await page.goto(base);
+    await page.locator("#land-drop").waitFor();
+    await dropFile(page, "diary.docx", await bigDocx(12000, 3));
+    await page.getByRole("heading", { name: "Step 1 of 5: Upload" }).waitFor({ timeout: 60_000 });
+    await page.getByRole("button", { name: "Skip the first book guide" }).click();
+    await page.locator(".wiz-box").waitFor({ state: "hidden" });
+    await page.locator(".bs-status", { hasText: " pages at " }).waitFor({ timeout: 60_000 });
+    await page.getByRole("tab", { name: "Ebook" }).click();
+    const iframe = page.locator("iframe.bs-ebook-screen");
+    await iframe.waitFor({ timeout: 60_000 });
+    // Scripts are off in the frame, and the page carries a policy that blocks every request.
+    const sandbox = (await iframe.getAttribute("sandbox")) ?? "";
+    expect(sandbox).not.toContain("allow-scripts");
+    expect(await iframe.getAttribute("srcdoc")).toContain("Content-Security-Policy");
+    expect(await page.locator(".bs-ebook-note").textContent()).toBe("Approximate view: each ebook reader draws the book its own way.");
+    const frameDoc = () => page.frameLocator("iframe.bs-ebook-screen");
+    await frameDoc().locator("#page").waitFor();
+    const indicator = page.locator(".bs-ebook-page");
+    await page.waitForFunction(() => /Page 1 of \d+/.test(document.querySelector(".bs-ebook-page")?.textContent ?? ""), null, { timeout: 30_000 });
+    const total = async () => Number(/of (\d+)/.exec((await indicator.textContent()) ?? "")?.[1] ?? 0);
+    const medium = await total();
+    expect(medium).toBeGreaterThan(1);
+    // Paging forward and back.
+    await page.getByRole("button", { name: "Next page" }).click();
+    await expect.poll(async () => (await indicator.textContent()) ?? "").toMatch(/Page 2 of/);
+    await page.getByRole("button", { name: "Previous page" }).click();
+    await expect.poll(async () => (await indicator.textContent()) ?? "").toMatch(/Page 1 of/);
+    // A larger reader text size gives more pages; a smaller one, fewer or the same.
+    await page.getByLabel("Reader text size").selectOption({ label: "Large" });
+    await expect.poll(total, { timeout: 30_000 }).toBeGreaterThan(medium);
+    await page.getByLabel("Reader text size").selectOption({ label: "Medium" });
+    await expect.poll(total, { timeout: 30_000 }).toBe(medium);
+    // Dark mode changes the page colour.
+    await page.getByLabel("Dark mode").check();
+    await expect.poll(() => frameDoc().locator("html").evaluate((e) => getComputedStyle(e).backgroundColor)).toBe("rgb(21, 23, 26)");
+    await page.getByLabel("Dark mode").uncheck();
+    // The three readers, each with the screen size of its frame and no serious accessibility problem.
+    const sizes: Record<string, [number, number]> = { "E-ink reader (6 in)": [300, 400], Phone: [260, 540], Tablet: [420, 560] };
+    for (const [label, [w, h]] of Object.entries(sizes)) {
+      await page.getByLabel("Reader", { exact: true }).selectOption({ label });
+      await page.waitForFunction(([ww, hh]) => {
+        const f = document.querySelector<HTMLIFrameElement>("iframe.bs-ebook-screen");
+        return !!f && f.clientWidth === ww && f.clientHeight === hh;
+      }, [w, h], { timeout: 30_000 });
+      await frameDoc().locator("#page").waitFor();
+      // Axe cannot run inside the script-free frame, so the panel is checked with the frame left out, and the frame's own
+      // page (its srcdoc) is opened alone in another tab and checked there.
+      const r = await new AxeBuilder({ page }).include(".bs-panel-ebook").exclude("iframe").withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+      expect(r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id), label).toEqual([]);
+      const solo = await context.newPage();
+      await solo.setContent((await iframe.getAttribute("srcdoc")) ?? "");
+      const inner = await new AxeBuilder({ page: solo }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).disableRules(["document-title"]).analyze();
+      expect(inner.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id), `${label} page`).toEqual([]);
+      await solo.close();
+    }
+    expect(outside).toEqual([]);
+    await context.close();
+  });
+
   it("offers four covers with the book's title, and the chosen one opens in the cover designer", async () => {
     const context = await browser.newContext({ locale: "en-US" });
     const page = await context.newPage();

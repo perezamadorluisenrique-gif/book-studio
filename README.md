@@ -97,7 +97,8 @@ Chapter notes are ordinary Markdown:
 | `dedication`, `epigraph`, `epigraph-source` | Their own pages in the front matter |
 | `cover` | Cover image for the EPUB |
 | `theme` | `classic`, `modern`, `elegant`, `nonfiction` or `large-print`; the genre themes `thriller`, `romance` and `fantasy` need Pro |
-| `trim` | Any of the twelve KDP trims, for example `6x9`, `5x8` or `5.5x8.5` |
+| `trim` | Any of the sixteen KDP trims, for example `6x9`, `5x8` or `5.5x8.5` |
+| `binding` | `paperback` (default) or `hardcover`: hardcover offers 5 trims (`5.5x8.5`, `6x9`, `6.14x9.21`, `7x10`, `8.25x11`), 75 to 550 pages and its own cover sheet (the sheet's total size is not on KDP's help pages, so check it against KDP's cover calculator) |
 | `paper` | `white`, `cream` or `color`: sets the spine width |
 | `footnotes` | `end` (default) or `page` for notes at the foot of the page |
 | `index-terms` | A list of words and phrases for the back-of-book index (Pro) |
@@ -110,6 +111,7 @@ Chapter notes are ordinary Markdown:
 | `toc`, `half-title`, `hyphenate`, `smart-quotes` | Turn those features on or off |
 | `font-size` | Body size in points, from 7 to 24 |
 | `scene-break` | Glyph to use for scene breaks, such as `❦` |
+| `chapter-image`, `chapter-image-alt` | In a chapter note (not the book note): a picture that opens the chapter, above the title, in every style. Describe it in `chapter-image-alt`, or write `decorative`. A warning appears when it would print under 300 ppi |
 
 The studio's toolbar can override the theme and trim for a single export without editing the note.
 
@@ -205,7 +207,7 @@ fonts/         Bundled typefaces
 ## Credits and licenses
 
 - Book Studio is released under the [MIT License](LICENSE).
-- The bundled fonts are under the [SIL Open Font License 1.1](fonts/OFL.txt): EB Garamond, Crimson Pro, Cormorant Garamond, Montserrat, Atkinson Hyperlegible and Inconsolata.
+- The bundled fonts are under the [SIL Open Font License 1.1](fonts/OFL.txt): EB Garamond, Crimson Pro, Cormorant Garamond, Montserrat, Atkinson Hyperlegible, Inconsolata and STIX Two Math (formulas).
 - The text of *The Wonderful Wizard of Oz* (L. Frank Baum, 1900) is in the public domain. The sample's cover and illustration were made for this project and are under the MIT License.
 - Libraries: [pdf-lib](https://pdf-lib.js.org), [fontkit](https://github.com/foliojs/fontkit), [JSZip](https://stuk.github.io/jszip/), [marked](https://marked.js.org), [yaml](https://eemeli.org/yaml/) and [hyphen](https://github.com/ytiurin/hyphen).
 

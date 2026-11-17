@@ -15,6 +15,17 @@ export function coverFit(sw: number, sh: number, dw: number, dh: number): { sx: 
   return { sx: (sw - w) / 2, sy: (sh - h) / 2, sw: w, sh: h };
 }
 
+/** Where a `sw × sh` picture goes in a `dw × dh` box when it must show whole: scaled to fit, centred. */
+export function coverContain(sw: number, sh: number, dw: number, dh: number): { dx: number; dy: number; dw: number; dh: number } {
+  const scale = Math.min(dw / sw, dh / sh);
+  const w = sw * scale;
+  const h = sh * scale;
+  return { dx: (dw - w) / 2, dy: (dh - h) / 2, dw: w, dh: h };
+}
+
+/** A front cover this wide or wider (a landscape or square book) is shown whole, not cut to the ebook shape. */
+export const WHOLE_FRONT_ASPECT = 1;
+
 async function sheet(cover: Cover, painter: PagePainter, pxPerPt: number): Promise<HTMLCanvasElement> {
   const canvas = document.createElement("canvas");
   await painter.paint(canvas, cover.layout, cover.layout.pages[0], { scale: pxPerPt, dpr: 1, paper: "#ffffff" });
@@ -24,8 +35,11 @@ async function sheet(cover: Cover, painter: PagePainter, pxPerPt: number): Promi
 const blob = (canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Uint8Array> =>
   new Promise((resolve, reject) => canvas.toBlob((b) => (b ? void b.arrayBuffer().then((a) => resolve(new Uint8Array(a))) : reject(new Error("The picture could not be made."))), type, quality));
 
-/** The front cover (trim only, no bleed) as a 1600 × 2560 JPG; a front that is not that shape loses a little at the sides or the foot. */
-export async function ebookCoverJpeg(cover: Cover, painter: PagePainter): Promise<Uint8Array> {
+/**
+ * The front cover (trim only, no bleed) as a 1600 × 2560 JPG. A portrait front that is not quite that shape loses a
+ * little at the sides or the foot; a landscape or square front is never cut: it sits whole on `background`.
+ */
+export async function ebookCoverJpeg(cover: Cover, painter: PagePainter, background = "#ffffff"): Promise<Uint8Array> {
   const g = cover.geometry;
   const k = Math.max(EBOOK_SIZE.h / (g.trim.height * 72), EBOOK_SIZE.w / (g.trim.width * 72));
   const full = await sheet(cover, painter, k);
@@ -37,8 +51,15 @@ export async function ebookCoverJpeg(cover: Cover, painter: PagePainter): Promis
   const fy = g.front.y * 72 * k;
   const fw = g.front.w * 72 * k;
   const fh = g.front.h * 72 * k;
-  const c = coverFit(fw, fh, EBOOK_SIZE.w, EBOOK_SIZE.h);
-  ctx.drawImage(full, fx + c.sx, fy + c.sy, c.sw, c.sh, 0, 0, EBOOK_SIZE.w, EBOOK_SIZE.h);
+  if (fw / fh >= WHOLE_FRONT_ASPECT) {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, EBOOK_SIZE.w, EBOOK_SIZE.h);
+    const w = coverContain(fw, fh, EBOOK_SIZE.w, EBOOK_SIZE.h);
+    ctx.drawImage(full, fx, fy, fw, fh, w.dx, w.dy, w.dw, w.dh);
+  } else {
+    const c = coverFit(fw, fh, EBOOK_SIZE.w, EBOOK_SIZE.h);
+    ctx.drawImage(full, fx + c.sx, fy + c.sy, c.sw, c.sh, 0, 0, EBOOK_SIZE.w, EBOOK_SIZE.h);
+  }
   return blob(out, "image/jpeg", 0.92);
 }
 

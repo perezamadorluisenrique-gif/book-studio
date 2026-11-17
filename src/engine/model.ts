@@ -1,6 +1,7 @@
 // The book model every output (print PDF, EPUB, preview, audit) is built from.
 
 import type { CoverDesign } from "./cover/design";
+import type { Binding } from "./trims";
 
 export interface SourceRef {
   file: string;
@@ -15,6 +16,8 @@ export interface InlineStyle {
   strike?: boolean;
   sup?: boolean;
   sub?: boolean;
+  /** Part of a formula (from `$...$`): typography rules skip it. */
+  math?: boolean;
   href?: string;
 }
 
@@ -80,6 +83,8 @@ export interface Chapter {
   /** Plain-text title, for the TOC, running heads and metadata. */
   titleText: string;
   subtitle?: string;
+  /** A picture that opens the chapter (`chapter-image:` in the chapter note). */
+  openerImage?: ImageRef;
   /** 1-based chapter number for numbered body chapters, undefined otherwise. */
   number?: number;
   /** 1-based number of a part, counted separately for box-set volumes. */
@@ -196,6 +201,8 @@ export interface StyleOverrides {
 export interface BookSettings {
   theme: string;
   trim: string;
+  /** Paperback (the default) or hardcover; sets the trim sizes and page range KDP accepts. */
+  binding?: Binding;
   /** Interior paper, which sets the spine width. */
   paper: Paper;
   footnotes: NotePlacement;

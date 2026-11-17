@@ -502,6 +502,7 @@ function bookCss(book: Book, theme: Theme, faces: { family: Family; file: FontFi
   }
   css.push("h1, h2, h3, h4, h5, h6 { -webkit-hyphens: manual; -epub-hyphens: manual; hyphens: manual; page-break-after: avoid; break-after: avoid; line-height: 1.2; }");
   css.push(`.chapter-head { margin: ${em(ch.sink * 16)} 0 ${em(ch.spaceAfter * lh)}; text-align: ${ch.title.align}; }`);
+  if (book.chapters.some((c) => c.openerImage)) css.push(".chapter-head .chapter-image { margin: 0 0 1.2em; text-align: center; page-break-inside: avoid; break-inside: avoid; }", ".chapter-head .chapter-image img { max-width: 70%; max-height: 40vh; height: auto; }");
   css.push(".chapter-head h1, .part-head h1 { margin: 0; font-size: 1em; font-weight: normal; }");
   css.push(`.chapter-head .label { display: block; ${t(ch.label.style)}; margin-bottom: 0.9em; }`);
   css.push(`.chapter-head .title { display: block; ${t(ch.title)}; }`);
@@ -528,7 +529,7 @@ function bookCss(book: Book, theme: Theme, faces: { family: Family; file: FontFi
   if (theme.blockquote.italic) css.push("blockquote { font-style: italic; } blockquote em { font-style: normal; }");
   css.push("ol, ul { margin: 0.6em 0; padding-left: 1.8em; } li ol, li ul { margin: 0; } li p { text-indent: 0; text-align: left; }");
   css.push("figure { margin: 1em 0; text-align: center; page-break-inside: avoid; break-inside: avoid; }");
-  css.push("figure img { max-width: 100%; height: auto; }");
+  css.push("figure img { max-width: 100%; height: auto; image-orientation: from-image; }");
   css.push("figcaption { font-style: italic; font-size: 0.9em; margin-top: 0.4em; }");
   css.push("table { border-collapse: collapse; margin: 1em auto; font-size: 0.9em; border-top: 1px solid; border-bottom: 1px solid; }");
   css.push("th { border-bottom: 1px solid; font-weight: bold; } th, td { padding: 0.25em 0.6em; text-align: left; vertical-align: top; } .ac { text-align: center; } .ar { text-align: right; }");
@@ -591,7 +592,11 @@ interface NavEntry {
   children: NavEntry[];
 }
 
-export async function writeEpub(book: Book, opts: EpubOptions): Promise<Uint8Array> {
+/**
+ * Every file of the EPUB, by its path inside the zip, in the order they are written. `writeEpub` zips these and
+ * the ebook preview reads them, so the preview shows the same chapters, CSS and pictures a reader gets.
+ */
+export async function epubParts(book: Book, opts: EpubOptions): Promise<Map<string, string | Uint8Array>> {
   const { meta, settings } = book;
   const theme = resolveTheme(settings);
   const lang = meta.language || "en";
@@ -706,7 +711,9 @@ export async function writeEpub(book: Book, opts: EpubOptions): Promise<Uint8Arr
       const label = ch.number !== undefined && theme.chapter.label.show ? chapterLabel(ch.number, lang, theme.chapter.label.format, theme.chapter.label.prefix) : null;
       const subtitle = ch.subtitle ? `\n<p class="subtitle">${esc(ch.subtitle)}</p>` : "";
       const orn = isVector(theme.chapter.ornament) ? `<div class="orn" aria-hidden="true">${ornamentSvg(theme.chapter.ornament)}</div>` : "";
-      head = `<header class="chapter-head"><h1 id="${titleId}">${label ? `<span class="label">${esc(label)}</span> ` : ""}<span class="title">${renderInlines(ctx, ch.title)}</span></h1>${subtitle}${orn}</header>\n`;
+      const pic = ch.openerImage?.path ? ctx.imageHref.get(ch.openerImage.path) : undefined;
+      const opener = pic && ch.openerImage ? `<figure class="chapter-image"><img src="../${pic}" alt="${esc(ch.openerImage.decorative ? "" : ch.openerImage.alt)}"/></figure>\n` : "";
+      head = `<header class="chapter-head">${opener}<h1 id="${titleId}">${label ? `<span class="label">${esc(label)}</span> ` : ""}<span class="title">${renderInlines(ctx, ch.title)}</span></h1>${subtitle}${orn}</header>\n`;
     }
     const opening = ch.matter === "body" || ch.type === "prologue";
     const state: ParaState = { noIndent: true, leadIn: theme.firstParagraph.leadInWords, dropCap: opening && theme.firstParagraph.dropCap > 0 };
@@ -875,10 +882,9 @@ ${ncxPoints(navTree.length ? navTree : [{ label: meta.title, href: "text/titlepa
 </ncx>
 `;
 
-  const zip = new JSZip();
-  const date = opts.modified ?? new Date();
-  zip.file("mimetype", "application/epub+zip", { compression: "STORE", date });
-  zip.file(
+  const parts = new Map<string, string | Uint8Array>();
+  parts.set("mimetype", "application/epub+zip");
+  parts.set(
     "META-INF/container.xml",
     `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -887,14 +893,25 @@ ${ncxPoints(navTree.length ? navTree : [{ label: meta.title, href: "text/titlepa
   </rootfiles>
 </container>
 `,
-    { date },
   );
-  zip.file("EPUB/package.opf", opf, { date });
-  zip.file("EPUB/toc.ncx", ncx, { date });
-  zip.file("EPUB/css/book.css", bookCss(book, theme, faces, sceneGlyph), { date });
-  for (const d of docs) zip.file(`EPUB/${d.href}`, d.content, { date });
-  for (const [path, href] of imageHref) zip.file(`EPUB/${href}`, book.images.get(path)!.bytes, { date, compression: "STORE" });
-  for (const f of faces) zip.file(`EPUB/fonts/${f.file}.ttf`, opts.fonts!.bytes.get(f.file)!, { date });
+  parts.set("EPUB/package.opf", opf);
+  parts.set("EPUB/toc.ncx", ncx);
+  parts.set("EPUB/css/book.css", bookCss(book, theme, faces, sceneGlyph));
+  for (const d of docs) parts.set(`EPUB/${d.href}`, d.content);
+  for (const [path, href] of imageHref) parts.set(`EPUB/${href}`, book.images.get(path)!.bytes);
+  for (const f of faces) parts.set(`EPUB/fonts/${f.file}.ttf`, opts.fonts!.bytes.get(f.file)!);
+  return parts;
+}
+
+export async function writeEpub(book: Book, opts: EpubOptions): Promise<Uint8Array> {
+  const parts = await epubParts(book, opts);
+  const zip = new JSZip();
+  const date = opts.modified ?? new Date();
+  for (const [path, data] of parts) {
+    // The mimetype and the pictures are stored as they are; everything else is compressed.
+    const stored = path === "mimetype" || path.startsWith("EPUB/images/");
+    zip.file(path, data, stored ? { date, compression: "STORE" } : { date });
+  }
   return zip.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 9 }, mimeType: "application/epub+zip" });
 }
 

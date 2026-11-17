@@ -8,18 +8,19 @@ import { FontSet } from "../engine/fonts";
 import { LayoutCache } from "../engine/layout/index";
 import type { BookSettings, SourceRef } from "../engine/model";
 import { THEMES } from "../engine/themes";
-import { TRIMS } from "../engine/trims";
+import { bindingOf, DEFAULT_TRIM, HARDCOVER, trimsFor } from "../engine/trims";
 import { PagePainter } from "../preview/canvas";
 import { append, clear, h, nextFrame, select } from "./dom";
 import type { BookChoice, StudioHost } from "./host";
 import type { LicenseManager } from "./license-manager";
+import { EbookPanel } from "./ebook-preview";
 import { KdpPanel } from "./kdp-panel";
 import { mountMarketingPanel, type MarketingPanel } from "./marketing-panel";
 import { StylePanel } from "./style-panel";
 import { t, tn } from "./ui-i18n";
 import { buildBook, ebookBlockers, exportCover, exportEdition, exportEpub, exportPdf, exportReport, pdfBlockers, planEditions, spineWidth, type Built, type EpubChoices } from "./pipeline";
 
-type Tab = "preview" | "problems" | "kdp" | "accessibility" | "kit";
+type Tab = "preview" | "problems" | "kdp" | "ebook" | "accessibility" | "kit";
 type Zoom = "page" | "fit" | "0.5" | "0.75" | "1" | "1.5" | "2";
 
 const zooms = (): { value: Zoom; label: string }[] => [
@@ -67,6 +68,7 @@ export class Studio {
   private disposed = false;
   private kdp: KdpPanel;
   private kit: MarketingPanel | null = null;
+  private ebook: EbookPanel;
 
   private bookSelect = h("select", { cls: "bs-book", attr: { "aria-label": t("studio.book") } });
   private planBox = h("div", { cls: "bs-plan" });
@@ -87,7 +89,7 @@ export class Studio {
     container: HTMLElement,
     private license: LicenseManager,
   ) {
-    const tabIds: Tab[] = FREE_EDITION ? ["preview", "problems", "kdp", "accessibility"] : ["preview", "problems", "kdp", "accessibility", "kit"];
+    const tabIds: Tab[] = FREE_EDITION ? ["preview", "problems", "kdp", "ebook", "accessibility"] : ["preview", "problems", "kdp", "ebook", "accessibility", "kit"];
     const uid = Math.random().toString(36).slice(2, 8);
     this.tabs = {} as Record<Tab, HTMLButtonElement>;
     this.panels = {} as Record<Tab, HTMLElement>;
@@ -136,6 +138,7 @@ export class Studio {
     });
     // The Pro sales kit has a tab of its own; the free edition has no such tab.
     if (!FREE_EDITION) this.kit = mountMarketingPanel(this.panels.kit, { host: this.host, built: () => this.built, fonts: () => this.loadFonts(), painter: () => this.painter, plan: () => this.plan() });
+    this.ebook = new EbookPanel(this.panels.ebook, { built: () => this.built, fonts: () => this.loadFonts() });
     container.appendChild(this.root);
     this.unsubscribe = this.license.onChange(() => this.planChanged());
     this.showTab("preview");
@@ -479,6 +482,7 @@ export class Studio {
     this.renderProblems();
     this.kdp.render();
     this.kit?.refresh();
+    this.ebook.render();
     this.renderAccessibility();
     this.renderTabs();
   }
@@ -502,8 +506,18 @@ export class Studio {
       s.theme,
       { attr: { "aria-label": t("set.theme") }, on: { change: () => this.setOverride({ theme: theme.value }) } },
     );
+    const hard = bindingOf(s.binding) === "hardcover";
+    const binding = select(
+      [
+        { value: "paperback", label: t("set.paperback") },
+        { value: "hardcover", label: t("set.hardcover") },
+      ],
+      hard ? "hardcover" : "paperback",
+      // A size the new binding does not print moves to the default size, so the book never sits on a combination KDP refuses.
+      { attr: { "aria-label": t("set.bindingAria") }, on: { change: () => this.setOverride({ binding: binding.value as BookSettings["binding"], ...(binding.value === "hardcover" && !HARDCOVER.trims.includes(s.trim) ? { trim: DEFAULT_TRIM } : {}) }) } },
+    );
     const trim = select(
-      TRIMS.map((tr) => ({ value: tr.id, label: tr.label })),
+      trimsFor(hard ? "hardcover" : "paperback").map((tr) => ({ value: tr.id, label: tr.label })),
       s.trim,
       { attr: { "aria-label": t("set.trimAria") }, on: { change: () => this.setOverride({ trim: trim.value }) } },
     );
@@ -524,6 +538,7 @@ export class Studio {
     append(
       this.settingsBar,
       h("label", { cls: "bs-field" }, h("span", { text: t("set.theme") }), theme),
+      h("label", { cls: "bs-field" }, h("span", { text: t("set.binding") }), binding),
       h("label", { cls: "bs-field" }, h("span", { text: t("set.trim") }), trim),
       h("label", { cls: "bs-field" }, h("span", { text: t("set.paper") }), paper),
       h("label", { cls: "bs-field" }, h("span", { text: t("set.chapterStart") }), start),
@@ -827,6 +842,7 @@ export class Studio {
     this.tabs.preview.textContent = t("tab.preview");
     this.tabs.problems.textContent = problems ? t("tab.problemsN", { n: problems }) : t("tab.problems");
     this.tabs.kdp.textContent = t("tab.kdp");
+    this.tabs.ebook.textContent = t("tab.ebook");
     // The free edition's EPUB has no accessibility pack, so there is nothing to show.
     this.tabs.accessibility.hidden = FREE_EDITION;
     this.tabs.accessibility.textContent = audit && pro && !audit.passed ? t("tab.accessibilityFix") : pro || FREE_EDITION ? t("tab.accessibility") : t("tab.accessibilityPro");
@@ -857,10 +873,11 @@ export class Studio {
       this.tabs[t].tabIndex = on ? 0 : -1;
       this.panels[t].hidden = !on;
     }
+    this.ebook?.setActive(tab === "ebook");
   }
 
   private tabKey(e: KeyboardEvent, tab: Tab): void {
-    const order: Tab[] = FREE_EDITION ? ["preview", "problems", "kdp"] : ["preview", "problems", "kdp", "accessibility", "kit"];
+    const order: Tab[] = FREE_EDITION ? ["preview", "problems", "kdp", "ebook"] : ["preview", "problems", "kdp", "ebook", "accessibility", "kit"];
     const i = order.indexOf(tab);
     let next: Tab | null = null;
     if (e.key === "ArrowRight") next = order[(i + 1) % order.length];

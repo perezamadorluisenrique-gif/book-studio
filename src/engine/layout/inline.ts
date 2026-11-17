@@ -115,7 +115,7 @@ const STYLE_SIGS = new WeakMap<InlineStyle, string>();
 function styleSig(st: InlineStyle): string {
   let sig = STYLE_SIGS.get(st);
   if (sig === undefined) {
-    sig = `${st.italic ? "i" : ""}${st.bold ? "b" : ""}${st.code ? "c" : ""}${st.smallCaps ? "s" : ""}${st.strike ? "x" : ""}${st.sup ? "^" : ""}${st.sub ? "_" : ""}${st.href ?? ""}`;
+    sig = `${st.italic ? "i" : ""}${st.bold ? "b" : ""}${st.code ? "c" : ""}${st.math ? "m" : ""}${st.smallCaps ? "s" : ""}${st.strike ? "x" : ""}${st.sup ? "^" : ""}${st.sub ? "_" : ""}${st.href ?? ""}`;
     STYLE_SIGS.set(st, sig);
   }
   return sig;
@@ -302,6 +302,8 @@ export class ParagraphSetter {
     if (st.bold) rs.bold = true;
     if ((st.smallCaps || smallCapsLead) && (rs.caps ?? "none") === "none") rs.caps = "smcp";
     if (st.code) rs = { family: "inconsolata", size: base.size * 0.88 };
+    // Formulas use the math face; its italic is the math italic, so `italic` carries over.
+    else if (st.math) rs = { ...rs, family: "stixmath", caps: "none", uppercase: false, oldstyle: false };
     let dy = 0;
     if (st.sup) {
       rs = { ...rs, size: rs.size * 0.62, oldstyle: false };

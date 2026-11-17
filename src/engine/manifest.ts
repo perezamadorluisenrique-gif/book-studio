@@ -125,6 +125,7 @@ export function settingsFromFrontmatter(fm: Record<string, unknown>, base: BookS
   return {
     theme: fmString(fm, "theme")?.toLowerCase() ?? base.theme,
     trim: fmString(fm, "trim", "trim-size")?.toLowerCase().replace(/\s|"|in/g, "").replace("×", "x") ?? base.trim,
+    binding: ((b) => (b === "hardcover" || b === "paperback" ? b : base.binding))(fmString(fm, "binding")?.toLowerCase()),
     paper: paper === "white" || paper === "cream" || paper === "color" ? paper : base.paper,
     footnotes: notes === "page" || notes === "foot" || notes === "footnotes" ? "page" : notes === "end" || notes === "endnotes" ? "end" : base.footnotes,
     bleed: fmBool(fm, base.bleed, "bleed"),

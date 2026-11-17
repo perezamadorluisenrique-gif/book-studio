@@ -5,7 +5,7 @@
 // the sample PDFs, and by the tests.
 
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRef } from "pdf-lib";
-import { BLEED, KDP_MAX_PAGES, KDP_MIN_PAGES, kdpMinInside, type Trim } from "../src/engine/trims";
+import { BLEED, KDP_MIN_PAGES, kdpMinInside, trimMaxPages, type Trim } from "../src/engine/trims";
 
 export interface KdpCheck {
   pages: number;
@@ -57,7 +57,7 @@ export async function checkKdpPdf(bytes: Uint8Array, trim: Trim, opts: { bleed: 
   const pages = doc.getPages();
   const n = pages.length;
   if (n < KDP_MIN_PAGES) errors.push(`${n} pages; KDP needs at least ${KDP_MIN_PAGES}.`);
-  if (n > KDP_MAX_PAGES) errors.push(`${n} pages; KDP allows at most ${KDP_MAX_PAGES}.`);
+  if (n > trimMaxPages(trim)) errors.push(`${n} pages; KDP allows at most ${trimMaxPages(trim)} at this trim.`);
 
   const wantW = (trim.width + (opts.bleed ? BLEED : 0)) * PT;
   const wantH = (trim.height + (opts.bleed ? 2 * BLEED : 0)) * PT;

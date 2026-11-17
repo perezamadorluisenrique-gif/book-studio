@@ -154,8 +154,12 @@ export class FlowBuilder {
     const L = this.L;
     const items: VItem[] = [];
     const strut = (height: number): VBox => ({ type: "box", height, draws: [], breakAfter: NO_BREAK });
-    const sink = Math.round((theme.chapter.sink * this.env.capacity) / L) * L;
+    let sink = Math.round((theme.chapter.sink * this.env.capacity) / L) * L;
+    const pic = this.openerPicture(chapter);
+    // The picture sits in the sink, so the title stays where the style puts it unless the picture is taller.
+    if (pic) sink = Math.max(L, sink - pic.height);
     items.push({ ...strut(sink), start: { blockId: chapter.id, offset: 0 }, src: chapter.src });
+    if (pic) items.push(pic);
     const ch = theme.chapter;
     if (chapter.number !== undefined && ch.label.show) {
       const ls = this.style(ch.label.style);
@@ -191,6 +195,27 @@ export class FlowBuilder {
     }
     items.push(strut(ch.spaceAfter * L));
     return items;
+  }
+
+  /** The picture that opens a chapter: up to 70 % of the measure and 30 % of the page, centred, with a line of air under it. */
+  private openerPicture(chapter: Chapter): VBox | null {
+    const ref = chapter.openerImage;
+    const asset = ref?.path ? this.env.images.get(ref.path) : undefined;
+    // A missing or unreadable picture was reported when the book was loaded.
+    if (!ref || !asset) return null;
+    const L = this.L;
+    let w = this.env.width * 0.7;
+    let h = (w * asset.height) / asset.width;
+    const maxH = this.env.capacity * 0.3;
+    if (h > maxH) {
+      w *= maxH / h;
+      h = maxH;
+    }
+    const ppi = asset.width / (w / 72);
+    if (ppi < 300) this.env.warn({ severity: "warning", message: `${ref.target} opens the chapter “${chapter.titleText}” at ${Math.round(ppi)} ppi; KDP recommends at least 300. Use an image at least ${Math.ceil((w / 72) * 300)} pixels wide.`, src: chapter.src });
+    const total = Math.ceil((h + L * 0.6) / L) * L;
+    const draws: Draw[] = [{ kind: "image", x: (this.env.width - w) / 2, y: (total - h) / 2, w, h, path: asset.path, alt: ref.decorative ? "" : ref.alt }];
+    return { type: "box", height: total, draws, breakAfter: NO_BREAK };
   }
 
   chapterBody(chapter: Chapter, opts: { dropCap: boolean }): VItem[] {

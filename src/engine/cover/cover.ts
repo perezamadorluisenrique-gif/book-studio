@@ -12,7 +12,7 @@ import type { Book } from "../model";
 import { resolveTheme, type TextStyle } from "../themes";
 import { renderDesign } from "./render-design";
 import { checkIsbn, displayIsbn, ean13Modules } from "./isbn";
-import { DEFAULT_TRIM, trimById } from "../trims";
+import { bindingOf, DEFAULT_TRIM, trimById } from "../trims";
 import { coverGeometry, PAPER_LABEL, SAFE, SPINE_SAFE, SPINE_TEXT_MIN_PAGES, type Box, type CoverGeometry } from "./geometry";
 
 const PT = 72;
@@ -48,7 +48,7 @@ function rs(ts: TextStyle, oldstyle: boolean, size = ts.size): RunStyle {
 export function composeCover(book: Book, fonts: FontSet, pages: number, opts: CoverOptions = {}): Cover {
   const { meta, settings } = book;
   const theme = resolveTheme(settings);
-  const g = opts.geometry ?? coverGeometry(trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!, pages, settings.paper);
+  const g = opts.geometry ?? coverGeometry(trimById(settings.trim) ?? trimById(DEFAULT_TRIM)!, pages, settings.paper, bindingOf(settings.binding));
   const design = meta.coverDesign;
   const findings: CoverFinding[] = [];
   const bg = hexToRgb(design.background ?? theme.cover.background);
@@ -90,6 +90,8 @@ export function composeCover(book: Book, fonts: FontSet, pages: number, opts: Co
     spine(painter, g, book, old, findings);
 
   }
+
+  if (g.binding === "hardcover" && g.verified === false) findings.push({ severity: "info", message: `This hardcover cover sheet is ${g.width.toFixed(3)} × ${g.height.toFixed(3)} in. KDP's help pages give the 15 mm wrap and the 10 mm hinge but not the spine width or the total size, so check the size against KDP's cover calculator before you upload.` });
 
   // ── Barcode box ──
   const blank = meta.coverLayout?.barcode === "blank";
@@ -330,6 +332,8 @@ function guides(draws: Draw[], g: CoverGeometry): void {
   rect({ x: g.bleed, y: g.bleed, w: g.width - 2 * g.bleed, h: g.height - 2 * g.bleed }, trimLine);
   for (const panel of [g.back, g.front]) rect({ x: panel.x + SAFE, y: panel.y + SAFE, w: panel.w - 2 * SAFE, h: panel.h - 2 * SAFE }, safeLine);
   rect(g.spineBox, trimLine);
+  // The hinge: where a hardcover bends, between each panel and the spine.
+  if (g.binding === "hardcover") rect({ x: g.back.x + g.back.w, y: g.spineBox.y, w: g.front.x - g.back.x - g.back.w, h: g.spineBox.h }, safeLine);
   if (g.spine > 2 * SPINE_SAFE) rect({ x: g.spineBox.x + SPINE_SAFE, y: g.spineBox.y, w: g.spine - 2 * SPINE_SAFE, h: g.spineBox.h }, safeLine);
   rect(g.barcode, [0.1, 0.1, 0.1]);
 }

@@ -161,7 +161,7 @@ export function smartenInlines(inlines: Inline[], lang: string): Inline[] {
       return inl;
     }
     if (inl.kind !== "text") return inl;
-    if (inl.style.code || inl.style.href?.startsWith("http") && inl.text === inl.style.href) {
+    if (inl.style.code || inl.style.math || inl.style.href?.startsWith("http") && inl.text === inl.style.href) {
       prev = inl.text.slice(-1);
       return inl;
     }

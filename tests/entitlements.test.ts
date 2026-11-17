@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PRO_INCLUDED } from "../src/edition";
 import { epubBlockers, FREE_FEATURES, FREE_THEMES, hasFeature, PRO_FEATURES, printBlockers, themeAllowed } from "../src/engine/entitlements";
-import { FREE_TRIMS, TRIMS } from "../src/engine/trims";
+import { FREE_TRIMS, HARDCOVER_ONLY_TRIMS, TRIMS } from "../src/engine/trims";
 import { THEMES } from "../src/engine/themes";
 
 describe("entitlements", () => {
@@ -49,7 +49,7 @@ describe("no free feature is ever taken away", () => {
 
   // Free since November 2026 (the Vellum plan, section 3): every trim, five themes and six functions.
   const FREE_SINCE_2026_11 = {
-    trims: TRIMS.map((t) => t.id),
+    trims: ["5x8", "5.06x7.81", "5.25x8", "5.5x8.5", "6x9", "6.14x9.21", "6.69x9.61", "7x10", "7.44x9.69", "7.5x9.25", "8x10", "8.5x11"],
     themes: ["classic", "modern", "elegant", "nonfiction", "large-print"],
     features: ["trim", "largePrint", "preflight", "cover", "footnotes", "kdpSheet"] as const,
   };
@@ -84,7 +84,7 @@ describe("no free feature is ever taken away", () => {
     expect(THEMES.filter((t) => !t.pro).map((t) => t.id).sort()).toEqual([...FREE_THEMES].sort());
     // The genre themes come with the private Pro overlay.
     expect(THEMES.filter((t) => t.pro).map((t) => t.id).sort()).toEqual(PRO_INCLUDED ? ["fantasy", "romance", "thriller"] : []);
-    expect([...FREE_TRIMS].sort()).toEqual(TRIMS.map((t) => t.id).sort());
+    expect([...FREE_TRIMS].sort()).toEqual([...TRIMS, ...HARDCOVER_ONLY_TRIMS].map((t) => t.id).sort());
   });
 
   it("never limits how many books a free user can have", () => {
@@ -97,13 +97,27 @@ describe("no free feature is ever taken away", () => {
 });
 
 // Free since the style work of the Vellum plan (T5): four more general styles. They stay free.
-const FREE_SINCE_2026_11_T5 = { themes: ["literary", "minimal", "memoir", "textbook"], features: ["style"] as const };
+const FREE_SINCE_2026_11_T5 = { themes: ["literary", "minimal", "memoir", "textbook"], features: ["style"] as const, trims: ["8.25x6", "8.25x8.25", "8.5x8.5", "8.27x11.69"], hardcoverTrims: ["5.5x8.5", "6x9", "6.14x9.21", "7x10", "8.25x11"] };
 describe("the T5 styles stay free", () => {
   it("lets a free user print and publish each of them", () => {
     for (const theme of FREE_SINCE_2026_11_T5.themes) {
       expect(FREE_THEMES, theme).toContain(theme);
       expect(printBlockers("free", { theme, trim: "6x9" }), theme).toEqual([]);
       expect(epubBlockers("free", { theme }), theme).toEqual([]);
+    }
+  });
+
+  it("prints every one of the four added KDP trims for free", () => {
+    for (const trim of FREE_SINCE_2026_11_T5.trims) {
+      expect(FREE_TRIMS, trim).toContain(trim);
+      expect(printBlockers("free", { theme: "classic", trim }), trim).toEqual([]);
+    }
+  });
+
+  it("prints every hardcover size for free (T5.5)", () => {
+    for (const trim of FREE_SINCE_2026_11_T5.hardcoverTrims) {
+      expect(FREE_TRIMS, trim).toContain(trim);
+      expect(printBlockers("free", { theme: "classic", trim }), trim).toEqual([]);
     }
   });
 

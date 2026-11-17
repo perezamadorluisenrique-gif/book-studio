@@ -17,8 +17,9 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 | B | T2.1 Página de inicio | hecha | PR «landing page and drop-your-Word first screen» |
 | B | T2.2 Asistente de 4 pasos | hecha | PR «four-step first-book wizard» |
 | C | T3.1 a T3.5 Word sin pérdidas | hechas (T3.1 a T3.4 ya fusionadas, T3.5 en su PR) | PR «Word sin pérdidas» y «export the book back to Word» |
-| D | T4.1 a T4.5 Editor de cubiertas | sin empezar | |
-| E | T5.1 a T5.5 Estilos y paridad | sin empezar | |
+| D | T4.1 a T4.5 Editor de cubiertas | hechas | PR «cover designer» y siguientes |
+| E | T5.0 a T5.4 Estilos y paridad | hechas (#63 a #67) | PR «one place where a book's style is resolved» … «ebook preview» |
+| E2 | T5.5 a T5.7 Tapa dura y apertura con imagen | hechas (#71, #72) | PR «hardcover interiors and covers», «chapter openers with an image» |
 | F | T6.1 a T6.3 Lanzamiento | sin empezar | |
 
 ## Cifras de calidad
@@ -155,7 +156,7 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilos A, B, C y D terminados. Siguiente: hilo E, que empieza en **T5.0** (no en T5.1): el plan del hilo E se revisó el 2026-11-11 y la versión anterior está caducada. Después, hilo E2 (tapa dura). Lo Pro de la fase 5 queda aplazado y fuera de este repositorio.
+Hilos A a E2 terminados (T5.7 fusionada el 2026-11-17). Siguiente: hilo F (T6.1 a T6.3, lanzamiento). Pendiente de verificar con la calculadora de KDP: el tamaño total y el lomo de la cubierta de tapa dura. Lo Pro de la fase 5 queda aplazado y fuera de este repositorio.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
@@ -177,4 +178,27 @@ Hilos A, B, C y D terminados. Siguiente: hilo E, que empieza en **T5.0** (no en 
 - T5.1, desviaciones: los tamaños y márgenes de los estilos nuevos se afinaron buscando valores que dejen Oz y ensayo-es sin más páginas cortas, dobles desiguales ni escaleras que Classic (memoir 11/14 pt, textbook 10,75/14,5 pt: algo pequeños). El paso «Estilo» del asistente pasa de 5 a 9 miniaturas; medido en e2e: cinco listas a los 279 ms y nueve a los 284 ms (se pintan en paralelo), muy por debajo del doble.
 - 2026-11-16: T5.2 hecha. Panel «Estilo» en `src/app/style-panel.ts` (web y plugin): tamaño, interlínea, cuatro márgenes, sangría, capitular (ninguna, 2, 3), adorno de escena (3 signos y los 8 vectoriales) y «Restablecer»; escribe `settings.style` 300 ms después del último cambio con `setStyleField` (`src/engine/style-ops.ts`, puro). Los límites los pone `resolveTheme`, el campo muestra el valor real. Si KDP pide más margen interior que el elegido, el aviso sale junto al control con «Poner el mínimo». `style` es función gratis (`FREE_SINCE_2026_11_T5`, entrada `style`). e2e: subir el tamaño cambia las páginas, recargar lo conserva, «Restablecer» devuelve las páginas; axe sin fallos graves a 1280 y 390 px.
 - T5.2, desviación: los ajustes se guardan en el almacén del libro del propio Studio (localStorage en la web, datos del plugin), no en las notas del libro; las claves `style-*` en la nota del libro ya se leen, pero el panel todavía no las escribe ahí. Con el cambio de tamaño hay que probar con libros de muchas palabras (en uno corto los capítulos empiezan en recto y el número de páginas no cambia). El e2e del asistente «shows a real thumbnail…» falla a veces con la máquina cargada (solo, pasa).
+- 2026-11-16: T5.3 hecha. Los cuatro formatos que faltaban (8,25 × 6 apaisado, 8,25 × 8,25, 8,5 × 8,5 y 8,27 × 11,69 A4) en `trims.ts`; Book Studio ya maqueta los 16 de la ayuda de KDP. Fuente: la tabla de la ayuda de KDP guardada en `site/tools/data/kdp-figures.json` (leída el 2026-11-11); hoy solo pude releer el primer grupo de tamaños (los cinco primeros estándar), no los cuatro nuevos ni los límites de páginas, así que siguen siendo los del 11-11. Cada tamaño lleva su máximo de páginas (`maxPages`): el diseño, la revisión de KDP y `tools/kdp-check.ts` ahora lo usan (antes valía 828 para todos; 8,5 × 11 ya estaba mal y ahora bloquea por encima de 590, lo que dice KDP).
+- T5.3: `FREE_SINCE_2026_11.trims` es ahora la lista literal de los 12 ids de antes y los 4 nuevos van en `FREE_SINCE_2026_11_T5`. Revisión nueva «Line length» (aviso, media de más de 80 caracteres por línea en las páginas de texto, con la propuesta de subir el tamaño o los márgenes). Las 20 plantillas de cubierta pasan las comprobaciones de T4.2 en los 4 formatos: dos (`clean-white`, `red-band`) dejaban el subtítulo fuera de la zona segura en el apaisado, y se arregló el tamaño del título (ahora también depende de la altura) y la caja del subtítulo en cubiertas bajas, sin cambiar ninguna cubierta de los formatos de antes. La portada JPG de 1600 × 2560 de un libro apaisado o cuadrado se encaja entera sobre el color de fondo del diseño en vez de recortarse. Prueba: 9 estilos × 16 formatos maquetan sin error y sin bloqueo de la revisión; PDF de cada formato nuevo pasa `checkKdpPdf`. Textos de la web actualizados (16 formatos).
+- T5.3, no verificado: el máximo de páginas con papel crema o color es menor (p. ej. 776 en vez de 828) y el código solo usa el de papel blanco; la revisión de KDP real puede ser más estricta en esos casos.
 
+## T5.4 ebook preview (2026-11-16)
+
+New tab "Ebook" (`src/app/ebook-preview.ts`). `epubParts` was split out of `writeEpub` in `epub.ts`; `tests/epub-bytes.test.ts` keeps the two sample EPUBs identical (per-file sha256 and size, fixed date). The tab builds the EPUB in memory and shows one chapter in an iframe made from the chapter's XHTML, with CSS, fonts and pictures inlined as data: URLs.
+
+- Frames: e-ink 300x400, phone 260x540, tablet 420x560. Text size 90/100/125 %. Dark mode. Previous/next page. Fixed note "Approximate view...".
+- Deviation from the order: the iframe has `sandbox="allow-same-origin"` (no `allow-scripts`) instead of an empty sandbox, so the panel can count pages and turn them. A CSP meta inside the page (`default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:`) blocks every request. Links to other files are rewritten to `#`.
+- Tests: `tests/ebook-preview.test.ts` (CSP present, only data:/# addresses, chapter order, size and dark mode); e2e "previews the ebook in three readers..." (sandbox has no allow-scripts, three frames, text size, dark mode, paging, no request leaves the page, axe on the panel and on the frame's own page opened alone, because axe cannot run inside a script-free frame and hangs waiting for it).
+- Default chapter: the first document with a real run of text, not the title page.
+- Not verified: how it looks in a real Kindle, Apple Books or Kobo.
+
+## T5.5 hardcover interiors (2026-11-17)
+
+`settings.binding` (`paperback` default, or `hardcover`; front matter `binding:`) with `trimsFor(binding)` and `pageRange(binding, trim)` in `trims.ts`. Hardcover: 5 sizes (5.5×8.5, 6×9, 6.14×9.21, 7×10 and the hardcover-only 8.25×11) and 75 to 550 pages whatever the paper. Source: KDP help "Print options" (GVBQ3CMEQW3W2VL6), read 2026-11-17; that page gives no separate hardcover margin table, so the paperback margins apply. The preflight reads the binding: its own page-count message ("KDP hardcovers…") and a new `binding-trim` error. A Pro edition's `PreflightBinding` still wins. The settings bar and the book form got a "Binding" selector; choosing hardcover moves a size KDP does not print to 6×9. Free for good (`hardcoverTrims` in `tests/entitlements.test.ts`). Not done here: the hardcover cover sheet (T5.6).
+- Not verified: the cover figures (wrap, hinge); that page does not list them.
+
+## T5.6 hardcover covers (2026-11-17)
+
+`coverGeometry(trim, pages, paper, binding)`; with `hardcover` the sheet wraps 15 mm (0.591 in) past the edge, leaves 10 mm (0.394 in) of hinge around the spine and is 0.236 in taller than the pages. `composeCover` reads `settings.binding`, so the PDF, the designer, the thumbnails and the preflight use the hardcover sheet. The hinge shows in the designer guides. The 8 free templates are tested in 3 sizes (5.5×8.5, 6×9, 8.25×11) × 3 thicknesses (100, 300, 550 pages); the Pro ones run the same test when the overlay is laid on.
+- Source: KDP "Create a Hardcover Cover" (GDTKFJPNQCBTMRV6) and "Hardcover print elements" (GKZVNAAFYWVKZWL8), read 2026-11-17. It gives the 15 mm wrap, the 10 mm hinge, the 2 × 1.2 in barcode (≥ 0.76 in from the bottom, ≥ 0.25 in from the hinge) and the headband from 120 pages. It prints "0.51"" beside "(15 mm)"; we follow the millimetres.
+- NOT verified (the page sends the author to KDP's calculator): the spine width per page for a hardcover (paperback factors reused), the total width and height (0.236 in extra height and the way the hinge is split come from a third-party calculator that matches the 15 mm and 10 mm), and the spine text minimum. The cover carries an info finding that says so.

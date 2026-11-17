@@ -447,3 +447,44 @@
 .bs-style-warning:empty {
   display: none;
 }
+
+.bs-ebook-stage {
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+}
+
+.bs-ebook-frame {
+  box-sizing: content-box;
+  width: var(--eb-w);
+  height: var(--eb-h);
+  padding: 18px;
+  background: #2b2d31;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 30%);
+}
+
+.bs-ebook-frame.is-phone {
+  padding: 14px 10px;
+  border-radius: 32px;
+}
+
+.bs-ebook-frame.is-tablet {
+  padding: 22px;
+  border-radius: 22px;
+}
+
+.bs-ebook-screen {
+  display: block;
+  width: var(--eb-w);
+  height: var(--eb-h);
+  border: 0;
+  background: #fff;
+}
+
+.bs-ebook-note {
+  margin: 0;
+  padding: 0 12px 12px;
+  color: var(--bs-muted);
+  text-align: center;
+}

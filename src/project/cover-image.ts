@@ -2,7 +2,7 @@
 // print, and how it is kept (an asset named cover.jpg or cover.png, named in the front matter's `cover:` line).
 
 import { coverGeometry, coverPixels } from "../engine/cover/geometry";
-import { trimById, TRIMS } from "../engine/trims";
+import { trimById, TRIMS, type Binding } from "../engine/trims";
 import type { Project, ProjectAsset } from "./model";
 
 /** Biggest cover file accepted. */
@@ -53,9 +53,9 @@ export function imageSize(b: Uint8Array): { width: number; height: number } | nu
 }
 
 /** The pixels a front cover with bleed needs at 300 ppi for this trim size. */
-export function frontCoverPixels(trimId: string): { width: number; height: number } {
+export function frontCoverPixels(trimId: string, binding: Binding = "paperback"): { width: number; height: number } {
   const trim = trimById(trimId) ?? TRIMS[0];
-  const g = coverGeometry(trim, 24);
+  const g = coverGeometry(trim, 24, "white", binding);
   return { width: Math.ceil(g.frontBleed.w * 300), height: coverPixels(g).height };
 }
 

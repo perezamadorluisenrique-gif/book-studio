@@ -18,7 +18,7 @@ Dos cosas son hechos y una es cuestión de gusto:
 - **El coste.** Los tamaños de más de 6,12 pulgadas de ancho o más de 9 de alto cuentan como *tamaño grande* y cuestan más de imprimir. El 6 × 9 no es grande; el 6,14 × 9,21 sí.
 - **La costumbre.** Las listas de tamaños «habituales» son consejo editorial sobre cómo suelen hacerse los libros autopublicados: novelas en 5,5 × 8,5 o 5,25 × 8, memorias y no ficción en 6 × 9, álbumes ilustrados en formato cuadrado, cuadernos de ejercicios y libros de cocina más grandes. KDP imprime todos los tamaños de su tabla, y nada de esto es una regla de KDP.
 
-Las páginas también deciden cuánto espacio ocupa la encuadernación: mira la [calculadora de márgenes](tool:margins). Book Studio maqueta en 12 de los 16 tamaños de KDP; aún no maqueta 8,25 × 6, 8,25 × 8,25, 8,5 × 8,5 ni 8,27 × 11,69 pulgadas.
+Las páginas también deciden cuánto espacio ocupa la encuadernación: mira la [calculadora de márgenes](tool:margins). Book Studio maqueta en los 16 tamaños.
 
 ## Siguiente
 

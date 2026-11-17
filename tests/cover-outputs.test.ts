@@ -11,7 +11,7 @@ import { writePdf } from "../src/engine/pdf";
 import { trimById } from "../src/engine/trims";
 import { setEbookCover, EBOOK_COVER_NAME } from "../src/project/cover-image";
 import type { Project } from "../src/project/model";
-import { coverFit } from "../src/web/cover-export";
+import { coverContain, coverFit } from "../src/web/cover-export";
 import { testFonts } from "./helpers/fonts";
 import { memVault } from "./helpers/memVault";
 
@@ -103,6 +103,20 @@ describe("ebook cover from the designer", () => {
     const b = setEbookCover(a, new Uint8Array([8]), 6);
     expect(b.assets.filter((x) => x.name === EBOOK_COVER_NAME)).toHaveLength(1);
     expect([...b.assets.find((x) => x.name === EBOOK_COVER_NAME)!.data]).toEqual([8]);
+  });
+});
+
+describe("coverContain", () => {
+  it("shows a landscape front whole, centred, with the colour above and below", () => {
+    const w = coverContain(825, 600, 1600, 2560);
+    expect(w.dw).toBeCloseTo(1600, 9);
+    expect(w.dh).toBeCloseTo((1600 * 600) / 825, 9);
+    expect(w.dx).toBeCloseTo(0, 9);
+    expect(w.dy).toBeCloseTo((2560 - w.dh) / 2, 9);
+    expect(w.dy).toBeGreaterThan(0);
+    const sq = coverContain(850, 850, 1600, 2560);
+    expect(sq.dw).toBeCloseTo(1600, 9);
+    expect(sq.dh).toBeCloseTo(1600, 9);
   });
 });
 
