@@ -999,6 +999,25 @@ async function dropFile(page: Page, name: string, data: Buffer): Promise<void> {
 }
 
 describe("web app, first-book guide", () => {
+  // A reload throws away an IndexedDB write that has not finished, so wait for the editor's "Saved" before each one.
+  // A fixed pause was not enough on a busy CI runner. The note is in the chapter editor, which the guide covers.
+  const saved = (page: Page) => page.locator(".ed-status", { hasText: "Saved" }).waitFor({ state: "attached", timeout: 30_000 });
+  // A busy CI runner: every IndexedDB write takes 1.5 s to commit. Reloading before "Saved" then loses the write, and an
+  // early "Saved" (from an older write while a newer one waits) shows up here instead of once in a while on CI.
+  const slowDisk = (page: Page) =>
+    page.addInitScript(() => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- called with apply on the store below
+      const put = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore["put"]>) {
+        const request = put.apply(this, args);
+        const until = Date.now() + 1500;
+        const keepOpen = () => {
+          if (Date.now() < until) this.count().onsuccess = keepOpen;
+        };
+        keepOpen();
+        return request;
+      } as typeof put;
+    });
   it("takes a 60,000-word Word file to a KDP-valid PDF in four steps, four clicks and under a minute", async () => {
     const context = await browser.newContext({ acceptDownloads: true, locale: "es-ES" });
     const page = await context.newPage();
@@ -1047,6 +1066,7 @@ describe("web app, first-book guide", () => {
   it("shows a real thumbnail for each free style, changes the book with the choice, remembers the step after a reload, and goes away on Skip", async () => {
     const context = await browser.newContext({ locale: "en-US" });
     const page = await context.newPage();
+    await slowDisk(page);
     await page.goto(base);
     await page.locator("#land-drop").waitFor();
     await dropFile(page, "diary.docx", await bigDocx(3000, 3));
@@ -1076,7 +1096,7 @@ describe("web app, first-book guide", () => {
     await page.getByLabel("Elegant").check();
     await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
     // Reload: back on the same step, with the same style.
-    await page.waitForTimeout(800);
+    await saved(page);
     await page.reload();
     await page.getByRole("button", { name: "My books" }).click().catch(() => undefined);
     await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
@@ -1085,6 +1105,7 @@ describe("web app, first-book guide", () => {
     await page.getByRole("button", { name: "Skip the first book guide" }).click();
     await page.locator(".wiz-box").waitFor({ state: "hidden" });
     // Skipped for good: opening the book again shows no guide.
+    await saved(page);
     await page.reload();
     await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
     await page.locator("#ed-text").waitFor();
@@ -1097,6 +1118,7 @@ describe("web app, first-book guide", () => {
   it("changes the book with the style panel, keeps the change after a reload and goes back with Reset", async () => {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: "en-US" });
     const page = await context.newPage();
+    await slowDisk(page);
     await page.goto(base);
     await page.locator("#land-drop").waitFor();
     await dropFile(page, "diary.docx", await bigDocx(12000, 3));
@@ -1122,7 +1144,7 @@ describe("web app, first-book guide", () => {
     const bigger = await pages();
     expect(bigger).toBeGreaterThan(before);
     // The change is kept: reload, open the book again, same size and same page count.
-    await page.waitForTimeout(800);
+    await saved(page);
     await page.reload();
     await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
     await page.locator("#ed-text").waitFor();
