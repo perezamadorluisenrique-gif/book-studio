@@ -54,6 +54,7 @@ export const EN = {
   "tab.accessibility": "Accessibility",
   "tab.accessibilityFix": "Accessibility (!)",
   "tab.accessibilityPro": "Accessibility (Pro)",
+  "tab.kit": "Sales kit (Pro)",
   "sev.error": "Error",
   "sev.warning": "Warning",
   "sev.info": "Note",
@@ -259,6 +260,7 @@ export const EN = {
   // Projects screen
   "proj.title": "My books",
   "proj.intro": "Books you start here are saved in this browser only. Clearing the site's data deletes them, so keep a copy of what matters.",
+  "proj.catalog": "Catalog (Pro)",
   "proj.newTitle": "New book",
   "proj.name": "Book name",
   "proj.startFrom": "Start from",
@@ -698,6 +700,7 @@ export const ES: Record<Key, string> = {
   "tab.accessibility": "Accesibilidad",
   "tab.accessibilityFix": "Accesibilidad (!)",
   "tab.accessibilityPro": "Accesibilidad (Pro)",
+  "tab.kit": "Kit de venta (Pro)",
   "sev.error": "Error",
   "sev.warning": "Aviso",
   "sev.info": "Nota",
@@ -891,6 +894,7 @@ export const ES: Record<Key, string> = {
   // Pantalla de proyectos
   "proj.title": "Mis libros",
   "proj.intro": "Los libros que empieces aquí se guardan solo en este navegador. Si borras los datos del sitio, se pierden: guarda una copia de lo importante.",
+  "proj.catalog": "Catálogo (Pro)",
   "proj.newTitle": "Nuevo libro",
   "proj.name": "Nombre del libro",
   "proj.startFrom": "Empezar desde",
