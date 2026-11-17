@@ -284,6 +284,15 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
       file: path,
       src: { file: path, line: 1 },
     };
+    const openerTarget = fmGet(parsed.frontmatter, "chapter-image", "opener-image");
+    if (typeof openerTarget === "string" && openerTarget.trim()) {
+      const target = openerTarget.replace(/^!?\[\[|\]\]$/g, "").split("|")[0].trim();
+      const found = source.resolve(target, path) ?? "";
+      if (!found) warnings.push({ message: `Chapter image not found: ${target}`, src: { file: path, line: 1 } });
+      const alt = (fmString(parsed.frontmatter, "chapter-image-alt", "opener-image-alt") ?? "").trim();
+      const decorative = /^(decorative|-)$/i.test(alt);
+      chapter.openerImage = { path: found, target, alt: decorative ? "" : alt, decorative };
+    }
     await attachNotes(chapter, parsed.noteDefs, ctx);
     chapters.push(chapter);
   };
@@ -296,6 +305,7 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
   const refs: ImageRef[] = [];
   for (const c of chapters) {
     collectImages(c.blocks, refs);
+    if (c.openerImage) refs.push(c.openerImage);
     c.notes.forEach((n) => collectImages(n.blocks, refs));
   }
   if (meta.cover) refs.push(meta.cover);

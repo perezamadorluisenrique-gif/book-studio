@@ -156,6 +156,7 @@ export function auditBook(book: Book, opts: { pageList: boolean }): AuditResult 
     if (ch.type === "part") continue;
     stats.chapters++;
     if (!ch.titleText.trim()) issues.push({ rule: "chapter-title", severity: "error", message: "A chapter has no title.", fix: "Start the note with a # Heading.", wcag: "2.4.2", src: ch.src });
+    if (ch.openerImage) checkImage(ch.openerImage, ch.src);
     walk(ch.blocks, { lastLevel: 1 });
     for (const n of ch.notes) {
       stats.notes++;

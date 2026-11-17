@@ -502,6 +502,7 @@ function bookCss(book: Book, theme: Theme, faces: { family: Family; file: FontFi
   }
   css.push("h1, h2, h3, h4, h5, h6 { -webkit-hyphens: manual; -epub-hyphens: manual; hyphens: manual; page-break-after: avoid; break-after: avoid; line-height: 1.2; }");
   css.push(`.chapter-head { margin: ${em(ch.sink * 16)} 0 ${em(ch.spaceAfter * lh)}; text-align: ${ch.title.align}; }`);
+  if (book.chapters.some((c) => c.openerImage)) css.push(".chapter-head .chapter-image { margin: 0 0 1.2em; text-align: center; page-break-inside: avoid; break-inside: avoid; }", ".chapter-head .chapter-image img { max-width: 70%; max-height: 40vh; height: auto; }");
   css.push(".chapter-head h1, .part-head h1 { margin: 0; font-size: 1em; font-weight: normal; }");
   css.push(`.chapter-head .label { display: block; ${t(ch.label.style)}; margin-bottom: 0.9em; }`);
   css.push(`.chapter-head .title { display: block; ${t(ch.title)}; }`);
@@ -710,7 +711,9 @@ export async function epubParts(book: Book, opts: EpubOptions): Promise<Map<stri
       const label = ch.number !== undefined && theme.chapter.label.show ? chapterLabel(ch.number, lang, theme.chapter.label.format, theme.chapter.label.prefix) : null;
       const subtitle = ch.subtitle ? `\n<p class="subtitle">${esc(ch.subtitle)}</p>` : "";
       const orn = isVector(theme.chapter.ornament) ? `<div class="orn" aria-hidden="true">${ornamentSvg(theme.chapter.ornament)}</div>` : "";
-      head = `<header class="chapter-head"><h1 id="${titleId}">${label ? `<span class="label">${esc(label)}</span> ` : ""}<span class="title">${renderInlines(ctx, ch.title)}</span></h1>${subtitle}${orn}</header>\n`;
+      const pic = ch.openerImage?.path ? ctx.imageHref.get(ch.openerImage.path) : undefined;
+      const opener = pic && ch.openerImage ? `<figure class="chapter-image"><img src="../${pic}" alt="${esc(ch.openerImage.decorative ? "" : ch.openerImage.alt)}"/></figure>\n` : "";
+      head = `<header class="chapter-head">${opener}<h1 id="${titleId}">${label ? `<span class="label">${esc(label)}</span> ` : ""}<span class="title">${renderInlines(ctx, ch.title)}</span></h1>${subtitle}${orn}</header>\n`;
     }
     const opening = ch.matter === "body" || ch.type === "prologue";
     const state: ParaState = { noIndent: true, leadIn: theme.firstParagraph.leadInWords, dropCap: opening && theme.firstParagraph.dropCap > 0 };
