@@ -17,8 +17,9 @@ Plan: `docs/VELLUM-PLAN.md`. Las reglas de ejecución están en su sección 8 y 
 | B | T2.1 Página de inicio | hecha | PR «landing page and drop-your-Word first screen» |
 | B | T2.2 Asistente de 4 pasos | hecha | PR «four-step first-book wizard» |
 | C | T3.1 a T3.5 Word sin pérdidas | hechas (T3.1 a T3.4 ya fusionadas, T3.5 en su PR) | PR «Word sin pérdidas» y «export the book back to Word» |
-| D | T4.1 a T4.5 Editor de cubiertas | sin empezar | |
-| E | T5.1 a T5.5 Estilos y paridad | sin empezar | |
+| D | T4.1 a T4.5 Editor de cubiertas | hechas | PR «cover designer» y siguientes |
+| E | T5.0 a T5.4 Estilos y paridad | hechas (#63 a #67) | PR «one place where a book's style is resolved» … «ebook preview» |
+| E2 | T5.5 a T5.7 Tapa dura y apertura con imagen | hechas (#71, #72) | PR «hardcover interiors and covers», «chapter openers with an image» |
 | F | T6.1 a T6.3 Lanzamiento | sin empezar | |
 
 ## Cifras de calidad
@@ -155,7 +156,7 @@ Apuntar aquí lo que se hizo distinto y por qué, y las metas no alcanzadas.
 
 ## Siguiente paso
 
-Hilos A, B, C y D terminados. Siguiente: hilo E, que empieza en **T5.0** (no en T5.1): el plan del hilo E se revisó el 2026-11-11 y la versión anterior está caducada. Después, hilo E2 (tapa dura). Lo Pro de la fase 5 queda aplazado y fuera de este repositorio.
+Hilos A a E2 terminados (T5.7 fusionada el 2026-11-17). Siguiente: hilo F (T6.1 a T6.3, lanzamiento). Pendiente de verificar con la calculadora de KDP: el tamaño total y el lomo de la cubierta de tapa dura. Lo Pro de la fase 5 queda aplazado y fuera de este repositorio.
 - 2026-11-10: T0 hecha. `npm run quality` imprime la tabla de 5 libros; `tests/quality-baseline.json` guarda la línea base y `tests/quality.test.ts` impide empeorarla; páginas doradas en `tests/golden/`.
 - 2026-11-10: T1.1 hecha. `breakParagraph` con `maxHyphenRun`, `finalHyphenDemerits`, `lastLineMin`/`runtDemerits` y `lineCount`; estrategia nueva de `ParagraphSetter.set()` y `variant()` (lo usará T1.3). Escaleras 0 en los cinco libros; hay que recuperar `loose` (ver desviaciones).
 - 2026-11-10: T1.2 hecha. Cajas con `stretch`/`shrink`/`pl`/`pr` en `linebreak.ts`, saliente óptico y letras elásticas (2 %) en `inline.ts`, `TextDraw.scale` en el PDF y en la vista previa.
