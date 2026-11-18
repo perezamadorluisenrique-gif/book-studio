@@ -4,6 +4,13 @@ The release workflow uses the section named after the version being released
 as the release description, so every version needs one. `npm version <x.y.z>`
 renames the `Unreleased` heading below to that version.
 
+## 0.3.0
+
+- Mermaid diagrams: a ```mermaid block prints as a figure in the PDF and the EPUB (black-and-white theme, scaled to the text block, 300 ppi or more), with `accTitle`/`accDescr` as its description. A diagram Mermaid can't read stays as code with its message in Problems. Obsidian uses its own Mermaid; the web app downloads it only for books that have diagrams and caches it then for offline use.
+- Formulas: `$…$` and `$$…$$` are typeset in print and in the EPUB.
+- Callouts with no title show their type ("Quote") as a bold title, as in Obsidian; EPUB images keep their EXIF orientation.
+- Chapter openers with a picture (`chapter-image`), hardcover interiors and cover sheets, the four remaining KDP trim sizes, a style editor, four more free styles with vector ornaments and an ebook preview.
+
 ## 0.2.0
 
 - Free: unlimited books, every trim size, the full wraparound cover with barcode space, footnotes at the page foot and the KDP checks.

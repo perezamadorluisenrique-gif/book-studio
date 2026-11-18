@@ -35,6 +35,8 @@ export interface ImageRef {
   caption?: string;
   /** Marked decorative by the author (alt "decorative" or "-"): no description needed. */
   decorative: boolean;
+  /** Drawn from a ```mermaid block; its description comes from accTitle/accDescr. */
+  diagram?: boolean;
 }
 
 export type Block =
@@ -44,7 +46,7 @@ export type Block =
   | { kind: "pageBreak"; id: string; src: SourceRef }
   | { kind: "blockquote"; id: string; blocks: Block[]; src: SourceRef; /** An Obsidian callout: every paragraph is set flush left, with no first-line indent. */ callout?: boolean }
   | { kind: "list"; id: string; ordered: boolean; start: number; items: Block[][]; src: SourceRef }
-  | { kind: "code"; id: string; text: string; src: SourceRef }
+  | { kind: "code"; id: string; text: string; src: SourceRef; /** The fence's info string, e.g. "mermaid". */ lang?: string }
   | { kind: "image"; id: string; image: ImageRef; src: SourceRef }
   | { kind: "table"; id: string; header: Inline[][]; rows: Inline[][][]; align: ("left" | "center" | "right" | null)[]; src: SourceRef };
 
@@ -155,6 +157,8 @@ export interface ImageAsset {
   alpha?: boolean;
   /** EXIF orientation (2–8) of a JPEG whose stored pixels are turned; width and height are already the displayed ones. */
   orientation?: number;
+  /** Resolution it prints at when it has room (a drawn diagram); others print at 150 ppi or fill the measure. */
+  ppi?: number;
 }
 
 export interface Book {

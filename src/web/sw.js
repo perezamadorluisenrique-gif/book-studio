@@ -10,6 +10,10 @@ const TOOLS = "bs-tools";
 // The free KDP tools on the site (their pages, script and styles) are saved as they are opened.
 const TOOL_PAGE = /^(en\/tools|es\/herramientas)(\/|$)|^tools\/tools\.js$|^site\.css$/;
 const FILES = __FILES__;
+// Chunks only some books load (Mermaid, for diagrams): cached the first time they are fetched, then served
+// from that cache, so the offline copy doesn't carry them for everyone. Their names carry a content hash.
+const LAZY_CACHE = "bs-lazy";
+const LAZY = __LAZY__;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CORE).then((cache) => cache.addAll(FILES)));
@@ -22,7 +26,10 @@ self.addEventListener("message", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      for (const key of await caches.keys()) if (key !== CORE && key !== SAMPLES && key !== TOOLS) await caches.delete(key);
+      for (const key of await caches.keys()) if (key !== CORE && key !== SAMPLES && key !== TOOLS && key !== LAZY_CACHE) await caches.delete(key);
+      // Chunks of an older build are never asked for again.
+      const lazy = await caches.open(LAZY_CACHE);
+      for (const req of await lazy.keys()) if (!LAZY.includes(new URL(req.url).href.slice(self.registration.scope.length))) await lazy.delete(req);
       await self.clients.claim();
     })(),
   );
@@ -73,6 +80,21 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   // The app itself and the fonts: kept at install, so the saved copy is always right for this build.
+  if (LAZY.includes(rel)) {
+    event.respondWith(
+      caches.open(LAZY_CACHE).then((c) =>
+        c.match(req, { ignoreSearch: true }).then(
+          (hit) =>
+            hit ||
+            fetch(req).then((res) => {
+              if (res.ok) void c.put(req, res.clone());
+              return res;
+            }),
+        ),
+      ),
+    );
+    return;
+  }
   if (FILES.includes(rel === "" ? "./" : rel)) {
     event.respondWith(caches.open(CORE).then((c) => c.match(req, { ignoreSearch: true })).then((r) => r || fetch(req)));
   }

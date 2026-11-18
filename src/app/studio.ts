@@ -261,7 +261,7 @@ export class Studio {
     await nextFrame();
     try {
       const fonts = await this.loadFonts();
-      const built = await buildBook(source, path, fonts, this.overrides(), { cache: this.layoutCache, layout: this.host.layout?.bind(this.host) });
+      const built = await buildBook(source, path, fonts, this.overrides(), { cache: this.layoutCache, layout: this.host.layout?.bind(this.host), diagrams: this.host.diagrams });
       if (this.disposed || path !== this.current) return;
       this.painter?.dispose();
       this.painter = new PagePainter(fonts, built.book.images);
@@ -414,7 +414,7 @@ export class Studio {
       for (const [i, edition] of plan.editions.entries()) {
         this.setStatus(t("export.buildingEdition", { id: edition.id, i: i + 1, total: plan.editions.length }), true);
         await nextFrame();
-        const files = await exportEdition(source, path, fonts, edition, this.plan(), this.choices());
+        const files = await exportEdition(source, path, fonts, edition, this.plan(), this.choices(), this.host.diagrams);
         for (const f of files) {
           await this.host.save({ name: f.name, mime: f.mime, data: f.data });
           for (const e of f.errors ?? []) refused.push(`${edition.id}: ${e}`);

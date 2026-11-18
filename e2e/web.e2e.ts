@@ -1818,3 +1818,94 @@ describe("free KDP tools", () => {
     }
   }
 });
+
+describe("web app, Mermaid diagrams", () => {
+  const FLOW = ["```mermaid", "graph TD", "  accTitle: Order flow", "  accDescr: An order goes from the cart to payment to shipping.", "  A[Cart] --> B[Pay] --> C[Ship]", "```"];
+  const BARE = ["```mermaid", "sequenceDiagram", "  Alice->>Bob: Hello", "```"];
+  const BROKEN = ["```mermaid", "flowchat TD", "  A --> B", "```"];
+  const TEXT = ["# Diagrams", "", "A flow:", "", ...FLOW, "", "A talk:", "", ...BARE, "", "A typo:", "", ...BROKEN, ""].join("\n");
+
+  it("draws diagrams in the preview, the PDF and the EPUB, and lists the ones it can't draw or that lack a description", async () => {
+    const context = await browser.newContext({ acceptDownloads: true, locale: "en-US" });
+    const page = await context.newPage();
+    const chunks: string[] = [];
+    page.on("request", (r) => {
+      if (r.url().includes("/chunks/")) chunks.push(r.url());
+    });
+    await page.goto(base);
+    // The service worker controls the page, so the Mermaid chunks go through it.
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) await new Promise((ok) => navigator.serviceWorker.addEventListener("controllerchange", ok, { once: true }));
+    });
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByRole("heading", { name: "Import a manuscript" }).waitFor();
+    const before = chunks.length;
+    await page.getByLabel("Or paste the text").fill(TEXT);
+    await page.getByLabel("Title of the new book (optional)").fill("Diagram test");
+    await page.getByRole("button", { name: "Import as a new book" }).click();
+    await page.locator("#ed-text").waitFor();
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    // Mermaid came as chunks of its own, only now that a book has a diagram.
+    expect(chunks.length).toBeGreaterThan(before);
+
+    await page.getByRole("tab", { name: /^Problems/ }).click();
+    await page.locator(".bs-panel-problems li", { hasText: "could not be drawn" }).waitFor({ timeout: 30_000 });
+    const problems = (await page.locator(".bs-panel-problems li").allTextContents()).join("\n");
+    expect(problems).toMatch(/Mermaid diagram could not be drawn, so it prints as code: No diagram type detected.*flowchat TD/);
+    expect(problems.match(/Mermaid diagram has no description/g)).toHaveLength(1);
+    expect(problems).not.toMatch(/ppi/);
+
+    const [pdfDl] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export print PDF" }).click()]);
+    const r = await checkKdpPdf(new Uint8Array(await readFile(await pdfDl.path())), trimById("6x9")!, { bleed: false });
+    expect(r.errors).toEqual([]);
+
+    const [epubDl] = await Promise.all([page.waitForEvent("download", { timeout: 90_000 }), page.getByRole("button", { name: "Export EPUB" }).click()]);
+    const file = join(await mkdtemp(join(tmpdir(), "bs-epub-")), epubDl.suggestedFilename());
+    await writeFile(file, await readFile(await epubDl.path()));
+    const zip = await JSZip.loadAsync(await readFile(file));
+    const pngs = Object.keys(zip.files).filter((f) => /images\/diagram-mermaid-.*\.png$/.test(f));
+    expect(pngs).toHaveLength(2);
+    const xhtml = (await Promise.all(Object.keys(zip.files).filter((f) => f.endsWith(".xhtml")).map((f) => zip.file(f)!.async("string")))).join("\n");
+    expect(xhtml).toContain('alt="Order flow. An order goes from the cart to payment to shipping."');
+    expect(xhtml).toContain("flowchat TD");
+    // Each PNG is at least 300 ppi at the size it prints (its natural width, capped at the 6 in trim).
+    for (const p of pngs) {
+      const bytes = await zip.file(p)!.async("uint8array");
+      const size = imageSize(bytes)!;
+      // Drawn, not blank: a white picture of this size compresses to well under 3 KB.
+      expect(bytes.length).toBeGreaterThan(3000);
+      if (process.env.E2E_DUMP) await writeFile(join(process.env.E2E_DUMP, p.split("/").pop()!), bytes);
+      const width = Number(new RegExp(`${p.replace(/^EPUB\//, "").replace(/[.]/g, "\\.")}" alt="[^"]*" width="(\\d+)"`).exec(xhtml)?.[1]);
+      expect(width).toBeGreaterThan(20);
+      expect(size.width / Math.min(width / 96, 6)).toBeGreaterThanOrEqual(300);
+    }
+    const check = await epubcheck(file);
+    if (check) expect(check.ok, check.log).toBe(true);
+
+    // Mermaid is not in the copy every visitor installs; it was cached when this book first loaded it.
+    const cached = await page.evaluate(async () => {
+      const names = async (name: string) => (await (await caches.open(name)).keys()).map((r) => new URL(r.url).pathname.replace(/^\//, ""));
+      const core = (await caches.keys()).find((k) => k.startsWith("bs-core-")) ?? "";
+      return { core: await names(core), lazy: await names("bs-lazy") };
+    });
+    expect(cached.lazy.length).toBeGreaterThan(0);
+    expect(cached.lazy.every((f) => f.startsWith("chunks/"))).toBe(true);
+    expect(cached.core.filter((f) => cached.lazy.includes(f))).toEqual([]);
+    expect(cached.core).toContain("app.js");
+
+    // Offline, the book still draws its diagrams.
+    await context.setOffline(true);
+    await page.goto(base);
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByRole("button", { name: "Open Diagram test" }).click();
+    await page.locator("#ed-text").waitFor();
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    await page.getByRole("tab", { name: /^Problems/ }).click();
+    await page.locator(".bs-panel-problems li", { hasText: "no description" }).waitFor({ timeout: 30_000 });
+    const offline = (await page.locator(".bs-panel-problems li").allTextContents()).join("\n");
+    expect(offline.match(/could not be drawn/g)).toHaveLength(1);
+    expect(offline).toMatch(/could not be drawn, so it prints as code: No diagram type detected/);
+    await context.close();
+  });
+});

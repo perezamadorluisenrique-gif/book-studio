@@ -351,7 +351,10 @@ function renderBlocks(ctx: WriterCtx, blocks: Block[], state: ParaState, nested:
           else out += before;
         } else {
           const caption = img.caption ? `<figcaption>${esc(img.caption)}</figcaption>` : "";
-          out += `${before}<figure id="${b.id}" class="image"><img src="../${src}" alt="${esc(img.decorative ? "" : img.alt)}"/>${caption}</figure>\n`;
+          // A drawn diagram is stored sharper than it shows: give readers its natural width (the CSS still caps it at 100%).
+          const asset = ctx.book.images.get(img.path);
+          const width = asset?.ppi ? ` width="${Math.round((asset.width * 96) / asset.ppi)}"` : "";
+          out += `${before}<figure id="${b.id}" class="${img.diagram ? "image diagram" : "image"}"><img src="../${src}" alt="${esc(img.decorative ? "" : img.alt)}"${width}/>${caption}</figure>\n`;
         }
         state.noIndent = true;
         break;
