@@ -1,6 +1,7 @@
 // What the studio needs from the app it runs in: the Obsidian plugin or the web app.
 
 import type { VaultSource } from "../engine/book";
+import type { DiagramRenderer } from "../engine/diagrams";
 import type { FontLoader } from "../engine/fonts";
 import type { Layout } from "../engine/layout/index";
 import type { Book, SourceRef } from "../engine/model";
@@ -39,6 +40,8 @@ export interface StudioHost {
   loadFont: FontLoader;
   /** Sets the pages somewhere other than the page (a web worker), so a long book doesn't freeze it. Rejects when it can't; the studio then does it itself. */
   layout?(book: Book): Promise<Layout>;
+  /** Draws ```mermaid blocks as pictures; without it they print as code. */
+  diagrams?: DiagramRenderer;
   /** Save an output; resolves to a message saying where, or null if cancelled. */
   save(file: OutputFile): Promise<string | null>;
   store: Store;

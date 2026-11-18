@@ -28,6 +28,7 @@ Book Studio is free: unlimited books, every KDP trim size, the Classic, Modern, 
 - **Front and back matter, built for you.** Half title, title page, copyright page (with ISBNs, edition and publisher), dedication, epigraph and table of contents, plus "Also by" and any notes you list.
 - **Live paged preview.** Each page appears exactly as it will print. Zoom to fit the page or the width, and check facing pages side by side.
 - **EPUB 3 for every store.** Semantic XHTML, a navigable table of contents and landmarks, embedded fonts, the cover, and the book's language on every page. Exports pass [EPUBCheck](https://www.w3.org/publishing/epubcheck/) with no messages.
+- **Diagrams.** ```` ```mermaid ```` blocks print as figures, sized to the page, with their `accTitle`/`accDescr` as the description. See [Diagrams (Mermaid)](#diagrams-mermaid).
 - **Problems tab.** Broken links, missing images and chapters that can't be found are listed with the note and line they come from; in Obsidian, a click opens it.
 
 ## Writing a book
@@ -116,6 +117,27 @@ Chapter notes are ordinary Markdown:
 The studio's toolbar can override the theme and trim for a single export without editing the note.
 
 **Hyphenation.** Words are split by language patterns (Spanish, Catalan, Galician, Basque, English, French, German, Italian, Portuguese and Dutch), never in capitalised acronyms or in words with digits, and a name in the middle of a sentence is split less willingly. To say where a word may split, put a soft hyphen (U+00AD) there: the word then splits only at those points. To keep a word whole, put a word joiner (U+2060) anywhere inside it. Neither character is printed.
+
+## Diagrams (Mermaid)
+
+A fenced code block marked `mermaid` becomes a figure in the PDF and the EPUB:
+
+````markdown
+```mermaid
+graph TD
+  accTitle: Order flow
+  accDescr: An order goes from the cart to payment to shipping.
+  A[Cart] --> B[Pay] --> C[Ship]
+```
+````
+
+- **Look.** Diagrams use Mermaid's black-and-white `neutral` theme, which prints well on a black-ink interior. A diagram that sets its own theme with `%%{init: …}%%` keeps it.
+- **Size.** A diagram prints at its own size; a wider one is scaled down to the text block and a very tall one to the page. Nothing is ever cropped or pushed into the margins.
+- **Resolution.** It is drawn as a PNG at 300 ppi or more at the size it prints, for both the PDF and the EPUB, so KDP's image check passes. A diagram so large that a phone could not hold it at that resolution is drawn smaller and gets the usual ppi warning.
+- **Description.** Screen readers read `accTitle` and `accDescr` as the picture's description. A diagram without them gets a warning in the Problems tab.
+- **Errors.** If Mermaid can't read a diagram, the Problems tab shows Mermaid's message and the block prints as code, so the export still works.
+- **Where it draws.** In Obsidian the plugin uses Obsidian's own Mermaid, so it adds nothing to the download. The web app downloads Mermaid only when a book has a diagram, and keeps it in its offline copy.
+- **Limits.** Labels are set in the device's sans-serif font, not the book's font. A diagram is a picture, so its text can't be selected or searched in the EPUB. Clicks and links inside a diagram don't work in print.
 
 ## Importing a manuscript (web app)
 

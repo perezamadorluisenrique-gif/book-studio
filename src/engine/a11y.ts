@@ -76,7 +76,9 @@ export function auditBook(book: Book, opts: { pageList: boolean }): AuditResult 
           rule: "img-alt",
           severity: "error",
           message: `${ref.target} has no text description.`,
-          fix: `Write one in the embed: ![[${ref.target}|A short description of what the image shows]]. If it is purely decorative, use ![[${ref.target}|decorative]].`,
+          fix: ref.diagram
+            ? "Add an accTitle: line inside the mermaid block, and accDescr: with what the diagram shows."
+            : `Write one in the embed: ![[${ref.target}|A short description of what the image shows]]. If it is purely decorative, use ![[${ref.target}|decorative]].`,
           wcag: "1.1.1",
           src,
         });

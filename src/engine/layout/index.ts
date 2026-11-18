@@ -241,7 +241,7 @@ function compose(book: Book, fonts: FontSet, insideIn: number, hyphenator: Hyphe
   // A chapter set on a right-hand page and on a left-hand page comes out differently, so each is kept apart.
   // What else a chapter depends on goes into the key: the settings, the margin, the language and the size of
   // every image. The cache outlives this call, so a later layout of the same book only sets what changed.
-  const envKey = fingerprint(JSON.stringify([settings, lang, insideIn, hyphenate && hyphenator ? 1 : 0, cache.plain ? 1 : 0, [...book.images].map(([path, a]) => [path, a.width, a.height])]));
+  const envKey = fingerprint(JSON.stringify([settings, lang, insideIn, hyphenate && hyphenator ? 1 : 0, cache.plain ? 1 : 0, [...book.images].map(([path, a]) => [path, a.width, a.height, a.ppi ?? 0])]));
   const chapterFingerprints = new Map<Chapter, string>();
   const layChapter = (ch: Chapter, firstRecto: boolean): FlowPage[] => {
     let print = chapterFingerprints.get(ch);

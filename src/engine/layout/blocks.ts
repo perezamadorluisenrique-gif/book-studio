@@ -449,8 +449,8 @@ export class FlowBuilder {
     const asset = b.image.path ? this.env.images.get(b.image.path) : undefined;
     // Missing, unreadable and unsupported images were reported when the book was loaded.
     if (!asset) return [];
-    // Fill the measure unless that would push resolution below 150 ppi.
-    let w = Math.min(frame.width, (asset.width / 150) * 72);
+    // Fill the measure unless that would push resolution below 150 ppi; a drawn diagram keeps its own size.
+    let w = Math.min(frame.width, (asset.width / (asset.ppi ?? 150)) * 72);
     let h = (w * asset.height) / asset.width;
     const maxH = this.env.capacity * 0.75;
     if (h > maxH) {

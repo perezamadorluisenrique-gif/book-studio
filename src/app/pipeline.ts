@@ -5,6 +5,7 @@ import { FREE_EDITION, PRODUCT_NAME, VERSION } from "../config";
 import { auditBook, type AuditResult } from "../engine/a11y";
 import { accessibilityReport } from "../engine/a11y-report";
 import { loadBook, type VaultSource } from "../engine/book";
+import type { DiagramRenderer } from "../engine/diagrams";
 import { editionBinding, planEditions, type Edition } from "../engine/editions";
 import { runPreflight } from "../engine/preflight";
 import { preflightReport } from "../engine/preflight-report";
@@ -30,10 +31,10 @@ export interface Built {
  * `cache` carries what earlier builds of the same book learned, so a rebuild after an edit only sets what changed.
  * `layout` sets the pages elsewhere (a web worker); when it fails, they are set here.
  */
-export async function buildBook(source: VaultSource, manifestPath: string, fonts: FontSet, overrides: Partial<BookSettings> = {}, opts: { cache?: LayoutCache; layout?: (book: Book) => Promise<Layout> } = {}): Promise<Built> {
+export async function buildBook(source: VaultSource, manifestPath: string, fonts: FontSet, overrides: Partial<BookSettings> = {}, opts: { cache?: LayoutCache; layout?: (book: Book) => Promise<Layout>; diagrams?: DiagramRenderer } = {}): Promise<Built> {
   const t0 = performance.now();
   // Box sets always load so free users can preview them; exporting one needs Pro.
-  const book = await loadBook(source, manifestPath, overrides, { boxSets: !FREE_EDITION });
+  const book = await loadBook(source, manifestPath, overrides, { boxSets: !FREE_EDITION, diagrams: opts.diagrams });
   const away = opts.layout ? await opts.layout(book).catch(() => null) : null;
   const layout = away ?? layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? await loadHyphenator(book.meta.language) : null, cache: opts.cache });
   const audit = auditBook(book, { pageList: true });
@@ -114,8 +115,8 @@ export interface EditionFile {
  * with its cover and preflight report, or the EPUB. Editions are built one after
  * another, never in parallel, so a phone isn't asked to hold several books at once.
  */
-export async function exportEdition(source: VaultSource, manifestPath: string, fonts: FontSet, edition: Edition, plan: Plan, choices: EpubChoices): Promise<EditionFile[]> {
-  const built = await buildBookEdition(source, manifestPath, fonts, edition);
+export async function exportEdition(source: VaultSource, manifestPath: string, fonts: FontSet, edition: Edition, plan: Plan, choices: EpubChoices, diagrams?: DiagramRenderer): Promise<EditionFile[]> {
+  const built = await buildBookEdition(source, manifestPath, fonts, edition, diagrams);
   const prefix = `${edition.id}-`;
   const out: EditionFile[] = [];
   if (edition.format === "epub") {
@@ -134,9 +135,9 @@ export async function exportEdition(source: VaultSource, manifestPath: string, f
   return out;
 }
 
-export async function buildBookEdition(source: VaultSource, manifestPath: string, fonts: FontSet, edition: Edition): Promise<Built> {
+export async function buildBookEdition(source: VaultSource, manifestPath: string, fonts: FontSet, edition: Edition, diagrams?: DiagramRenderer): Promise<Built> {
   const t0 = performance.now();
-  const book = await loadBook(source, manifestPath, edition.settings, { boxSets: !FREE_EDITION, meta: { isbnPrint: edition.format === "print" ? edition.isbn : undefined, isbnEbook: edition.format === "epub" ? edition.isbn : undefined, edition: edition.edition } });
+  const book = await loadBook(source, manifestPath, edition.settings, { boxSets: !FREE_EDITION, meta: { isbnPrint: edition.format === "print" ? edition.isbn : undefined, isbnEbook: edition.format === "epub" ? edition.isbn : undefined, edition: edition.edition }, diagrams });
   const layout = layoutBook(book, fonts, { hyphenator: book.settings.hyphenate ? await loadHyphenator(book.meta.language) : null });
   return { book, layout, audit: auditBook(book, { pageList: true }), ms: Math.round(performance.now() - t0) };
 }
