@@ -1833,6 +1833,11 @@ describe("web app, Mermaid diagrams", () => {
       if (r.url().includes("/chunks/")) chunks.push(r.url());
     });
     await page.goto(base);
+    // The service worker controls the page, so the Mermaid chunks go through it.
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) await new Promise((ok) => navigator.serviceWorker.addEventListener("controllerchange", ok, { once: true }));
+    });
     await page.getByRole("button", { name: "My books" }).click();
     await page.getByRole("heading", { name: "Import a manuscript" }).waitFor();
     const before = chunks.length;
@@ -1877,6 +1882,30 @@ describe("web app, Mermaid diagrams", () => {
     }
     const check = await epubcheck(file);
     if (check) expect(check.ok, check.log).toBe(true);
+
+    // Mermaid is not in the copy every visitor installs; it was cached when this book first loaded it.
+    const cached = await page.evaluate(async () => {
+      const names = async (name: string) => (await (await caches.open(name)).keys()).map((r) => new URL(r.url).pathname.replace(/^\//, ""));
+      const core = (await caches.keys()).find((k) => k.startsWith("bs-core-")) ?? "";
+      return { core: await names(core), lazy: await names("bs-lazy") };
+    });
+    expect(cached.lazy.length).toBeGreaterThan(0);
+    expect(cached.lazy.every((f) => f.startsWith("chunks/"))).toBe(true);
+    expect(cached.core.filter((f) => cached.lazy.includes(f))).toEqual([]);
+    expect(cached.core).toContain("app.js");
+
+    // Offline, the book still draws its diagrams.
+    await context.setOffline(true);
+    await page.goto(base);
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.getByRole("button", { name: "Open Diagram test" }).click();
+    await page.locator("#ed-text").waitFor();
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+    await page.getByRole("tab", { name: /^Problems/ }).click();
+    await page.locator(".bs-panel-problems li", { hasText: "no description" }).waitFor({ timeout: 30_000 });
+    const offline = (await page.locator(".bs-panel-problems li").allTextContents()).join("\n");
+    expect(offline.match(/could not be drawn/g)).toHaveLength(1);
+    expect(offline).toMatch(/could not be drawn, so it prints as code: No diagram type detected/);
     await context.close();
   });
 });

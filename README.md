@@ -136,7 +136,7 @@ graph TD
 - **Resolution.** It is drawn as a PNG at 300 ppi or more at the size it prints, for both the PDF and the EPUB, so KDP's image check passes. A diagram so large that a phone could not hold it at that resolution is drawn smaller and gets the usual ppi warning.
 - **Description.** Screen readers read `accTitle` and `accDescr` as the picture's description. A diagram without them gets a warning in the Problems tab.
 - **Errors.** If Mermaid can't read a diagram, the Problems tab shows Mermaid's message and the block prints as code, so the export still works.
-- **Where it draws.** In Obsidian the plugin uses Obsidian's own Mermaid, so it adds nothing to the download. The web app downloads Mermaid only when a book has a diagram, and keeps it in its offline copy.
+- **Where it draws.** In Obsidian the plugin uses Obsidian's own Mermaid, so it adds nothing to the download. The web app downloads Mermaid (about 1.6 MB) only when a book has a diagram, and saves it then, so that book also works offline afterwards; visitors whose books have no diagrams never download it. A book whose first diagram is added while offline shows its diagrams as code, with a warning, until the app is next online.
 - **Limits.** Labels are set in the device's sans-serif font, not the book's font. A diagram is a picture, so its text can't be selected or searched in the EPUB. Clicks and links inside a diagram don't work in print.
 
 ## Importing a manuscript (web app)
