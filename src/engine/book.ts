@@ -9,6 +9,8 @@ import { imageInfo } from "./images";
 import { parseCoverDesign } from "./cover/design";
 import { smartenText } from "./typography";
 import { stripPartPrefix } from "./i18n";
+import { renderDiagrams, type DiagramRenderer } from "./diagrams";
+import { DEFAULT_TRIM, trimById } from "./trims";
 
 export interface VaultSource {
   read(path: string): Promise<string>;
@@ -81,6 +83,8 @@ export interface LoadOptions {
   meta?: Partial<Pick<BookMeta, "isbnPrint" | "isbnEbook" | "edition">>;
   /** Read notes that are book manifests themselves as box-set volumes (Pro). */
   boxSets?: boolean;
+  /** Draws ```mermaid blocks; without one they print as code. */
+  diagrams?: DiagramRenderer;
 }
 
 /** The copyright line printed when the book gives none, in the book's language (Spanish or English). */
@@ -302,6 +306,9 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
     warnings.push({ message: "The manifest lists no chapters. Add links like 1. [[Chapter One]] under a ## Chapters heading.", src: { file: manifestPath, line: 1 } });
   }
 
+  const images = new Map<string, ImageAsset>();
+  if (opts.diagrams) await renderDiagrams(chapters, opts.diagrams, { maxPrintInches: (trimById(settings.trim) ?? trimById(DEFAULT_TRIM))?.width ?? 6 }, images, warnings);
+
   const refs: ImageRef[] = [];
   for (const c of chapters) {
     collectImages(c.blocks, refs);
@@ -311,7 +318,6 @@ export async function loadBook(source: VaultSource, manifestPath: string, overri
   if (meta.cover) refs.push(meta.cover);
   if (design.photo) refs.push(design.photo);
   refs.push(...layoutImages);
-  const images = new Map<string, ImageAsset>();
   for (const ref of refs) {
     if (!ref.path || images.has(ref.path)) continue;
     try {

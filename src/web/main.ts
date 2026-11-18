@@ -33,6 +33,7 @@ import { deleteProject, deleteSnapshot, getHandle, listProjects, listSnapshots, 
 import { hintHostFromStore } from "../app/pro-tip";
 import { Studio } from "../app/studio";
 import { detectLocale, setLocale, t, type Locale } from "../app/ui-i18n";
+import { createDiagramRenderer } from "../app/diagram-render";
 import type { VaultSource } from "../engine/book";
 import type { SourceRef } from "../engine/model";
 import type { FontFile } from "../engine/fonts";
@@ -231,6 +232,12 @@ const host: StudioHost = {
   source: () => (current ? current.vault : folder ? vaultFor(folder) : null),
   listBooks: () => (current ? Promise.resolve([{ path: current.vault.bookPath, title: current.vault.bookTitle }]) : folder ? findBooks(folder) : Promise.resolve([])),
   layout: remoteLayout(new URL("layout-worker.js", doc.baseURI)),
+  // Mermaid is a chunk of its own, fetched only when a book has a diagram (the offline copy keeps it).
+  diagrams: createDiagramRenderer(async () => {
+    const { default: mermaid } = await import("mermaid");
+    mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "neutral", htmlLabels: false });
+    return mermaid;
+  }),
   loadFont: async (f: FontFile) => {
     const res = await fetch(new URL(`fonts/${f}.ttf`, doc.baseURI));
     if (!res.ok) throw new Error(t("web.fontFailed", { font: f }));

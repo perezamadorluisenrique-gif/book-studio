@@ -393,7 +393,7 @@ async function convertBlock(t: Token, ctx: ParseContext, src: SourceRef, blocks:
     }
     case "code": {
       const c = t as Tokens.Code;
-      blocks.push({ kind: "code", id: ctx.nextId(), text: c.text, src });
+      blocks.push({ kind: "code", id: ctx.nextId(), text: c.text, src, ...(c.lang ? { lang: c.lang } : {}) });
       return;
     }
     case "html": {

@@ -1,7 +1,7 @@
 // The Obsidian plugin: a Book Studio view over the vault, commands for the
 // common exports, and a settings tab for the export folder and the Pro key.
 
-import { App, getLinkpath, requestUrl, ItemView, Modal, normalizePath, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, type SettingDefinitionItem, type WorkspaceLeaf } from "obsidian";
+import { App, getLinkpath, loadMermaid, requestUrl, ItemView, Modal, normalizePath, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, type SettingDefinitionItem, type WorkspaceLeaf } from "obsidian";
 import { FREE_EDITION, PRO_PREVIEW } from "../config";
 import { append, h, setElementFactory } from "../app/dom";
 import type { BookChoice, Dialog, OutputFile, Store, StudioHost } from "../app/host";
@@ -10,6 +10,7 @@ import { PRO_INCLUDED } from "../edition";
 import { LicenseError, LicenseManager } from "../app/license-manager";
 import { pickLicenseFile } from "../app/license-panel";
 import { Studio } from "../app/studio";
+import { createDiagramRenderer, type MermaidLike } from "../app/diagram-render";
 import type { VaultSource } from "../engine/book";
 import { PRO_FEATURES } from "../engine/entitlements";
 import type { Post } from "../engine/license-online";
@@ -45,6 +46,8 @@ export default class BookStudioPlugin extends Plugin {
   store!: Store;
   license!: LicenseManager;
   private saveTimer = 0;
+  /** Mermaid blocks are drawn with Obsidian's own Mermaid, so the plugin bundles none. */
+  private diagrams = createDiagramRenderer(async () => (await loadMermaid()) as MermaidLike);
 
   override async onload(): Promise<void> {
     viewType = this.manifest.id;
@@ -265,6 +268,7 @@ export default class BookStudioPlugin extends Plugin {
       source: () => this.vaultSource(),
       listBooks: async () => this.listBooks(),
       loadFont: loadBundledFont,
+      diagrams: this.diagrams,
       save: (out) => this.saveOutput(out),
       store: this.store,
       hints: {
