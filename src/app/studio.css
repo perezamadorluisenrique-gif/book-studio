@@ -488,3 +488,51 @@
   color: var(--bs-muted);
   text-align: center;
 }
+
+/* pro-hint:start (canonical: obsidian-dev/tools/more-plugins/pro-hint.css) */
+.siulved-pro-hint {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2);
+	margin: var(--size-4-3) 0;
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+.siulved-pro-hint-text {
+	flex: 1 1 16em;
+}
+.siulved-pro-hint-actions {
+	display: flex;
+	gap: var(--size-4-2);
+}
+.notice .siulved-pro-hint {
+	color: inherit;
+	border-color: currentColor;
+}
+/* pro-hint:end */
+
+/* Where the tip sits in Book Studio: a full row in the settings bar, a paragraph in the publish window. The
+   fallbacks are for the web app, which has none of Obsidian's variables. */
+.bs-settings .siulved-pro-hint {
+  flex: 1 1 100%;
+  margin: 0;
+}
+.bs-studio .siulved-pro-hint,
+.pub-dialog .siulved-pro-hint {
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--background-modifier-border, #d9d8d3);
+  border-radius: var(--radius-m, 8px);
+  color: var(--text-muted, #5c5c63);
+  font-size: var(--font-ui-small, 14px);
+}
+.pub-dialog .siulved-pro-hint {
+  margin: 12px 0;
+}
+.siulved-pro-hint-actions {
+  gap: 8px;
+}

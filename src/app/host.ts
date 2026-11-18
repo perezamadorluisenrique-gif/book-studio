@@ -5,6 +5,7 @@ import type { DiagramRenderer } from "../engine/diagrams";
 import type { FontLoader } from "../engine/fonts";
 import type { Layout } from "../engine/layout/index";
 import type { Book, SourceRef } from "../engine/model";
+import type { HintHost } from "./pro-tip";
 
 export interface BookChoice {
   path: string;
@@ -54,6 +55,8 @@ export interface StudioHost {
   openLicense(): void;
   /** A stable name for a book across sessions, e.g. folder name plus path; defaults to the path. */
   bookKey?(path: string): string;
+  /** Where the Pro tips keep when they were last shown and whether they are on; none means no tips. */
+  hints?: HintHost;
   /** Fill the empty state shown before a folder or vault has a book. */
   renderEmpty?(container: HTMLElement): void;
 }

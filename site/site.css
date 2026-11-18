@@ -588,3 +588,14 @@ main .btn:hover {
     margin-bottom: 0.6rem;
   }
 }
+
+.whole-book {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.whole-book h2 {
+  margin-top: 0;
+}

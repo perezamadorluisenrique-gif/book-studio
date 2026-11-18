@@ -1107,6 +1107,7 @@ describe("web app, first-book guide", () => {
     // Skipped for good: opening the book again shows no guide.
     await saved(page);
     await page.reload();
+    await page.getByRole("button", { name: "My books" }).click().catch(() => undefined);
     await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
     await page.locator("#ed-text").waitFor();
     // The guide may take a moment to draw or to hide itself: wait for it to be gone.
@@ -1146,6 +1147,7 @@ describe("web app, first-book guide", () => {
     // The change is kept: reload, open the book again, same size and same page count.
     await saved(page);
     await page.reload();
+    await page.getByRole("button", { name: "My books" }).click().catch(() => undefined);
     await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
     await page.locator("#ed-text").waitFor();
     await page.locator(".bs-status", { hasText: " pages at " }).waitFor({ timeout: 60_000 });
@@ -1392,6 +1394,131 @@ describe("web app, publish checklist", () => {
       await page.close();
     });
   }
+});
+
+describe.runIf(!PRO_INCLUDED)("web app, Pro tips", () => {
+  const PUBLISH = "Check what is missing before publishing on KDP";
+  const PAGE = "https://perezamadorluisenrique-gif.github.io/pro/book-studio/";
+
+  async function startBook(page: Page, name: string): Promise<void> {
+    // window.open is replaced so the click is seen and no tab opens.
+    await page.addInitScript(() => {
+      (window as unknown as { __opened: string[] }).__opened = [];
+      window.open = ((u: string) => ((window as unknown as { __opened: string[] }).__opened.push(String(u)), null)) as typeof window.open;
+    });
+    await page.goto(`${base}?sample=oz`);
+    await page.getByRole("button", { name: "Export print PDF" }).waitFor();
+    await page.getByRole("button", { name: "My books" }).click();
+    await page.locator("#proj-name").fill(name);
+    await page.locator(".proj-new:not(.proj-import) button[type=submit]").click();
+    await page.locator("#ed-text").waitFor();
+    await page.locator(".bs-page.is-painted").first().waitFor({ timeout: 60_000 });
+  }
+  const stored = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem("book-studio") ?? "{}") as { proHints?: boolean; proHintShown?: Record<string, number> });
+  const open = async (page: Page) => {
+    await page.getByRole("button", { name: PUBLISH }).click();
+    const dialog = page.getByRole("dialog", { name: "Publish checklist" });
+    await dialog.waitFor();
+    return dialog;
+  };
+
+  it("shows one static tip in the publish window, once in 14 days, and Learn more and Don't show again work", async () => {
+    const page = await (await browser.newContext({ locale: "en-US" })).newPage();
+    await startBook(page, "Tip test");
+    let dialog = await open(page);
+    const tip = dialog.locator(".siulved-pro-hint");
+    await tip.waitFor();
+    expect(await page.locator(".siulved-pro-hint").count()).toBe(1);
+    expect(await tip.getAttribute("data-place")).toBe("bsweb-store");
+    expect(await tip.innerText()).toContain("EPUB for each store");
+    // Only the date it showed is kept.
+    const kept = await stored(page);
+    expect(Object.keys(kept.proHintShown ?? {})).toEqual(["bsweb-store"]);
+    expect(Math.abs(Date.now() - (kept.proHintShown?.["bsweb-store"] ?? 0))).toBeLessThan(120_000);
+
+    await tip.getByRole("button", { name: "Learn more" }).click();
+    expect(await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)).toEqual([`${PAGE}?ref=bsweb-store`]);
+    const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(r.violations.filter((v) => v.impact === "serious" || v.impact === "critical")).toEqual([]);
+
+    // Opened again inside 14 days: no tip.
+    await page.keyboard.press("Escape");
+    dialog = await open(page);
+    expect(await page.locator(".siulved-pro-hint").count()).toBe(0);
+    await page.keyboard.press("Escape");
+
+    // 14 days later it is due again; "Don't show again" removes it and turns every tip off for good.
+    await page.evaluate(() => {
+      const d = JSON.parse(localStorage.getItem("book-studio") ?? "{}") as Record<string, unknown>;
+      d.proHintShown = { "bsweb-store": Date.now() - 15 * 86_400_000 };
+      localStorage.setItem("book-studio", JSON.stringify(d));
+    });
+    await page.reload();
+    await page.getByRole("button", { name: "My books" }).click().catch(() => undefined);
+    await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
+    await page.locator("#ed-text").waitFor();
+    dialog = await open(page);
+    await dialog.locator(".siulved-pro-hint").waitFor();
+    await dialog.getByRole("button", { name: "Don't show again" }).click();
+    expect(await page.locator(".siulved-pro-hint").count()).toBe(0);
+    expect((await stored(page)).proHints).toBe(false);
+    await page.keyboard.press("Escape");
+    await page.evaluate(() => {
+      const d = JSON.parse(localStorage.getItem("book-studio") ?? "{}") as Record<string, unknown>;
+      d.proHintShown = {};
+      localStorage.setItem("book-studio", JSON.stringify(d));
+    });
+    await page.reload();
+    await page.getByRole("button", { name: "My books" }).click().catch(() => undefined);
+    await page.locator(".proj-item").getByRole("button", { name: /^Open / }).first().click();
+    await page.locator("#ed-text").waitFor();
+    await open(page);
+    expect(await page.locator(".siulved-pro-hint").count()).toBe(0);
+    await page.close();
+  });
+
+  it("shows the tip in Spanish, and works when storage is blocked", async () => {
+    const context = await browser.newContext({ locale: "es-ES" });
+    await context.addInitScript(() => {
+      Object.defineProperty(window, "localStorage", { get: () => { throw new Error("blocked"); } });
+    });
+    const page = await context.newPage();
+    await page.goto(`${base}?sample=oz`);
+    await page.getByRole("button", { name: "Exportar PDF de impresión" }).waitFor();
+    await page.getByRole("button", { name: "Mis libros" }).click();
+    await page.locator("#proj-name").fill("Prueba");
+    await page.locator(".proj-new:not(.proj-import) button[type=submit]").click();
+    await page.locator("#ed-text").waitFor();
+    await page.getByRole("button", { name: "Revisar qué falta antes de publicar en KDP" }).click();
+    const dialog = page.getByRole("dialog", { name: "Lista de publicación" });
+    await dialog.locator(".siulved-pro-hint").waitFor();
+    expect(await dialog.locator(".siulved-pro-hint").innerText()).toContain("EPUB para cada tienda");
+    await dialog.getByRole("button", { name: "No volver a mostrar" }).click();
+    expect(await page.locator(".siulved-pro-hint").count()).toBe(0);
+    await page.close();
+  });
+
+  it("shows the hardcover tip in the settings bar when hardcover is chosen, and then none in the publish window", async () => {
+    const page = await (await browser.newContext({ locale: "en-US" })).newPage();
+    await startBook(page, "Hardcover tip");
+    // Switch to the book view where the settings bar is.
+    const bar = page.locator(".bs-settings");
+    if (!(await bar.isVisible())) await page.getByRole("tab", { name: "Book" }).click().catch(() => undefined);
+    await bar.waitFor();
+    await bar.getByLabel("Binding: paperback or hardcover").selectOption("hardcover");
+    const tip = bar.locator(".siulved-pro-hint");
+    await tip.waitFor();
+    expect(await tip.getAttribute("data-place")).toBe("bs-hardcover");
+    expect(await tip.innerText()).toContain("Book Studio Pro");
+    await page.screenshot({ path: "out/pro-tip-web.png" });
+    // At most one tip on screen: the publish window has none while this one shows.
+    await open(page);
+    expect(await page.locator(".siulved-pro-hint").count()).toBe(1);
+    await page.keyboard.press("Escape");
+    await tip.getByRole("button", { name: "Learn more" }).click();
+    expect(await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)).toEqual([`${PAGE}?ref=bs-hardcover`]);
+    await page.close();
+  });
 });
 
 describe("web app, versions and find and replace", () => {

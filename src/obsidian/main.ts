@@ -17,6 +17,7 @@ import type { Post } from "../engine/license-online";
 import { SALES_PAGE } from "../engine/pro-config";
 import { fmString, isManifestFrontmatter, manifestTemplate } from "../engine/manifest";
 import type { SourceRef } from "../engine/model";
+import { cleanHintSettings, HINT_DEFAULTS } from "../pro-hint";
 import { loadBundledFont } from "./fonts";
 import { bothOnNotice, inheritedSettings, siblingOf } from "./side-by-side";
 
@@ -33,9 +34,12 @@ interface Settings {
   author: string;
   /** The studio's own storage: license, free book, per-book choices, view options. */
   data: Record<string, unknown>;
+  /** "Show Pro tips" and when each place last showed its tip (see src/pro-hint.ts). */
+  proHints: boolean;
+  proHintShown: Record<string, number>;
 }
 
-const DEFAULT_SETTINGS: Settings = { exportFolder: "Book Studio exports", author: "", data: {} };
+const DEFAULT_SETTINGS: Settings = { exportFolder: "Book Studio exports", author: "", data: {}, ...HINT_DEFAULTS, proHintShown: {} };
 
 export default class BookStudioPlugin extends Plugin {
   override settings: Settings = DEFAULT_SETTINGS;
@@ -116,7 +120,7 @@ export default class BookStudioPlugin extends Plugin {
       if (!(await this.app.vault.adapter.exists(path))) return;
       const taken = inheritedSettings(this.manifest.id, await this.loadData(), JSON.parse(await this.app.vault.adapter.read(path)));
       if (!taken) return;
-      this.settings = { ...DEFAULT_SETTINGS, ...taken, data: { ...((taken.data as Record<string, unknown> | undefined) ?? {}) } };
+      this.settings = { ...DEFAULT_SETTINGS, ...taken, data: { ...((taken.data as Record<string, unknown> | undefined) ?? {}) }, ...cleanHintSettings(taken) };
       await this.saveData(this.settings);
     } catch {
       // Unreadable or not JSON: start from the defaults.
@@ -138,7 +142,7 @@ export default class BookStudioPlugin extends Plugin {
 
   async loadSettings(): Promise<void> {
     const saved = ((await this.loadData()) ?? {}) as Partial<Settings>;
-    this.settings = { ...DEFAULT_SETTINGS, ...saved, data: { ...(saved.data ?? {}) } };
+    this.settings = { ...DEFAULT_SETTINGS, ...saved, data: { ...(saved.data ?? {}) }, ...cleanHintSettings(saved) };
   }
 
   override async onExternalSettingsChange(): Promise<void> {
@@ -267,6 +271,14 @@ export default class BookStudioPlugin extends Plugin {
       diagrams: this.diagrams,
       save: (out) => this.saveOutput(out),
       store: this.store,
+      hints: {
+        get: () => ({ proHints: this.settings.proHints, proHintShown: this.settings.proHintShown }),
+        set: (next) => {
+          this.settings.proHints = next.proHints;
+          this.settings.proHintShown = next.proHintShown;
+          this.requestSave();
+        },
+      },
       ask: (d) => new AskModal(this.app, d).wait(),
       notify: (m) => void new Notice(m),
       openUrl: (url) => void window.open(url),
@@ -476,6 +488,7 @@ class LicenseModal extends Modal {
 const TEXT = {
   exportFolder: { name: "Export folder", desc: "Exported books and reports are saved in this vault folder." },
   author: { name: "Author", desc: "Filled in when you create a book from a folder." },
+  proHints: { name: "Show Pro tips", desc: "Now and then, one line about Book Studio Pro (paid) right where it would help, at most once every 14 days per place. Fixed text: no network, no tracking." },
 };
 
 class BookStudioSettingTab extends PluginSettingTab {
@@ -496,17 +509,19 @@ class BookStudioSettingTab extends PluginSettingTab {
     return [
       { name: TEXT.exportFolder.name, desc: TEXT.exportFolder.desc, control: { type: "text", key: "exportFolder", placeholder: DEFAULT_SETTINGS.exportFolder, defaultValue: DEFAULT_SETTINGS.exportFolder } },
       { name: TEXT.author.name, desc: TEXT.author.desc, control: { type: "text", key: "author", defaultValue: "" } },
+      { name: TEXT.proHints.name, desc: TEXT.proHints.desc, control: { type: "toggle", key: "proHints", defaultValue: true } },
     ];
   }
 
   override getControlValue(key: string): unknown {
-    return key === "exportFolder" ? this.plugin.settings.exportFolder : key === "author" ? this.plugin.settings.author : undefined;
+    return key === "exportFolder" ? this.plugin.settings.exportFolder : key === "author" ? this.plugin.settings.author : key === "proHints" ? this.plugin.settings.proHints : undefined;
   }
 
   override setControlValue(key: string, value: unknown): void {
     const v = typeof value === "string" ? value.trim() : "";
     if (key === "exportFolder") this.plugin.settings.exportFolder = v || DEFAULT_SETTINGS.exportFolder;
     else if (key === "author") this.plugin.settings.author = v;
+    else if (key === "proHints") this.plugin.settings.proHints = value !== false;
     else return;
     this.plugin.requestSave();
   }
@@ -527,6 +542,13 @@ class BookStudioSettingTab extends PluginSettingTab {
       .setName(TEXT.author.name)
       .setDesc(TEXT.author.desc)
       .addText((t) => t.setValue(this.plugin.settings.author).onChange((v) => this.setControlValue("author", v)));
+    // The tips are only in the free edition; the full edition has nothing to point to.
+    if (FREE_EDITION) {
+      new Setting(containerEl)
+        .setName(TEXT.proHints.name)
+        .setDesc(TEXT.proHints.desc)
+        .addToggle((t) => t.setValue(this.plugin.settings.proHints).onChange((v) => this.setControlValue("proHints", v)));
+    }
     if (!FREE_EDITION) licenseSettings(containerEl, this.plugin, () => this.render());
   }
 }
