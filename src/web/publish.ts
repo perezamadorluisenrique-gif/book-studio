@@ -3,8 +3,10 @@
 // <dialog>, so the keyboard stays inside it and Esc closes it. It only draws; the rules are in project/checklist.ts.
 
 import { clear, h } from "../app/dom";
+import { claimTip, drawTip, tipOnScreen, type HintHost, type TipPlace } from "../app/pro-tip";
 import { t, tn, getLocale } from "../app/ui-i18n";
 import { publishChecklist, type BuiltFacts, type CheckItem, type FixPlace } from "../project/checklist";
+import { bindingOf } from "../engine/trims";
 import type { Project } from "../project/model";
 
 export interface PublishDeps {
@@ -12,6 +14,21 @@ export interface PublishDeps {
   facts(): BuiltFacts | null;
   /** Close the window and take the person to the place that fixes the item. */
   go(place: FixPlace): void;
+  /** Where the Pro tip keeps its dates; without it there is no tip. */
+  hints?: HintHost;
+  openUrl?(url: string): void;
+}
+
+/**
+ * The one Pro tip of the window, or null: a hardcover book (hardcover editions), a book that is ready (sales
+ * kit), or any book (an EPUB for each store). Only a place that is due (14 days) counts.
+ */
+export function publishTipPlace(project: Project, ready: boolean, due: (place: TipPlace) => boolean): TipPlace | null {
+  const order: TipPlace[] = [];
+  if (bindingOf(project.settings.binding) === "hardcover") order.push("bsweb-hardcover");
+  if (ready) order.push("bsweb-kit");
+  order.push("bsweb-store");
+  return order.find(due) ?? null;
 }
 
 const MESSAGE = (item: CheckItem): string => {
@@ -70,6 +87,16 @@ export function showPublishChecklist(deps: PublishDeps, opener?: HTMLElement): v
     h("p", null, h("a", { text: t("pub.guide"), attr: { href: GUIDE[lang], target: "_blank", rel: "noopener" } })),
     h("div", { cls: "pub-actions" }, h("button", { cls: "mod-cta", text: t("pub.close"), attr: { type: "button" }, on: { click: () => dialog.close() } })),
   );
+  // One Pro tip, below the steps, claimed when the window opens (nothing else on screen may show one).
+  if (deps.hints && !tipOnScreen(document)) {
+    const hints = deps.hints;
+    const place = publishTipPlace(project, summary.classList.contains("pub-ready"), (p) => claimTip(hints, p));
+    if (place) {
+      const holder = h("div");
+      drawTip(holder, hints, place, (url) => (deps.openUrl ? deps.openUrl(url) : void window.open(url, "_blank", "noopener")));
+      content.splice(content.length - 1, 0, ...Array.from(holder.children) as HTMLElement[]);
+    }
+  }
   clear(dialog);
   dialog.append(...content);
   dialog.addEventListener("close", () => {

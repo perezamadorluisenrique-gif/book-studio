@@ -47,6 +47,9 @@ const UI = {
     kinds: { pdf: "Print PDF", epub: "EPUB", zip: "Markdown source" },
     downloadsHead: ["Book", "Pages", "Trim", "Files"],
     pages: "pages",
+    wholeHead: "Do the whole book with Book Studio",
+    wholeText: "Book Studio is free. It sets your chapters as a KDP print PDF with the full cover sheet, and as an EPUB, in your browser. Nothing you type leaves your device.",
+    wholeButton: "Open the free web app",
     before: "Set like a word processor",
     after: "Set by Book Studio",
   },
@@ -69,6 +72,9 @@ const UI = {
     kinds: { pdf: "PDF de imprenta", epub: "EPUB", zip: "Fuente en Markdown" },
     downloadsHead: ["Libro", "Páginas", "Formato", "Archivos"],
     pages: "páginas",
+    wholeHead: "Haz el libro entero con Book Studio",
+    wholeText: "Book Studio es gratis. Maqueta tus capítulos como PDF de imprenta para KDP, con la cubierta completa, y como EPUB, en tu navegador. Nada de lo que escribes sale de tu dispositivo.",
+    wholeButton: "Abrir la app web gratis",
     before: "Maquetado como en un procesador de textos",
     after: "Maquetado por Book Studio",
   },
@@ -268,6 +274,16 @@ function faqList(page, ctx) {
     .join("\n");
 }
 
+/** The block at the foot of a tool page that leads to the free web app (not to Pro); `?ref=kdp-tools` says where the visit came from. */
+function wholeBook(page) {
+  const ui = UI[page.lang];
+  return `<section class="whole-book" aria-labelledby="whole-book-h">
+<h2 id="whole-book-h">${ui.wholeHead}</h2>
+<p>${ui.wholeText}</p>
+<p><a class="btn primary" href="${up(page)}?ref=kdp-tools">${ui.wholeButton}</a></p>
+</section>`;
+}
+
 /** Markdown body to HTML, with the site's link schemes and placeholders resolved. */
 export function renderBody(page, ctx) {
   const marked = markedFor(page, ctx);
@@ -367,7 +383,7 @@ ${page.type === "tool" ? `<script src="${root}tools/tools.js" defer></script>\n`
 <article${page.type === "landing" ? ' class="landing"' : ""}>
 ${page.type === "landing" ? heroBlock(page, ctx) : `<h1>${esc(page.h1 ?? page.title)}</h1>\n${updated}`}
 ${body}
-</article>
+${page.type === "tool" ? wholeBook(page) : ""}</article>
 </main>
 <footer class="site-footer">
 <p>${ui.privacy}</p>

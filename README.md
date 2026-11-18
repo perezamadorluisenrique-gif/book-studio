@@ -132,9 +132,11 @@ This repository and its releases are the **free edition**, and everything above 
 
 Free, and never Pro again: every trim size, the Elegant, Non-fiction and Large Print themes, footnotes at the page foot, the **full cover** (front, spine and back with barcode space, at the size KDP expects), the **KDP preflight** (page count, margins, images, blank runs, ISBN, metadata, spine and the PDF itself, with an HTML report; it reduces rejections, and KDP's own review makes the final decision) and the **KDP details sheet** (title, description, keywords and categories ready to paste). The list lives in `src/engine/entitlements.ts`, and `tests/entitlements.test.ts` makes sure nothing an earlier version let you do is ever taken away.
 
+**Pro tips (static, inside this plugin and the web app only).** Now and then Book Studio shows one fixed line about Book Studio Pro, right where it would help, with a *Learn more* button and a *Don't show again* button. In the plugin and in the web app's studio (the settings bar above the preview) the line appears when a book uses a Pro theme, or when you choose a hardcover. In the web app it also appears once at the foot of the *Publish checklist* window, about hardcover editions, the sales kit or an EPUB for each store. A place shows its line at most once every 14 days, and never more than one at a time. The text is bundled with the app and sends nothing: no network request, no counting; the only thing kept is the date each place last showed its line, next to your other settings. *Learn more* opens the public Book Studio Pro page in your browser, with `?ref=` and the place so the page knows which line you used. Turn the lines off with **Settings → Book Studio → Show Pro tips**, or with *Don't show again* (the web app has no settings page, so there that button is the switch). The free KDP tools on the website have a link to the free web app instead; they show no Pro tips.
+
 ## Network use
 
-- The free edition makes **no network requests**: no telemetry, no analytics, no account, and your notes and books never leave your device.
+- The free edition makes **no network requests**: no telemetry, no analytics, no account, and your notes and books never leave your device. The Pro tips are fixed text and send nothing either.
 - Author: Siulved54.
 
 ## Privacy
@@ -245,6 +247,11 @@ fonts/         Bundled typefaces
 | [Claude Studio](https://obsidian.md/plugins?id=claude-studio) | Notion-style AI writing, chat and vault tools powered by your local Claude Code CLI. | [claude-studio](https://github.com/perezamadorluisenrique-gif/claude-studio) |
 | [Emoji Search](https://obsidian.md/plugins?id=emoji-search) | Insert emojis from a searchable picker or by typing a :shortcode. | [emoji-search](https://github.com/perezamadorluisenrique-gif/emoji-search) |
 | [Inline TOC](https://obsidian.md/plugins?id=inline-toc) | Show a live table of contents inside any note with a toc code block, or insert a plain Markdown one. | [inline-toc](https://github.com/perezamadorluisenrique-gif/inline-toc) |
+| [Run Code Blocks](https://obsidian.md/plugins?id=run-code-blocks) | Adds a Run button to code blocks and shows the output right below, for JavaScript, Python, shell and more. | [run-code-blocks](https://github.com/perezamadorluisenrique-gif/run-code-blocks) |
+| [Canvas Finder](https://obsidian.md/plugins?id=canvas-finder) | Fuzzy-search the cards and files on a canvas and jump straight to the match. | [canvas-finder](https://github.com/perezamadorluisenrique-gif/canvas-finder) |
+| [Folder Index Notes](https://obsidian.md/plugins?id=folder-index-notes) | Keeps an index note in each folder up to date with links to the notes and subfolders inside it. | [folder-index-notes](https://github.com/perezamadorluisenrique-gif/folder-index-notes) |
+| [Random Note Filters](https://obsidian.md/plugins?id=random-note-filters) | Open or link a random note from a folder, tag, property or the current search results. | [random-note-filters](https://github.com/perezamadorluisenrique-gif/random-note-filters) |
+| [Split by Heading](https://obsidian.md/plugins?id=split-by-heading) | Split a note into one note per heading, with links back in the source. | [split-by-heading](https://github.com/perezamadorluisenrique-gif/split-by-heading) |
 
 All of them are in the community directory: Settings -> Community plugins ->
 Browse, then search for the name. Demos and install links for every one:

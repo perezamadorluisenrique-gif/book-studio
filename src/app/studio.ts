@@ -10,6 +10,7 @@ import type { BookSettings, SourceRef } from "../engine/model";
 import { THEMES } from "../engine/themes";
 import { bindingOf, DEFAULT_TRIM, HARDCOVER, trimsFor } from "../engine/trims";
 import { PagePainter } from "../preview/canvas";
+import { claimTip, drawTip, tipOnScreen, type TipPlace } from "./pro-tip";
 import { append, clear, h, nextFrame, select } from "./dom";
 import type { BookChoice, StudioHost } from "./host";
 import type { LicenseManager } from "./license-manager";
@@ -73,6 +74,10 @@ export class Studio {
   private bookSelect = h("select", { cls: "bs-book", attr: { "aria-label": t("studio.book") } });
   private planBox = h("div", { cls: "bs-plan" });
   private settingsBar = h("div", { cls: "bs-bar bs-settings" });
+  /** The Pro tip drawn in the settings bar now, if any (decided once, so a rebuild does not count it again). */
+  private tip: TipPlace | null = null;
+  /** The person chose hardcover in the binding list (a book that already is one does not show the tip). */
+  private pickedHardcover = false;
   private stylePanel = new StylePanel((style) => this.setOverride({ style }));
   private status = h("p", { cls: "bs-status", attr: { role: "status", "aria-live": "polite" } });
   private tabs: Record<Tab, HTMLButtonElement>;
@@ -495,6 +500,21 @@ export class Studio {
     this.setStatus(t("status.built", { title: book.meta.title, pages, trim: layout.trim.label, gutter, spine: spineWidth(pages, book.settings.paper).toFixed(3), paper, ms }));
   }
 
+  private pickBinding(binding: BookSettings["binding"], trim: string): void {
+    this.pickedHardcover = binding === "hardcover";
+    // A size the new binding does not print moves to the default size, so the book never sits on a combination KDP refuses.
+    this.setOverride({ binding, ...(binding === "hardcover" && !HARDCOVER.trims.includes(trim) ? { trim: DEFAULT_TRIM } : {}) });
+  }
+
+  /** The Pro tip of the settings bar: a Pro theme is set, or the person just chose hardcover. At most one, once per 14 days per place. */
+  private renderTip(hardcover: boolean, themeLocked: boolean): void {
+    if (!hardcover) this.pickedHardcover = false;
+    const want: TipPlace | null = themeLocked ? "bs-theme" : hardcover && this.pickedHardcover ? "bs-hardcover" : null;
+    if (want !== this.tip) this.tip = want && !tipOnScreen(this.root.ownerDocument) && claimTip(this.host.hints, want) ? want : null;
+    const hints = this.host.hints;
+    if (this.tip && hints) drawTip(this.settingsBar, hints, this.tip, (url) => this.host.openUrl(url), () => (this.tip = null));
+  }
+
   private renderSettings(): void {
     const { book } = this.built!;
     const s = book.settings;
@@ -514,7 +534,7 @@ export class Studio {
       ],
       hard ? "hardcover" : "paperback",
       // A size the new binding does not print moves to the default size, so the book never sits on a combination KDP refuses.
-      { attr: { "aria-label": t("set.bindingAria") }, on: { change: () => this.setOverride({ binding: binding.value as BookSettings["binding"], ...(binding.value === "hardcover" && !HARDCOVER.trims.includes(s.trim) ? { trim: DEFAULT_TRIM } : {}) }) } },
+      { attr: { "aria-label": t("set.bindingAria") }, on: { change: () => this.pickBinding(binding.value as BookSettings["binding"], s.trim) } },
     );
     const trim = select(
       trimsFor(hard ? "hardcover" : "paperback").map((tr) => ({ value: tr.id, label: tr.label })),
@@ -562,6 +582,7 @@ export class Studio {
     }
     const blockers = [...new Set([...pdfBlockers(plan, this.built!), ...ebookBlockers(plan, this.built!)].map((b) => editionMessage(b.message)))];
     if (blockers.length) append(this.settingsBar, h("p", { cls: "bs-pro-note", text: FREE_EDITION ? t("set.chooseIncluded", { blockers: blockers.join(" ") }) : t("set.previewingPro", { blockers: blockers.join(" ") }) }));
+    this.renderTip(hard, !themeAllowed(plan, s.theme));
   }
 
   // ── Preview ──

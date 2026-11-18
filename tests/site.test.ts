@@ -83,6 +83,25 @@ describe("guide pages", () => {
     }
   });
 
+  it("ends each of the 14 tool pages with a block that leads to the free web app (not to Pro), and no other page has it", () => {
+    let tools = 0;
+    for (const file of files) {
+      const html = readFileSync(file, "utf8");
+      const isTool = /\/(tools|herramientas)\/[^/]+\/index\.html$/.test(file) && !/\/(tools|herramientas)\/index\.html$/.test(file);
+      const block = html.match(/<section class="whole-book"[\s\S]*?<\/section>/)?.[0];
+      if (!isTool) {
+        expect(block, file).toBeUndefined();
+        continue;
+      }
+      tools++;
+      expect(html.match(/class="whole-book"/g), file).toHaveLength(1);
+      expect(block, file).toMatch(/<a class="btn primary" href="(\.\.\/)+\?ref=kdp-tools">/);
+      expect(block, file).not.toMatch(/\/pro\/|Pro\b|Typeset with/);
+      expect(html.indexOf("whole-book"), file).toBeGreaterThan(html.indexOf("class=\"figures\""));
+    }
+    expect(tools).toBe(14);
+  });
+
   it("makes each landing page a one-h1 sales page: main button, comparison table, six questions, no script", () => {
     for (const lang of ["en", "es"]) {
       const file = join(out, lang, "index.html");

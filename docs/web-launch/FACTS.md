@@ -66,6 +66,8 @@ The app opens Oz by default; `app:?sample=leyendas` opens the Spanish one.
 
 Seven calculators under `/en/tools/` and `/es/herramientas/` (spine, cover size with PDF/PNG template, printing cost and royalty, margins, trim chooser, ISBN and barcode, words to pages). Code in `site/tools/src/`, pages in `site/tools/<lang>/`, bundled into `tools/tools.js` by `tools/site.mjs`. Their numbers live only in `site/tools/data/kdp-figures.json` with the date read from KDP's four help pages (Amazon.com, USD); a test fails when that date is over 180 days old: re-read the pages and update the file. The tool pages show that date. Printing cost and royalty are Amazon.com only. The barcode box on the template is a guide: KDP's help does not publish its size. Genre lists in the trim chooser are editorial, not KDP rules. Links carry `?trim=…&paper=…` into the app (`src/project/start-link.ts`); pages cannot be passed, they come from the text.
 
+Each tool page ends with the block "Do the whole book with Book Studio" (`wholeBook()` in `tools/site.mjs`): one button to the free web app with `?ref=kdp-tools` (the app ignores the parameter). It never links to Pro and the "Typeset with Book Studio" signature is not approved, so there is none.
+
 ## Ebook preview (2026-11-16)
 
 The Ebook tab shows the book's own EPUB files (the same ones that are exported) in three frames: e-ink 6 in, phone and tablet, with three reader text sizes, dark mode and page turning. It is an approximation: each ebook reader draws the book its own way. The note "Approximate view: each ebook reader draws the book its own way." is fixed on the tab. Never write "this is how it will look on your Kindle". The view is not tested in a real reader.

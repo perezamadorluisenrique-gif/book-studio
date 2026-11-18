@@ -30,6 +30,7 @@ import { openCoverEditor } from "./cover-editor";
 import { coverThumbnail, designFor } from "./cover-thumbs";
 import { showPublishChecklist } from "./publish";
 import { deleteProject, deleteSnapshot, getHandle, listProjects, listSnapshots, putProject, putSnapshot, setHandle } from "./store";
+import { hintHostFromStore } from "../app/pro-tip";
 import { Studio } from "../app/studio";
 import { detectLocale, setLocale, t, type Locale } from "../app/ui-i18n";
 import type { VaultSource } from "../engine/book";
@@ -242,6 +243,7 @@ const host: StudioHost = {
     return t("web.downloaded", { name: file.name });
   },
   store,
+  hints: hintHostFromStore(store),
   ask: async (d: Dialog) => {
     const buttons = [{ label: d.cancel ?? t("web.cancel"), value: "cancel" }];
     if (d.extra) buttons.push({ label: d.extra, value: "extra" });
@@ -302,6 +304,8 @@ const workspace = new Workspace($("workspace"), {
       {
         project: () => current?.project ?? null,
         facts: () => studio.publishFacts(),
+        hints: host.hints,
+        openUrl: (url) => host.openUrl(url),
         go: (place) => {
           if (place === "problems") {
             workspace.reveal("book");
