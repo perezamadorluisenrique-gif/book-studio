@@ -42,7 +42,7 @@ export class LicenseManager {
     return Promise.reject(new LicenseError("This edition of Book Studio has no Pro plan."));
   }
 
-  remove(): void {
+  remove(_post: Post | null = null): void {
     void this.host;
   }
 }

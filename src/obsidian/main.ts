@@ -385,7 +385,7 @@ function licenseSettings(containerEl: HTMLElement, plugin: BookStudioPlugin, red
       .setDesc("Book Studio goes back to the free plan on this device. You can paste the key again any time.")
       .addButton((b) =>
         b.setButtonText("Remove").onClick(() => {
-          license.remove();
+          license.remove(post);
           redraw();
         }),
       );
